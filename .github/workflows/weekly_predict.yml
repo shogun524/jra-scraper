@@ -38,6 +38,14 @@ jobs:
       - name: 出馬表スクレイピング
         run: python src/scrape_entries.py ${{ steps.today.outputs.date }} --out data/entries_this_week.csv
 
+      - name: 【デバッグ用】出馬表スクレイパーの診断(1レース分)
+        if: always()
+        run: |
+          RACE_ID=$(python -c "import pandas as pd; df=pd.read_csv('data/entries_this_week.csv'); print(df['race_id'].iloc[0])" 2>/dev/null || echo "")
+          if [ -n "$RACE_ID" ]; then
+            python src/scrape_entries.py --diagnose "$RACE_ID" > data/diagnose_output.txt 2>&1 || true
+          fi
+
       - name: AI予測を実行
         run: python src/predict.py data/entries_this_week.csv
 
@@ -52,7 +60,10 @@ jobs:
           path: |
             data/entries_this_week.csv
             data/predictions.csv
+            data/diagnose_output.txt
+            data/diagnose_shutuba_screenshot.png
           retention-days: 7
+          if-no-files-found: ignore
 
       - name: GitHub Pagesへデプロイ
         uses: peaceiris/actions-gh-pages@v4
