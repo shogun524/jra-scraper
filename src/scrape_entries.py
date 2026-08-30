@@ -46,6 +46,13 @@ def fetch_shutuba_page(page, race_id: str) -> str:
     return page.content()
 
 
+def _scalar(v):
+    """Seriesが返ってきた場合(重複列などが原因)でも必ずスカラー値に変換する防御ヘルパー"""
+    if isinstance(v, pd.Series):
+        return v.iloc[0] if len(v) else None
+    return v
+
+
 def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
     """出馬表テーブルをパースし、predict.pyへの入力(entries CSV)と同じスキーマの行に変換する"""
     import io
@@ -65,7 +72,8 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
 
     rows = []
     for _, r in df.iterrows():
-        if pd.isna(r.get("馬名")):
+        horse_name = _scalar(r.get("馬名"))
+        if pd.isna(horse_name):
             continue
         row = {
             "race_id": race_id,
@@ -75,19 +83,19 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
             "distance": cond.get("distance"),
             "baba": cond.get("baba"),
             "weather": cond.get("weather"),
-            "waku": r.get("枠番"),
-            "umaban": r.get("馬番"),
-            "horse": str(r.get("馬名")).strip(),
-            "jockey": str(r.get("騎手")).strip() if pd.notna(r.get("騎手")) else None,
-            "trainer": str(r.get("調教師")).strip() if pd.notna(r.get("調教師")) else None,
-            "weight_carry": r.get("斤量"),
-            "odds_win": pd.to_numeric(r.get("単勝"), errors="coerce"),
+            "waku": _scalar(r.get("枠番")),
+            "umaban": _scalar(r.get("馬番")),
+            "horse": str(horse_name).strip(),
+            "jockey": str(_scalar(r.get("騎手"))).strip() if pd.notna(_scalar(r.get("騎手"))) else None,
+            "trainer": str(_scalar(r.get("調教師"))).strip() if pd.notna(_scalar(r.get("調教師"))) else None,
+            "weight_carry": _scalar(r.get("斤量")),
+            "odds_win": pd.to_numeric(_scalar(r.get("単勝")), errors="coerce"),
         }
-        sexage = str(r.get("性齢", ""))
+        sexage = str(_scalar(r.get("性齢", "")))
         m = re.match(r"([牡牝セ])(\d+)", sexage)
         if m:
             row["sex"], row["age"] = m.group(1), int(m.group(2))
-        bw = str(r.get("馬体重増減", ""))
+        bw = str(_scalar(r.get("馬体重増減", "")))
         m = re.match(r"(\d+)", bw)
         row["horse_weight"] = int(m.group(1)) if m else None
         rows.append(row)
@@ -132,6 +140,7 @@ def scrape_date(date_str: str, out_csv: str):
         page = browser.new_page(user_agent=UA)
         race_ids = get_race_ids_for_date(page, date_compact)
         print(f"{date_str}: {len(race_ids)}レース見つかりました")
+        first_error_shown = False
         for race_id in race_ids:
             try:
                 html = fetch_shutuba_page(page, race_id)
@@ -139,7 +148,13 @@ def scrape_date(date_str: str, out_csv: str):
                 print(f"  [{race_id}] {len(rows)}頭")
                 all_rows.extend(rows)
             except Exception as e:
-                print(f"  [{race_id}] エラー: {e}")
+                if not first_error_shown:
+                    import traceback
+                    print(f"  [{race_id}] エラー(詳細):")
+                    traceback.print_exc()
+                    first_error_shown = True
+                else:
+                    print(f"  [{race_id}] エラー: {e}")
         browser.close()
 
     if all_rows:
