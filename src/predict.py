@@ -93,18 +93,27 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
     for _, e in entries.iterrows():
         rd = e["race_date"]
         db_ = "sprint" if e["distance"] < 1400 else "mile" if e["distance"] < 1800 else "middle" if e["distance"] < 2200 else "long"
+        horse_name = str(e["horse"]) if pd.notna(e.get("horse")) else None
+        jockey_name = str(e["jockey"]) if pd.notna(e.get("jockey")) else None
+        trainer_name = str(e["trainer"]) if pd.notna(e.get("trainer")) else None
 
         h = con.execute("SELECT * FROM hist2 WHERE horse=? AND race_date<? ORDER BY race_date DESC LIMIT 5",
-                         [e["horse"], rd]).df()
+                         [horse_name, rd]).df()
         career = con.execute("SELECT avg(y_win) w, avg(y_top3) t3, count(*) n, max(race_date) last_date FROM hist2 WHERE horse=? AND race_date<?",
-                              [e["horse"], rd]).df().iloc[0]
+                              [horse_name, rd]).df().iloc[0]
         dist_apt = con.execute("SELECT avg(y_win) w, avg(y_top3) t3, count(*) n FROM hist2 WHERE horse=? AND surface=? AND dist_bucket=? AND race_date<?",
-                                [e["horse"], e["surface"], db_, rd]).df().iloc[0]
-        jockey = con.execute("""SELECT avg(y_win) w, avg(y_top3) t3, count(*) n FROM
-                                 (SELECT * FROM hist2 WHERE jockey=? AND race_date<? ORDER BY race_date DESC LIMIT 200)""",
-                              [e["jockey"], rd]).df().iloc[0]
-        trainer = con.execute("SELECT avg(y_win) w, count(*) n FROM hist2 WHERE replace(trainer,'・',' ')=replace(?,'・',' ') AND race_date<?",
-                               [e["trainer"], rd]).df().iloc[0]
+                                [horse_name, e["surface"], db_, rd]).df().iloc[0]
+        if jockey_name:
+            jockey = con.execute("""SELECT avg(y_win) w, avg(y_top3) t3, count(*) n FROM
+                                     (SELECT * FROM hist2 WHERE jockey=? AND race_date<? ORDER BY race_date DESC LIMIT 200)""",
+                                  [jockey_name, rd]).df().iloc[0]
+        else:
+            jockey = pd.Series({"w": np.nan, "t3": np.nan, "n": 0})
+        if trainer_name:
+            trainer = con.execute("SELECT avg(y_win) w, count(*) n FROM hist2 WHERE replace(trainer,'・',' ')=replace(?,'・',' ') AND race_date<?",
+                                   [trainer_name, rd]).df().iloc[0]
+        else:
+            trainer = pd.Series({"w": np.nan, "n": 0})
         waku_b = con.execute("SELECT avg(y_win) w, count(*) n FROM hist2 WHERE track_code=? AND surface=? AND dist_bucket=? AND waku=? AND race_date<?",
                               [e["track_code"], e["surface"], db_, int(e["waku"]), rd]).df().iloc[0]
 
@@ -176,8 +185,11 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
         row.setdefault("race_class", np.nan)  # 出馬表の時点ではクラス格付けを別途与えない限り不明
 
         # 騎手×調教師コンビの過去成績
-        combo = con.execute("SELECT avg(y_win) w, count(*) n FROM hist2 WHERE jockey=? AND replace(trainer,'・',' ')=replace(?,'・',' ') AND race_date<?",
-                             [e["jockey"], e["trainer"], rd]).df().iloc[0]
+        if jockey_name and trainer_name:
+            combo = con.execute("SELECT avg(y_win) w, count(*) n FROM hist2 WHERE jockey=? AND replace(trainer,'・',' ')=replace(?,'・',' ') AND race_date<?",
+                                 [jockey_name, trainer_name, rd]).df().iloc[0]
+        else:
+            combo = pd.Series({"w": np.nan, "n": 0})
         row["jockey_trainer_combo_winrate"] = combo["w"]
         row["jockey_trainer_combo_n"] = combo["n"]
 
