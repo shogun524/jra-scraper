@@ -3,5 +3,6 @@ lightgbm
 pandas
 numpy
 beautifulsoup4
+lxml
 playwright
 tqdm
