@@ -18,7 +18,7 @@ jobs:
 
       - name: 依存関係インストール
         run: |
-          pip install duckdb lightgbm pandas numpy beautifulsoup4 playwright
+          pip install duckdb lightgbm pandas numpy beautifulsoup4 lxml playwright
           playwright install chromium --with-deps
 
       # ------------------------------------------------------------------
