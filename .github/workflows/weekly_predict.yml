@@ -17,20 +17,26 @@ jobs:
           python-version: "3.11"
 
       - name: 依存関係インストール
-        run: pip install duckdb lightgbm pandas numpy
+        run: |
+          pip install duckdb lightgbm pandas numpy beautifulsoup4 playwright
+          playwright install chromium --with-deps
 
       # ------------------------------------------------------------------
-      # TODO(未実装): 当週の出馬表(未来のレース情報)を取得するステップ
-      # 現状の data/race_result.csv は 2021-07-31 までの「結果」データのみで、
-      # 未来のレースエントリーは含まれていません。
-      # 南関東パイプラインの netkeiba スクレイパーと同様に、
-      # JRAレース(中央競馬)の出馬表ページをスクレイピングして
-      # data/sample_entries.csv と同じ形式のCSVを作るステップをここに追加してください。
-      # 同時に、直近の「レース結果」も定期的にこのリポジトリの race_result.csv へ
-      # 追記していく仕組みがないと、馬の直近成績(recent5_*)が古いままになります。
-      # - name: 出馬表スクレイピング
-      #   run: python src/scrape_entries.py --out data/entries_this_week.csv
+      # 当週の出馬表(未来のレース情報)を取得
+      # data/race_result.csv 側の「直近成績」は最新化され続けている前提ではないため、
+      # predict.py側の安全装置(古すぎる馬の成績はNaN扱い)がここでも効く。
       # ------------------------------------------------------------------
+      - name: 今日の日付(JST)を取得
+        id: today
+        run: echo "date=$(TZ='Asia/Tokyo' date +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: 大容量データ(race_result_merged.csv)をGitHub Releaseから取得
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release download data-v1 --pattern "race_result_merged.csv" --dir data --clobber
+
+      - name: 出馬表スクレイピング
+        run: python src/scrape_entries.py ${{ steps.today.outputs.date }} --out data/entries_this_week.csv
 
       - name: AI予測を実行
         run: python src/predict.py data/entries_this_week.csv
