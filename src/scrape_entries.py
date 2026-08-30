@@ -86,7 +86,7 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
             "waku": _scalar(r.get("枠番")),
             "umaban": _scalar(r.get("馬番")),
             "horse": str(horse_name).strip(),
-            "jockey": str(_scalar(r.get("騎手"))).strip() if pd.notna(_scalar(r.get("騎手"))) else None,
+            "jockey": re.sub(r"^[▲△☆★◇]", "", str(_scalar(r.get("騎手"))).strip()) if pd.notna(_scalar(r.get("騎手"))) else None,
             "trainer": str(_scalar(r.get("調教師"))).strip() if pd.notna(_scalar(r.get("調教師"))) else None,
             "weight_carry": _scalar(r.get("斤量")),
             "odds_win": pd.to_numeric(_scalar(r.get("単勝")), errors="coerce"),
@@ -123,6 +123,15 @@ def diagnose(race_id: str):
     for i, t in enumerate(tables):
         cols = list(t.columns)[:10]
         print(f"[{i}] shape={t.shape}  columns(先頭10個)={cols}")
+
+    entry_table = None
+    for t in tables:
+        if any("馬名" in _normalize_col(c) for c in t.columns) and any("騎手" in _normalize_col(c) for c in t.columns):
+            if entry_table is None or len(t) > len(entry_table):
+                entry_table = t
+    if entry_table is not None:
+        print(f"\n出馬表として選ばれたテーブルの全列名: {list(entry_table.columns)}")
+        print(f"正規化後: {[_normalize_col(c) for c in entry_table.columns]}")
 
     rows = parse_shutuba(html, race_id, "2026-01-01")
     print(f"\nparse_shutuba()の結果: {len(rows)}頭分")

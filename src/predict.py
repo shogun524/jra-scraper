@@ -92,17 +92,25 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
     out_rows = []
     for _, e in entries.iterrows():
         rd = e["race_date"]
-        db_ = "sprint" if e["distance"] < 1400 else "mile" if e["distance"] < 1800 else "middle" if e["distance"] < 2200 else "long"
+        distance_val = e.get("distance")
+        if pd.isna(distance_val):
+            db_ = None
+        else:
+            db_ = "sprint" if distance_val < 1400 else "mile" if distance_val < 1800 else "middle" if distance_val < 2200 else "long"
         horse_name = str(e["horse"]) if pd.notna(e.get("horse")) else None
         jockey_name = str(e["jockey"]) if pd.notna(e.get("jockey")) else None
         trainer_name = str(e["trainer"]) if pd.notna(e.get("trainer")) else None
+        surface_val = str(e["surface"]) if pd.notna(e.get("surface")) else None
 
         h = con.execute("SELECT * FROM hist2 WHERE horse=? AND race_date<? ORDER BY race_date DESC LIMIT 5",
                          [horse_name, rd]).df()
         career = con.execute("SELECT avg(y_win) w, avg(y_top3) t3, count(*) n, max(race_date) last_date FROM hist2 WHERE horse=? AND race_date<?",
                               [horse_name, rd]).df().iloc[0]
-        dist_apt = con.execute("SELECT avg(y_win) w, avg(y_top3) t3, count(*) n FROM hist2 WHERE horse=? AND surface=? AND dist_bucket=? AND race_date<?",
-                                [horse_name, e["surface"], db_, rd]).df().iloc[0]
+        if surface_val and db_:
+            dist_apt = con.execute("SELECT avg(y_win) w, avg(y_top3) t3, count(*) n FROM hist2 WHERE horse=? AND surface=? AND dist_bucket=? AND race_date<?",
+                                    [horse_name, surface_val, db_, rd]).df().iloc[0]
+        else:
+            dist_apt = pd.Series({"w": np.nan, "t3": np.nan, "n": 0})
         if jockey_name:
             jockey = con.execute("""SELECT avg(y_win) w, avg(y_top3) t3, count(*) n FROM
                                      (SELECT * FROM hist2 WHERE jockey=? AND race_date<? ORDER BY race_date DESC LIMIT 200)""",
@@ -115,9 +123,9 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
         else:
             trainer = pd.Series({"w": np.nan, "n": 0})
         waku_val = e.get("waku")
-        if pd.notna(waku_val):
+        if pd.notna(waku_val) and surface_val and db_:
             waku_b = con.execute("SELECT avg(y_win) w, count(*) n FROM hist2 WHERE track_code=? AND surface=? AND dist_bucket=? AND waku=? AND race_date<?",
-                                  [e["track_code"], e["surface"], db_, int(waku_val), rd]).df().iloc[0]
+                                  [e["track_code"], surface_val, db_, int(waku_val), rd]).df().iloc[0]
         else:
             waku_b = pd.Series({"w": np.nan, "n": 0})
 
