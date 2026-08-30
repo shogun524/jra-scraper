@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JRA競馬AI予測</title>
+<style>
+  :root {
+    --bg: #0f1419; --card: #1a2129; --line: #2a333d; --text: #e8edf2; --sub: #8b98a5;
+    --accent: #4f9cf9; --good: #3ecf8e; --mid: #f5c451; --low: #f2545b;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif;
+          background: var(--bg); color: var(--text); padding: 24px 16px 60px; }
+  header { max-width: 1000px; margin: 0 auto 24px; }
+  header h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  header p { color: var(--sub); font-size: .85rem; margin: 0; }
+  .race-card { max-width: 1000px; margin: 0 auto 20px; background: var(--card);
+                border: 1px solid var(--line); border-radius: 12px; padding: 16px; overflow-x: auto; }
+  .race-card h2 { font-size: 1rem; margin: 0 0 12px; color: var(--accent); }
+  table { border-collapse: collapse; width: 100%; font-size: .82rem; white-space: nowrap; }
+  th { text-align: left; color: var(--sub); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
+  .rank { font-weight: 700; }
+  .horse { font-weight: 600; }
+  .pct { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .waku { text-align:center; border-radius:4px; color:#111; font-weight:700; }
+  .badge { padding: 2px 8px; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+  .ev-good { background: rgba(62,207,142,.15); color: var(--good); }
+  .ev-mid  { background: rgba(245,196,81,.15); color: var(--mid); }
+  .ev-low  { background: rgba(242,84,91,.15); color: var(--low); }
+  footer { max-width:1000px; margin: 24px auto 0; color: var(--sub); font-size: .75rem; line-height:1.6; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏇 JRA競馬AI予測ランキング</h1>
+  <p>最終更新: 2026-08-30 11:51 / 1着率・3連対率はLightGBMモデルによる推定値です</p>
+</header>
+
+    <section class="race-card">
+      <h2>レースID: 202604030408</h2>
+      <table>
+        <thead>
+          <tr><th>予測順位</th><th>枠</th><th>馬番</th><th>馬名</th><th>騎手</th>
+              <th>1着率</th><th>3連対率</th><th>単勝オッズ</th><th>期待値</th></tr>
+        </thead>
+        <tbody>
+        <tr>
+          <td class="rank">1</td>
+          <td class="waku waku-3">3</td>
+          <td>3</td>
+          <td class="horse">ロデオドライブ</td>
+          <td>ルメール</td>
+          <td class="pct">18.0%</td>
+          <td class="pct">51.6%</td>
+          <td>4.0倍</td>
+          <td><span class="badge ev-low">期待値 0.72</span></td>
+        </tr>
+        <tr>
+          <td class="rank">2</td>
+          <td class="waku waku-1">1</td>
+          <td>1</td>
+          <td class="horse">ボーンディスウェイ</td>
+          <td>丸山</td>
+          <td class="pct">13.9%</td>
+          <td class="pct">44.4%</td>
+          <td>73.2倍</td>
+          <td><span class="badge ev-good">期待値 10.15</span></td>
+        </tr>
+        <tr>
+          <td class="rank">3</td>
+          <td class="waku waku-4">4</td>
+          <td>4</td>
+          <td class="horse">ドゥレッツァ</td>
+          <td>田辺</td>
+          <td class="pct">9.4%</td>
+          <td class="pct">41.1%</td>
+          <td>8.3倍</td>
+          <td><span class="badge ev-low">期待値 0.78</span></td>
+        </tr>
+        <tr>
+          <td class="rank">4</td>
+          <td class="waku waku-5">5</td>
+          <td>5</td>
+          <td class="horse">ゾロアストロ</td>
+          <td>岩田望来</td>
+          <td class="pct">9.3%</td>
+          <td class="pct">49.0%</td>
+          <td>3.6倍</td>
+          <td><span class="badge ev-low">期待値 0.34</span></td>
+        </tr>
+        <tr>
+          <td class="rank">5</td>
+          <td class="waku waku-7">7</td>
+          <td>9</td>
+          <td class="horse">アーバンシック</td>
+          <td>三浦</td>
+          <td class="pct">9.2%</td>
+          <td class="pct">41.3%</td>
+          <td>16.2倍</td>
+          <td><span class="badge ev-good">期待値 1.49</span></td>
+        </tr>
+        <tr>
+          <td class="rank">6</td>
+          <td class="waku waku-8">8</td>
+          <td>11</td>
+          <td class="horse">ステレンボッシュ</td>
+          <td>戸崎圭太</td>
+          <td class="pct">8.6%</td>
+          <td class="pct">45.9%</td>
+          <td>12.2倍</td>
+          <td><span class="badge ev-mid">期待値 1.05</span></td>
+        </tr>
+        <tr>
+          <td class="rank">7</td>
+          <td class="waku waku-2">2</td>
+          <td>2</td>
+          <td class="horse">サヴォーナ</td>
+          <td>池添</td>
+          <td class="pct">8.1%</td>
+          <td class="pct">35.7%</td>
+          <td>30.0倍</td>
+          <td><span class="badge ev-good">期待値 2.43</span></td>
+        </tr>
+        <tr>
+          <td class="rank">8</td>
+          <td class="waku waku-6">6</td>
+          <td>6</td>
+          <td class="horse">チェルヴィニア</td>
+          <td>津村</td>
+          <td class="pct">6.6%</td>
+          <td class="pct">28.8%</td>
+          <td>14.4倍</td>
+          <td><span class="badge ev-mid">期待値 0.95</span></td>
+        </tr>
+        <tr>
+          <td class="rank">9</td>
+          <td class="waku waku-7">7</td>
+          <td>8</td>
+          <td class="horse">ダノンシーマ</td>
+          <td>川田</td>
+          <td class="pct">6.3%</td>
+          <td class="pct">30.8%</td>
+          <td>3.3倍</td>
+          <td><span class="badge ev-low">期待値 0.21</span></td>
+        </tr>
+        <tr>
+          <td class="rank">10</td>
+          <td class="waku waku-6">6</td>
+          <td>7</td>
+          <td class="horse">ジュンブロッサム</td>
+          <td>杉原</td>
+          <td class="pct">5.8%</td>
+          <td class="pct">41.2%</td>
+          <td>50.9倍</td>
+          <td><span class="badge ev-good">期待値 2.97</span></td>
+        </tr>
+        <tr>
+          <td class="rank">11</td>
+          <td class="waku waku-8">8</td>
+          <td>10</td>
+          <td class="horse">バレエマスター</td>
+          <td>菊沢</td>
+          <td class="pct">4.7%</td>
+          <td class="pct">35.1%</td>
+          <td>32.1倍</td>
+          <td><span class="badge ev-good">期待値 1.50</span></td>
+        </tr></tbody>
+      </table>
+    </section>
+<footer>
+  期待値 = 予測1着確率 × 単勝オッズ。1.0を上回るほど市場価格に対して割安と推定されることを示しますが、
+  的中を保証するものではありません。馬券の最終判断はご自身でお願いします。
+</footer>
+</body>
+</html>

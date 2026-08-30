@@ -1,0 +1,7 @@
+duckdb
+lightgbm
+pandas
+numpy
+beautifulsoup4
+playwright
+tqdm
