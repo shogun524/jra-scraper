@@ -59,6 +59,7 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
         return []
 
     df = entry_table.rename(columns={c: COLUMN_MAP.get(_normalize_col(c), _normalize_col(c)) for c in entry_table.columns})
+    df = df.loc[:, ~df.columns.duplicated()]  # 列名の重複(例:"馬名"が複数)があれば先頭優先で1つにまとめる
     cond = parse_race_conditions(html)
     track_code = race_id[4:6]
 
