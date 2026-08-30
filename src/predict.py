@@ -114,8 +114,12 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
                                    [trainer_name, rd]).df().iloc[0]
         else:
             trainer = pd.Series({"w": np.nan, "n": 0})
-        waku_b = con.execute("SELECT avg(y_win) w, count(*) n FROM hist2 WHERE track_code=? AND surface=? AND dist_bucket=? AND waku=? AND race_date<?",
-                              [e["track_code"], e["surface"], db_, int(e["waku"]), rd]).df().iloc[0]
+        waku_val = e.get("waku")
+        if pd.notna(waku_val):
+            waku_b = con.execute("SELECT avg(y_win) w, count(*) n FROM hist2 WHERE track_code=? AND surface=? AND dist_bucket=? AND waku=? AND race_date<?",
+                                  [e["track_code"], e["surface"], db_, int(waku_val), rd]).df().iloc[0]
+        else:
+            waku_b = pd.Series({"w": np.nan, "n": 0})
 
         row = dict(e)
         row["dist_bucket"] = db_
