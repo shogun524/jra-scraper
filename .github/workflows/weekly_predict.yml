@@ -44,6 +44,16 @@ jobs:
       - name: ダッシュボードHTML生成
         run: python src/generate_html.py data/predictions.csv docs/index.html
 
+      - name: 中間ファイルをダウンロードできるように保存(デバッグ用)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jra-debug-files
+          path: |
+            data/entries_this_week.csv
+            data/predictions.csv
+          retention-days: 7
+
       - name: GitHub Pagesへデプロイ
         uses: peaceiris/actions-gh-pages@v4
         with:
