@@ -1,8 +1,0 @@
-{
-  "train_rows": 1354657,
-  "valid_rows": 147993,
-  "test_rows": 124161,
-  "win_auc": 0.7728429538790796,
-  "top3_auc": 0.7620112757328609,
-  "baseline_flat_roi_pct": 73.91420347972317
-}
