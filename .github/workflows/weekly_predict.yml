@@ -1,0 +1,45 @@
+name: JRA週末AI予測 自動更新
+
+on:
+  schedule:
+    # JST土曜7:00 / 日曜7:00 に実行 (UTC 22:00 金/土)
+    - cron: "0 22 * * 5,6"
+  workflow_dispatch: {}
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 依存関係インストール
+        run: pip install duckdb lightgbm pandas numpy
+
+      # ------------------------------------------------------------------
+      # TODO(未実装): 当週の出馬表(未来のレース情報)を取得するステップ
+      # 現状の data/race_result.csv は 2021-07-31 までの「結果」データのみで、
+      # 未来のレースエントリーは含まれていません。
+      # 南関東パイプラインの netkeiba スクレイパーと同様に、
+      # JRAレース(中央競馬)の出馬表ページをスクレイピングして
+      # data/sample_entries.csv と同じ形式のCSVを作るステップをここに追加してください。
+      # 同時に、直近の「レース結果」も定期的にこのリポジトリの race_result.csv へ
+      # 追記していく仕組みがないと、馬の直近成績(recent5_*)が古いままになります。
+      # - name: 出馬表スクレイピング
+      #   run: python src/scrape_entries.py --out data/entries_this_week.csv
+      # ------------------------------------------------------------------
+
+      - name: AI予測を実行
+        run: python src/predict.py data/entries_this_week.csv
+
+      - name: ダッシュボードHTML生成
+        run: python src/generate_html.py data/predictions.csv docs/index.html
+
+      - name: GitHub Pagesへデプロイ
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
