@@ -118,7 +118,9 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
         else:
             jockey = pd.Series({"w": np.nan, "t3": np.nan, "n": 0})
         if trainer_name:
-            trainer = con.execute("SELECT avg(y_win) w, count(*) n FROM hist2 WHERE replace(trainer,'・',' ')=replace(?,'・',' ') AND race_date<?",
+            trainer = con.execute("""SELECT avg(y_win) w, count(*) n FROM hist2
+                                      WHERE replace(replace(trainer,'・',''),' ','')=replace(replace(?,'・',''),' ','')
+                                      AND race_date<?""",
                                    [trainer_name, rd]).df().iloc[0]
         else:
             trainer = pd.Series({"w": np.nan, "n": 0})
@@ -198,7 +200,9 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
 
         # 騎手×調教師コンビの過去成績
         if jockey_name and trainer_name:
-            combo = con.execute("SELECT avg(y_win) w, count(*) n FROM hist2 WHERE jockey=? AND replace(trainer,'・',' ')=replace(?,'・',' ') AND race_date<?",
+            combo = con.execute("""SELECT avg(y_win) w, count(*) n FROM hist2
+                                    WHERE jockey=? AND replace(replace(trainer,'・',''),' ','')=replace(replace(?,'・',''),' ','')
+                                    AND race_date<?""",
                                  [jockey_name, trainer_name, rd]).df().iloc[0]
         else:
             combo = pd.Series({"w": np.nan, "n": 0})
