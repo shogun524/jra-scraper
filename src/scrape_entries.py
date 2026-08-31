@@ -36,7 +36,7 @@ COLUMN_MAP = {
     "馬名": "馬名", "性齢": "性齢", "斤量": "斤量", "騎手": "騎手",
     "厩舎": "調教師", "調教師": "調教師",
     "馬体重増減": "馬体重増減", "馬体重(増減)": "馬体重増減", "馬体重": "馬体重増減",
-    "単勝": "単勝", "単勝オッズ": "単勝", "人気": "人気",
+    "単勝": "単勝", "単勝オッズ": "単勝", "オッズ": "単勝", "人気": "人気",
 }
 
 
@@ -65,7 +65,16 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
     if entry_table is None:
         return []
 
-    df = entry_table.rename(columns={c: COLUMN_MAP.get(_normalize_col(c), _normalize_col(c)) for c in entry_table.columns})
+    # netkeibaの出馬表は見出しが2段(同じ文字が上下に重なる構造)になっていることがあり、
+    # そのままrename()すると変換が効かない(元の列名がそのまま生き残ってしまう)ため、
+    # 先にMultiIndexを1段のシンプルな文字列へ平らにしてから変換する。
+    if isinstance(entry_table.columns, pd.MultiIndex):
+        flat_cols = [_normalize_col(c[0]) for c in entry_table.columns]
+    else:
+        flat_cols = [_normalize_col(c) for c in entry_table.columns]
+    entry_table.columns = flat_cols
+
+    df = entry_table.rename(columns={c: COLUMN_MAP.get(c, c) for c in entry_table.columns})
     df = df.loc[:, ~df.columns.duplicated()]  # 列名の重複(例:"馬名"が複数)があれば先頭優先で1つにまとめる
     cond = parse_race_conditions(html)
     track_code = race_id[4:6]
