@@ -232,12 +232,16 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
     feat_df["pred_win_rank"] = feat_df.groupby("race_id")["pred_win"].rank(ascending=False, method="min").astype(int)
     feat_df["pred_top3_rank"] = feat_df.groupby("race_id")["pred_top3"].rank(ascending=False, method="min").astype(int)
     feat_df["pred_win_norm"] = feat_df.groupby("race_id")["pred_win"].transform(lambda s: s / s.sum())
+    # 3連対率もレース内で正規化する。1レースにつき必ず3頭が3着以内に入るため、
+    # 頭数に関わらずレース内合計が3(300%)になるよう揃える(生の予測値のままだと
+    # レースによって合計が161%だったり450%だったりバラつき、馬同士の比較に使えないため)。
+    feat_df["pred_top3_norm"] = feat_df.groupby("race_id")["pred_top3"].transform(lambda s: s / s.sum() * 3)
 
     if "odds_win" in feat_df.columns:
         feat_df["expected_value"] = (feat_df["pred_win_norm"] * feat_df["odds_win"]).round(2)
 
     out_cols = ["race_id", "race_date", "track_code", "horse", "umaban", "waku", "jockey",
-                "pred_win_norm", "pred_top3", "pred_win_rank", "pred_top3_rank"]
+                "pred_win_norm", "pred_top3_norm", "pred_win_rank", "pred_top3_rank"]
     for optional_col in ["track_name", "race_number", "race_name", "post_time"]:
         if optional_col in feat_df.columns:
             out_cols.append(optional_col)
