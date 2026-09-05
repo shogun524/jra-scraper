@@ -20,6 +20,31 @@ import lightgbm as lgb
 import pandas as pd
 import numpy as np
 
+
+def _normalize_capped(s: pd.Series, target_sum: float, cap: float = 1.0) -> pd.Series:
+    """sの合計がtarget_sumになるよう比例配分するが、どの値も cap(=100%) を超えないようにする。
+    超えた分は、まだ超えていない馬たちに比例配分し直す(水準器のように繰り返し均す)。
+    単純に s / s.sum() * target_sum とするだけだと、1頭だけ突出した予測値を持つ場合に
+    100%を超える値が出てしまうことがあるため。"""
+    s = s.astype(float).copy()
+    fixed = pd.Series(False, index=s.index)
+    remaining_target = target_sum
+    for _ in range(len(s)):
+        active = ~fixed
+        active_sum = s[active].sum()
+        if active_sum <= 0 or active.sum() == 0:
+            break
+        scale = remaining_target / active_sum
+        scaled = s[active] * scale
+        over = scaled[scaled > cap]
+        if len(over) == 0:
+            s[active] = scaled
+            break
+        s[over.index] = cap
+        fixed[over.index] = True
+        remaining_target -= cap * len(over)
+    return s
+
 RACE_RESULT = "data/race_result_merged.csv"
 NUMERIC_FEATURES = [
     "age", "weight_carry", "waku", "umaban", "field_size", "distance", "pace_ratio",
@@ -235,7 +260,9 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
     # 3連対率もレース内で正規化する。1レースにつき必ず3頭が3着以内に入るため、
     # 頭数に関わらずレース内合計が3(300%)になるよう揃える(生の予測値のままだと
     # レースによって合計が161%だったり450%だったりバラつき、馬同士の比較に使えないため)。
-    feat_df["pred_top3_norm"] = feat_df.groupby("race_id")["pred_top3"].transform(lambda s: s / s.sum() * 3)
+    # ただし単純に合計を揃えるだけだと1頭だけ突出した予測値がある場合に100%を超えてしまうため、
+    # 100%を上限にキャップし、超えた分は他の馬に配り直す。
+    feat_df["pred_top3_norm"] = feat_df.groupby("race_id")["pred_top3"].transform(lambda s: _normalize_capped(s, target_sum=3.0))
 
     if "odds_win" in feat_df.columns:
         feat_df["expected_value"] = (feat_df["pred_win_norm"] * feat_df["odds_win"]).round(2)
