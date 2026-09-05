@@ -238,6 +238,9 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
 
     out_cols = ["race_id", "race_date", "track_code", "horse", "umaban", "waku", "jockey",
                 "pred_win_norm", "pred_top3", "pred_win_rank", "pred_top3_rank"]
+    for optional_col in ["track_name", "race_number", "race_name", "post_time"]:
+        if optional_col in feat_df.columns:
+            out_cols.append(optional_col)
     if "odds_win" in feat_df.columns:
         out_cols += ["odds_win", "expected_value"]
     result = feat_df[out_cols].sort_values(["race_id", "pred_win_rank"])
