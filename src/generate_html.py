@@ -70,7 +70,7 @@ def race_card(race_id, g):
           <td class="horse">{r['horse']}</td>
           <td>{r['jockey']}</td>
           <td class="pct">{r['pred_win_norm']*100:.1f}%</td>
-          <td class="pct">{r['pred_top3']*100:.1f}%</td>
+          <td class="pct">{r['pred_top3_norm']*100:.1f}%</td>
           <td>{odds}</td>
           <td>{ev_badge}</td>
         </tr>"""
