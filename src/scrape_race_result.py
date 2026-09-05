@@ -51,6 +51,9 @@ def parse_race_conditions(html: str) -> dict:
     if m:
         baba = m.group(1)
         cond["baba"] = "稍重" if baba == "稍" else baba
+    m = re.search(r"(\d{1,2}:\d{2})発走", text)
+    if m:
+        cond["post_time"] = m.group(1)
     return cond
 
 
