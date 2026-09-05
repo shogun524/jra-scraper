@@ -53,6 +53,17 @@ def _scalar(v):
     return v
 
 
+def parse_race_name(html: str) -> str | None:
+    """<title>タグからレース名を推定する(例: "○○特別 出馬表 | ..." -> "○○特別")"""
+    m = re.search(r"<title>([^<]*)</title>", html)
+    if not m:
+        return None
+    title = m.group(1)
+    # "出馬表"より前、"|"より前の部分を候補にする
+    name = re.split(r"出馬表|\|", title)[0].strip()
+    return name or None
+
+
 def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
     """出馬表テーブルをパースし、predict.pyへの入力(entries CSV)と同じスキーマの行に変換する"""
     import io
@@ -78,6 +89,8 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
     df = df.loc[:, ~df.columns.duplicated()]  # 列名の重複(例:"馬名"が複数)があれば先頭優先で1つにまとめる
     cond = parse_race_conditions(html)
     track_code = race_id[4:6]
+    race_number = int(race_id[-2:])
+    race_name = parse_race_name(html)
 
     rows = []
     for _, r in df.iterrows():
@@ -88,6 +101,10 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
             "race_id": race_id,
             "race_date": race_date,
             "track_code": track_code,
+            "track_name": TRACK_NAMES.get(track_code, ""),
+            "race_number": race_number,
+            "race_name": race_name,
+            "post_time": cond.get("post_time"),
             "surface": cond.get("surface"),
             "distance": cond.get("distance"),
             "baba": cond.get("baba"),
