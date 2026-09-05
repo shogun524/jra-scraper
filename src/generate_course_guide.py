@@ -95,70 +95,91 @@ COURSES = {
 
 
 def track_svg(code, c):
-    """簡易コース図(オリジナルの模式図)。
-    芝コース(緑)・ダートコース(橙)を分けて表示し、方向・内外コースの有無・特殊区間を示す。
+    """コース図。芝(緑)・ダート(橙)を塗りつぶしの帯として描き、方向・内外コース・特殊区間を示す。
     発走地点ごとの正確な位置関係までは再現していない(正確な図はJRA公式サイトを参照)。"""
     direction_label = "右回り" if c["direction"] == "right" else "左回り"
     arrow = "↻" if c["direction"] == "right" else "↺"
     has_dirt = c["dirt_lap"] != "—" or c["dirt_straight"] != "—"
 
-    if c["extra"] == "onigiri":
-        # 中山: 内回りの外側に外回りが非対称にはみ出す"おにぎり型"。ダートは内回りのさらに内側。
-        turf_outer = "M70,25 L230,25 A55,55 0 0 1 270,85 L270,105 A70,70 0 0 1 190,170 L110,170 A55,55 0 0 1 40,105 L40,85 A30,30 0 0 1 70,25 Z"
-        turf_inner = "M85,50 L215,50 A35,35 0 0 1 245,85 A35,35 0 0 1 205,145 L125,145 A38,38 0 0 1 65,100 A45,45 0 0 1 85,50 Z"
-        dirt_path = "M95,65 L205,65 A28,28 0 0 1 228,90 A28,28 0 0 1 195,132 L135,132 A30,30 0 0 1 80,98 A35,35 0 0 1 95,65 Z"
-        shapes = f'''
-          <path d="{turf_outer}" fill="none" stroke="#1F4D3A" stroke-width="3"/>
-          <path d="{turf_inner}" fill="none" stroke="#1F4D3A" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>
-          <path d="{dirt_path}" fill="none" stroke="#C97A2B" stroke-width="2.5" stroke-dasharray="2 2"/>
-          <text x="255" y="65" font-size="10" fill="#1F4D3A">芝外回り</text>
-          <text x="150" y="100" font-size="10" fill="#6B5F4D">芝内回り</text>
-          <text x="100" y="115" font-size="9" fill="#C97A2B">ダート</text>'''
-        legend_dirt = True
-    elif c["extra"] == "senchoku":
-        # 新潟: 外回り+内回り+直線1000m(千直)+ダート
-        turf_outer = "M70,25 L230,25 A50,50 0 0 1 230,125 L70,125 A50,50 0 0 1 70,25 Z"
-        turf_inner = "M85,45 L215,45 A32,32 0 0 1 215,105 L85,105 A32,32 0 0 1 85,45 Z"
-        dirt_path = "M92,60 L208,60 A22,22 0 0 1 218,75 L218,95 A22,22 0 0 1 208,110 L92,110 A22,22 0 0 1 82,95 L82,75 A22,22 0 0 1 92,60 Z"
-        shapes = f'''
-          <path d="{turf_outer}" fill="none" stroke="#1F4D3A" stroke-width="3"/>
-          <path d="{turf_inner}" fill="none" stroke="#1F4D3A" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>
-          <path d="{dirt_path}" fill="none" stroke="#C97A2B" stroke-width="2" stroke-dasharray="2 2"/>
-          <line x1="20" y1="75" x2="280" y2="75" stroke="#B8862B" stroke-width="3"/>
-          <text x="105" y="68" font-size="10" fill="#B8862B">千直(直線1000m)</text>
-          <text x="235" y="40" font-size="9" fill="#1F4D3A">芝外回り</text>
-          <text x="150" y="98" font-size="9" fill="#C97A2B">ダート</text>'''
-        legend_dirt = True
-    elif c["has_inner"]:
-        turf_outer = "M70,25 L230,25 A50,50 0 0 1 230,125 L70,125 A50,50 0 0 1 70,25 Z"
-        turf_inner = "M85,45 L215,45 A32,32 0 0 1 215,105 L85,105 A32,32 0 0 1 85,45 Z"
-        dirt_path = "M95,60 L205,60 A24,24 0 0 1 218,80 A24,24 0 0 1 198,112 L102,112 A24,24 0 0 1 82,80 A24,24 0 0 1 95,60 Z" if has_dirt else None
-        shapes = f'''
-          <path d="{turf_outer}" fill="none" stroke="#1F4D3A" stroke-width="3"/>
-          <path d="{turf_inner}" fill="none" stroke="#1F4D3A" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>
-          <text x="235" y="75" font-size="10" fill="#6B5F4D">芝外</text>
-          <text x="145" y="60" font-size="10" fill="#6B5F4D">芝内</text>'''
-        legend_dirt = bool(dirt_path)
-        if dirt_path:
-            shapes += f'<path d="{dirt_path}" fill="none" stroke="#C97A2B" stroke-width="2" stroke-dasharray="2 2"/><text x="130" y="105" font-size="9" fill="#C97A2B">ダート</text>'
-    else:
-        turf_outer = "M75,25 L225,25 A48,48 0 0 1 225,125 L75,125 A48,48 0 0 1 75,25 Z"
-        dirt_path = "M90,45 L210,45 A28,28 0 0 1 210,105 L90,105 A28,28 0 0 1 90,45 Z" if has_dirt else None
-        shapes = f'<path d="{turf_outer}" fill="none" stroke="#1F4D3A" stroke-width="3"/><text x="238" y="20" font-size="9" fill="#1F4D3A">芝</text>'
-        legend_dirt = bool(dirt_path)
-        if dirt_path:
-            shapes += f'<path d="{dirt_path}" fill="none" stroke="#C97A2B" stroke-width="2.5"/><text x="140" y="78" font-size="9" fill="#C97A2B">ダート</text>'
+    TURF = "#2E6B4F"
+    TURF_IN = "#8FBFA3"
+    DIRT = "#D08A3E"
 
-    return f'''<svg viewBox="0 0 300 155" class="course-svg">
+    def oval(cx, cy, rx, ry, straight):
+        """角丸トラック形状のパスを返す。straight=直線部の半幅"""
+        return (f"M{cx-straight},{cy-ry} L{cx+straight},{cy-ry} "
+                f"A{rx},{ry} 0 0 1 {cx+straight},{cy+ry} "
+                f"L{cx-straight},{cy+ry} A{rx},{ry} 0 0 1 {cx-straight},{cy-ry} Z")
+
+    if code == "06":
+        # 中山: 内回りの外側に外回りが3-4コーナー側(右)へ張り出す非対称形("おにぎり型")
+        # 基本の角丸トラックを描き、外回りだけ右側に円を重ねて膨らませる
+        shapes = f'''
+          <g>
+            <path d="{oval(146,76,44,46,58)}" fill="{TURF}"/>
+            <circle cx="212" cy="62" r="36" fill="{TURF}"/>
+          </g>
+          <path d="{oval(146,76,32,34,56)}" fill="{TURF_IN}"/>
+          <path d="{oval(146,76,23,25,50)}" fill="{DIRT}"/>
+          <path d="{oval(146,76,14,15,44)}" fill="#FFFFFF"/>
+          <text x="212" y="40" font-size="9" fill="#FFFFFF" font-weight="bold" text-anchor="middle">芝外</text>
+          <text x="146" y="54" font-size="9" fill="#2A5540" font-weight="bold" text-anchor="middle">芝内</text>
+          <text x="146" y="80" font-size="8.5" fill="#A8631E" font-weight="bold" text-anchor="middle">ダート</text>'''
+        legend_dirt = True
+
+    elif code == "04":
+        # 新潟: 外回り+内回り+直線1000m(千直)+ダート
+        shapes = f'''
+          <path d="{oval(150,78,46,50,72)}" fill="{TURF}"/>
+          <path d="{oval(150,78,32,36,72)}" fill="{TURF_IN}"/>
+          <path d="{oval(150,78,24,27,66)}" fill="{DIRT}"/>
+          <path d="{oval(150,78,15,17,60)}" fill="#FFFFFF"/>
+          <line x1="14" y1="78" x2="286" y2="78" stroke="#C9A227" stroke-width="5" stroke-linecap="round"/>
+          <text x="98" y="74" font-size="8.5" fill="#8A6E10" font-weight="bold">千直(直線1000m)</text>
+          <text x="245" y="36" font-size="9" fill="#1F4D3A" font-weight="bold">芝外</text>
+          <text x="150" y="52" font-size="9" fill="#2A5540" font-weight="bold" text-anchor="middle">芝内</text>
+          <text x="150" y="82" font-size="9" fill="#A8631E" font-weight="bold" text-anchor="middle">ダート</text>'''
+        legend_dirt = True
+
+    elif c["has_inner"]:
+        # 内回り・外回りを持つ場(京都・阪神)
+        shapes = f'''
+          <path d="{oval(150,78,46,50,72)}" fill="{TURF}"/>
+          <path d="{oval(150,78,33,37,70)}" fill="{TURF_IN}"/>'''
+        legend_dirt = has_dirt
+        if has_dirt:
+            shapes += f'''
+          <path d="{oval(150,78,24,27,64)}" fill="{DIRT}"/>
+          <path d="{oval(150,78,14,16,58)}" fill="#FFFFFF"/>
+          <text x="150" y="82" font-size="9" fill="#A8631E" font-weight="bold" text-anchor="middle">ダート</text>'''
+        else:
+            shapes += f'<path d="{oval(150,78,24,27,64)}" fill="#FFFFFF"/>'
+        shapes += f'''
+          <text x="243" y="36" font-size="9" fill="#1F4D3A" font-weight="bold">芝外</text>
+          <text x="150" y="52" font-size="9" fill="#2A5540" font-weight="bold" text-anchor="middle">芝内</text>'''
+
+    else:
+        shapes = f'<path d="{oval(150,78,46,50,72)}" fill="{TURF}"/>'
+        legend_dirt = has_dirt
+        if has_dirt:
+            shapes += f'''
+          <path d="{oval(150,78,32,36,66)}" fill="{DIRT}"/>
+          <path d="{oval(150,78,20,23,58)}" fill="#FFFFFF"/>
+          <text x="150" y="82" font-size="9" fill="#A8631E" font-weight="bold" text-anchor="middle">ダート</text>'''
+        else:
+            shapes += f'<path d="{oval(150,78,32,36,66)}" fill="#FFFFFF"/>'
+        shapes += f'<text x="150" y="41" font-size="9" fill="#FFFFFF" font-weight="bold" text-anchor="middle">芝</text>'
+
+    return f'''<svg viewBox="0 0 300 160" class="course-svg">
       {shapes}
-      <line x1="75" y1="125" x2="225" y2="125" stroke="#B0433A" stroke-width="4"/>
-      <text x="125" y="143" font-size="10" fill="#B0433A">ゴール前直線</text>
-      <text x="14" y="18" font-size="16" fill="#1F4D3A">{arrow}</text>
-      <text x="34" y="18" font-size="10" fill="#6B5F4D">{direction_label}</text>
+      <line x1="88" y1="{"120" if code == "06" else "124"}" x2="212" y2="{"120" if code == "06" else "124"}" stroke="#C0392B" stroke-width="4" stroke-linecap="round"/>
+      <text x="150" y="150" font-size="9.5" fill="#C0392B" text-anchor="middle" font-weight="bold">ゴール前直線</text>
+      <text x="12" y="19" font-size="17" fill="#1F4D3A">{arrow}</text>
+      <text x="32" y="19" font-size="10" fill="#6B5F4D">{direction_label}</text>
     </svg>
     <p class="course-legend">
-      <span><i style="background:#1F4D3A"></i>芝コース</span>
-      {'<span><i style="background:#C97A2B"></i>ダートコース</span>' if legend_dirt else ''}
+      <span><i style="background:{TURF}"></i>芝コース</span>
+      {f'<span><i style="background:{DIRT}"></i>ダートコース</span>' if legend_dirt else ''}
     </p>'''
 
 
