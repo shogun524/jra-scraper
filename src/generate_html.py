@@ -96,7 +96,7 @@ def race_card(race_id, g):
     </article>"""
 
 
-# 競馬場ごとにグループ化(タブ)
+# 競馬場ごとにグループ化(タブ) -> さらにレース番号ごとに二段目のタブ
 tracks = sorted(df["track_name"].dropna().unique(), key=lambda t: df[df.track_name == t]["track_code"].iloc[0])
 tab_buttons = ""
 tab_panels = ""
@@ -105,8 +105,20 @@ for i, track in enumerate(tracks):
     active = "active" if i == 0 else ""
     n_races = tdf["race_id"].nunique()
     tab_buttons += f'<button class="tab-btn {active}" data-tab="tab-{i}">{track}<span class="tab-count">{n_races}R</span></button>'
-    cards = "".join(race_card(rid, g) for rid, g in tdf.groupby("race_id"))
-    tab_panels += f'<section class="tab-panel {active}" id="tab-{i}">{cards}</section>'
+
+    race_groups = sorted(tdf.groupby("race_id"), key=lambda kv: kv[1]["race_number"].iloc[0])
+    race_tab_buttons = ""
+    race_panels = ""
+    for j, (rid, g) in enumerate(race_groups):
+        r_active = "active" if j == 0 else ""
+        race_num = int(g["race_number"].iloc[0])
+        race_tab_buttons += f'<button class="race-tab-btn {r_active}" data-race="race-{i}-{j}">{race_num}R</button>'
+        race_panels += f'<div class="race-panel {r_active}" id="race-{i}-{j}">{race_card(rid, g)}</div>'
+
+    tab_panels += f"""<section class="tab-panel {active}" id="tab-{i}">
+      <nav class="race-tabs">{race_tab_buttons}</nav>
+      {race_panels}
+    </section>"""
 
 html = f"""<!DOCTYPE html>
 <html lang="ja">
@@ -154,6 +166,18 @@ html = f"""<!DOCTYPE html>
   main {{ max-width: 900px; margin: 0 auto; padding: 20px; }}
   .tab-panel {{ display: none; }}
   .tab-panel.active {{ display: block; }}
+
+  nav.race-tabs {{
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;
+  }}
+  .race-tab-btn {{
+    background: #fff; border: 1px solid var(--paper-line); color: var(--ink-soft);
+    font-family: "Noto Sans JP", sans-serif; font-weight: 700; font-size: .82rem;
+    padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  }}
+  .race-tab-btn.active {{ background: var(--turf); border-color: var(--turf); color: #fff; }}
+  .race-panel {{ display: none; }}
+  .race-panel.active {{ display: block; }}
 
   .race-card {{
     background: #fff; border: 1px solid var(--paper-line); border-radius: 6px;
@@ -219,7 +243,7 @@ html = f"""<!DOCTYPE html>
 <header class="top">
   <div class="inner">
     <h1>JRA週末AI予想</h1>
-    <p>最終更新 {generated_at} ・ 1着率と3連対率はLightGBMモデルによる推定値</p>
+    <p>最終更新 {generated_at} ・ 1着率と3連対率はLightGBMモデルによる推定値 ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイドを見る →</a></p>
   </div>
   <nav class="tabs">{tab_buttons}</nav>
 </header>
@@ -236,6 +260,15 @@ document.querySelectorAll('.tab-btn').forEach(btn => {{
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
+  }});
+}});
+document.querySelectorAll('.race-tab-btn').forEach(btn => {{
+  btn.addEventListener('click', () => {{
+    const panel = btn.closest('.tab-panel');
+    panel.querySelectorAll('.race-tab-btn').forEach(b => b.classList.remove('active'));
+    panel.querySelectorAll('.race-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.race).classList.add('active');
   }});
 }});
 </script>
