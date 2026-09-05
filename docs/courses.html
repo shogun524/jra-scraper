@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JRA競馬場ガイド</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --turf: #1F4D3A; --paper: #F6F1E4; --paper-line: #E4DAC0;
+    --ink: #2A2118; --ink-soft: #6B5F4D; --gold: #B8862B;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Noto Sans JP", sans-serif; padding-bottom: 48px; }
+  h1, h2 { font-family: "Shippori Mincho", serif; }
+  header.top { background: var(--turf); color: #fff; padding: 20px; }
+  header.top .inner { max-width: 900px; margin: 0 auto; }
+  header.top h1 { margin: 0 0 4px; font-size: 1.4rem; font-weight: 800; }
+  header.top p { margin: 0; font-size: .8rem; color: #CFE3D8; }
+  header.top a { color: #F0D896; text-decoration: none; font-size: .82rem; }
+  main { max-width: 900px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 720px) { main { grid-template-columns: 1fr 1fr; } }
+  .course-card { background: #fff; border: 1px solid var(--paper-line); border-radius: 6px; padding: 16px; }
+  .course-card h2 { margin: 0 0 8px; font-size: 1.15rem; }
+  .course-svg { width: 100%; height: auto; margin-bottom: 10px; }
+  table.course-table { width: 100%; border-collapse: collapse; font-size: .82rem; margin-bottom: 10px; }
+  table.course-table th { text-align: left; color: var(--ink-soft); font-weight: 500; padding: 4px 6px; width: 90px; }
+  table.course-table td { padding: 4px 6px; border-bottom: 1px solid var(--paper-line); }
+  .course-feature, .course-tendency { font-size: .82rem; line-height: 1.7; margin: 6px 0; }
+  .course-feature strong, .course-tendency strong { color: var(--gold); }
+  .course-legend { display: flex; gap: 14px; font-size: .74rem; color: var(--ink-soft); margin: -4px 0 10px; }
+  .course-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+  .elev-svg { width: 100%; height: auto; margin: 4px 0 2px; }
+  .elev-legend { display: flex; gap: 12px; font-size: .7rem; color: var(--ink-soft); margin: 0 0 10px; }
+  .elev-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+  .course-official { font-size: .78rem; margin-top: 10px; }
+  .course-official a { color: var(--turf); font-weight: 700; text-decoration: none; }
+
+  .dist-details { margin-top: 12px; border-top: 1px solid var(--paper-line); padding-top: 10px; }
+  .dist-details summary { cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--turf); }
+  .dist-scroll { overflow-x: auto; margin-top: 10px; }
+  table.dist-table { width: 100%; border-collapse: collapse; font-size: .72rem; min-width: 560px; }
+  table.dist-table th {
+    text-align: left; color: var(--ink-soft); font-weight: 500; padding: 5px 6px;
+    border-bottom: 1px solid var(--paper-line); white-space: nowrap; font-size: .68rem; line-height: 1.3;
+  }
+  table.dist-table td { padding: 5px 6px; border-bottom: 1px solid var(--paper-line); white-space: nowrap; }
+  table.dist-table .num { font-variant-numeric: tabular-nums; }
+  table.dist-table .small { color: var(--ink-soft); }
+  .surf {
+    display: inline-block; min-width: 20px; text-align: center; border-radius: 3px;
+    font-size: .66rem; font-weight: 700; margin-right: 5px; padding: 1px 4px;
+  }
+  .surf-turf { background: #E4F1E7; color: #1F4D3A; }
+  .surf-dirt { background: #F7E9D8; color: #A8631E; }
+  .bias-out { color: #B0433A; font-weight: 700; }
+  .bias-in { color: #1E5FA8; font-weight: 700; }
+  .dist-note { font-size: .68rem; color: var(--ink-soft); line-height: 1.6; margin: 8px 0 0; }
+  footer { max-width: 900px; margin: 8px auto 0; padding: 0 20px; color: var(--ink-soft); font-size: .72rem; line-height: 1.6; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="inner">
+    <h1>JRA競馬場ガイド</h1>
+    <p><a href="index.html">← 予想ダッシュボードに戻る</a></p>
+  </div>
+</header>
+<main>
+    <article class="course-card">
+      <h2>札幌競馬場</h2>
+      <svg viewBox="0 0 300 155" class="course-svg">
+      <path d="M75,25 L225,25 A48,48 0 0 1 225,125 L75,125 A48,48 0 0 1 75,25 Z" fill="none" stroke="#1F4D3A" stroke-width="3"/><text x="238" y="20" font-size="9" fill="#1F4D3A">芝</text><path d="M90,45 L210,45 A28,28 0 0 1 210,105 L90,105 A28,28 0 0 1 90,45 Z" fill="none" stroke="#C97A2B" stroke-width="2.5"/><text x="140" y="78" font-size="9" fill="#C97A2B">ダート</text>
+      <line x1="75" y1="125" x2="225" y2="125" stroke="#B0433A" stroke-width="4"/>
+      <text x="125" y="143" font-size="10" fill="#B0433A">ゴール前直線</text>
+      <text x="14" y="18" font-size="16" fill="#1F4D3A">↻</text>
+      <text x="34" y="18" font-size="10" fill="#6B5F4D">右回り</text>
+    </svg>
+    <p class="course-legend">
+      <span><i style="background:#1F4D3A"></i>芝コース</span>
+      <span><i style="background:#C97A2B"></i>ダートコース</span>
+    </p>
+      <svg viewBox="0 0 300 92" class="elev-svg">
+      <line x1="8.0" y1="14" x2="8.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="8.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="start">ゴール</text><line x1="79.0" y1="14" x2="79.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="79.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">1-2角</text><line x1="150.0" y1="14" x2="150.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="150.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">向正面</text><line x1="229.5" y1="14" x2="229.5" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="229.5" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">4角</text><line x1="292.0" y1="14" x2="292.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="292.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="end">ゴール</text>
+      <line x1="8.0" y1="70.0" x2="79.0" y2="58.8" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="79.0" y1="58.8" x2="150.0" y2="47.6" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="150.0" y1="47.6" x2="221.0" y2="53.2" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/><line x1="221.0" y1="53.2" x2="263.6" y2="64.4" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="263.6" y1="64.4" x2="292.0" y2="70.0" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="8" y="9" font-size="8" fill="#6B5F4D">高低差プロファイル(芝) 最大1.0m</text>
+    </svg>
+    <p class="elev-legend">
+      <span><i style="background:#B0433A"></i>上り</span>
+      <span><i style="background:#1E5FA8"></i>下り</span>
+      <span><i style="background:#8B8378"></i>ほぼ平坦</span>
+    </p>
+      <table class="course-table">
+        <tr><th>芝 1周</th><td>1640.9m</td></tr>
+        <tr><th>芝 直線</th><td>266.1m</td></tr>
+        <tr><th>芝 高低差</th><td>0.7m(ほぼ平坦)</td></tr>
+        <tr><th>ダート 1周</th><td>1487m</td></tr>
+        <tr><th>ダート 直線</th><td>264.3m</td></tr>
+      </table>
+      <p class="course-feature"><strong>特徴:</strong> コース全体が丸みを帯びた円形に近い形状で、4コーナーとも半径が大きく緩やか。直線は短く、コースに占めるコーナーの割合が大きい。芝は全面が洋芝でスパイラルカーブは不採用。</p>
+      <p class="course-tendency"><strong>傾向:</strong> 平坦+コーナー大回りのため、基本的に逃げ・先行馬が有利。</p>
+      
+      <details class="dist-details">
+        <summary>距離別データ(7コース) ▾</summary>
+        <div class="dist-scroll">
+        <table class="dist-table">
+          <thead>
+            <tr>
+              <th>コース</th><th>平均<br>頭数</th><th>1人気<br>勝率</th><th>枠傾向</th>
+              <th>複勝率<br>内/中/外</th><th>脚質傾向</th><th>複勝率<br>逃/先/差/追</th><th>R数</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1200m</td>
+          <td class="num">14.4</td>
+          <td class="num">26.7%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">23.2/19.9/24.0</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">54.1/32.5/21.6/6.5</td>
+          <td class="num small">202</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1500m</td>
+          <td class="num">12.7</td>
+          <td class="num">35.9%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">28.0/24.9/21.8</td>
+          <td>前有利</td>
+          <td class="num">44.7/37.8/25.5/8.6</td>
+          <td class="num small">157</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1800m</td>
+          <td class="num">11.6</td>
+          <td class="num">39.0%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">33.8/27.0/24.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">59.6/39.0/28.9/8.4</td>
+          <td class="num small">159</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2000m</td>
+          <td class="num">14.1</td>
+          <td class="num">33.8%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">25.2/22.9/19.0</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">47.5/32.5/24.0/6.8</td>
+          <td class="num small">160</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2600m</td>
+          <td class="num">12.6</td>
+          <td class="num">37.3%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">25.8/23.7/25.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">65.2/37.9/22.8/5.7</td>
+          <td class="num small">67</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1000m</td>
+          <td class="num">11.6</td>
+          <td class="num">41.7%</td>
+          <td class="num bias-out">外枠有利</td>
+          <td class="num">20.4/27.6/26.5</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">70.4/53.1/19.7/6.0</td>
+          <td class="num small">115</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1700m</td>
+          <td class="num">13.0</td>
+          <td class="num">29.7%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">23.9/24.0/21.7</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">68.7/42.3/18.7/2.7</td>
+          <td class="num small">264</td>
+        </tr></tbody>
+        </table>
+        </div>
+        <p class="dist-note">2015年以降の実レース結果から集計。脚質は4コーナー通過順位を頭数で正規化して分類。
+        数値はすべて複勝率(3着内率)。</p>
+      </details>
+      <p class="course-official"><a href="https://www.jra.go.jp/facilities/race/sapporo/course/index.html" target="_blank" rel="noopener">JRA公式の正確なコース図を見る →</a></p>
+    </article>
+    <article class="course-card">
+      <h2>函館競馬場</h2>
+      <svg viewBox="0 0 300 155" class="course-svg">
+      <path d="M75,25 L225,25 A48,48 0 0 1 225,125 L75,125 A48,48 0 0 1 75,25 Z" fill="none" stroke="#1F4D3A" stroke-width="3"/><text x="238" y="20" font-size="9" fill="#1F4D3A">芝</text><path d="M90,45 L210,45 A28,28 0 0 1 210,105 L90,105 A28,28 0 0 1 90,45 Z" fill="none" stroke="#C97A2B" stroke-width="2.5"/><text x="140" y="78" font-size="9" fill="#C97A2B">ダート</text>
+      <line x1="75" y1="125" x2="225" y2="125" stroke="#B0433A" stroke-width="4"/>
+      <text x="125" y="143" font-size="10" fill="#B0433A">ゴール前直線</text>
+      <text x="14" y="18" font-size="16" fill="#1F4D3A">↻</text>
+      <text x="34" y="18" font-size="10" fill="#6B5F4D">右回り</text>
+    </svg>
+    <p class="course-legend">
+      <span><i style="background:#1F4D3A"></i>芝コース</span>
+      <span><i style="background:#C97A2B"></i>ダートコース</span>
+    </p>
+      <svg viewBox="0 0 300 92" class="elev-svg">
+      <line x1="8.0" y1="14" x2="8.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="8.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="start">ゴール</text><line x1="79.0" y1="14" x2="79.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="79.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">1-2角</text><line x1="150.0" y1="14" x2="150.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="150.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">向正面</text><line x1="229.5" y1="14" x2="229.5" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="229.5" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">4角</text><line x1="292.0" y1="14" x2="292.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="292.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="end">ゴール</text>
+      <line x1="8.0" y1="62.0" x2="64.8" y2="70.0" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="64.8" y1="70.0" x2="135.8" y2="41.2" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="135.8" y1="41.2" x2="206.8" y2="14.0" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="206.8" y1="14.0" x2="249.4" y2="46.0" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="249.4" y1="46.0" x2="292.0" y2="62.0" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/>
+      <text x="8" y="9" font-size="8" fill="#6B5F4D">高低差プロファイル(芝) 最大3.5m</text>
+    </svg>
+    <p class="elev-legend">
+      <span><i style="background:#B0433A"></i>上り</span>
+      <span><i style="background:#1E5FA8"></i>下り</span>
+      <span><i style="background:#8B8378"></i>ほぼ平坦</span>
+    </p>
+      <table class="course-table">
+        <tr><th>芝 1周</th><td>1626.6m</td></tr>
+        <tr><th>芝 直線</th><td>262.1m</td></tr>
+        <tr><th>芝 高低差</th><td>3.5m</td></tr>
+        <tr><th>ダート 1周</th><td>1475.8m</td></tr>
+        <tr><th>ダート 直線</th><td>260.3m</td></tr>
+      </table>
+      <p class="course-feature"><strong>特徴:</strong> 3・4コーナーにスパイラルカーブを採用。2コーナーから4コーナーにかけてなだらかに上り、そこから直線にかけて下る、小高い丘のようなレイアウト。芝は洋芝。</p>
+      <p class="course-tendency"><strong>傾向:</strong> 開催後半は洋芝の傷みが進みやすく、道悪・パワー適性が結果を左右しやすい。</p>
+      
+      <details class="dist-details">
+        <summary>距離別データ(6コース) ▾</summary>
+        <div class="dist-scroll">
+        <table class="dist-table">
+          <thead>
+            <tr>
+              <th>コース</th><th>平均<br>頭数</th><th>1人気<br>勝率</th><th>枠傾向</th>
+              <th>複勝率<br>内/中/外</th><th>脚質傾向</th><th>複勝率<br>逃/先/差/追</th><th>R数</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1200m</td>
+          <td class="num">13.8</td>
+          <td class="num">31.8%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">24.9/23.4/20.3</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">47.5/34.4/22.7/8.3</td>
+          <td class="num small">336</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1800m</td>
+          <td class="num">12.8</td>
+          <td class="num">35.1%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">28.6/25.4/21.0</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">54.5/38.5/24.4/7.7</td>
+          <td class="num small">154</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2000m</td>
+          <td class="num">13.1</td>
+          <td class="num">33.1%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">26.7/25.2/20.6</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">51.6/34.8/24.5/8.8</td>
+          <td class="num small">122</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2600m</td>
+          <td class="num">12.8</td>
+          <td class="num">26.5%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">29.1/22.0/25.0</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">42.9/39.4/24.6/7.8</td>
+          <td class="num small">49</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1000m</td>
+          <td class="num">11.5</td>
+          <td class="num">33.1%</td>
+          <td class="num ">やや外有利</td>
+          <td class="num">25.8/25.7/28.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">74.8/50.6/24.4/4.1</td>
+          <td class="num small">139</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1700m</td>
+          <td class="num">12.6</td>
+          <td class="num">32.3%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">25.5/23.0/25.8</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">75.6/46.7/17.6/3.2</td>
+          <td class="num small">258</td>
+        </tr></tbody>
+        </table>
+        </div>
+        <p class="dist-note">2015年以降の実レース結果から集計。脚質は4コーナー通過順位を頭数で正規化して分類。
+        数値はすべて複勝率(3着内率)。</p>
+      </details>
+      <p class="course-official"><a href="https://www.jra.go.jp/facilities/race/hakodate/course/index.html" target="_blank" rel="noopener">JRA公式の正確なコース図を見る →</a></p>
+    </article>
+    <article class="course-card">
+      <h2>福島競馬場</h2>
+      <svg viewBox="0 0 300 155" class="course-svg">
+      <path d="M75,25 L225,25 A48,48 0 0 1 225,125 L75,125 A48,48 0 0 1 75,25 Z" fill="none" stroke="#1F4D3A" stroke-width="3"/><text x="238" y="20" font-size="9" fill="#1F4D3A">芝</text><path d="M90,45 L210,45 A28,28 0 0 1 210,105 L90,105 A28,28 0 0 1 90,45 Z" fill="none" stroke="#C97A2B" stroke-width="2.5"/><text x="140" y="78" font-size="9" fill="#C97A2B">ダート</text>
+      <line x1="75" y1="125" x2="225" y2="125" stroke="#B0433A" stroke-width="4"/>
+      <text x="125" y="143" font-size="10" fill="#B0433A">ゴール前直線</text>
+      <text x="14" y="18" font-size="16" fill="#1F4D3A">↻</text>
+      <text x="34" y="18" font-size="10" fill="#6B5F4D">右回り</text>
+    </svg>
+    <p class="course-legend">
+      <span><i style="background:#1F4D3A"></i>芝コース</span>
+      <span><i style="background:#C97A2B"></i>ダートコース</span>
+    </p>
+      <svg viewBox="0 0 300 92" class="elev-svg">
+      <line x1="8.0" y1="14" x2="8.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="8.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="start">ゴール</text><line x1="79.0" y1="14" x2="79.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="79.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">1-2角</text><line x1="150.0" y1="14" x2="150.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="150.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">向正面</text><line x1="229.5" y1="14" x2="229.5" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="229.5" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">4角</text><line x1="292.0" y1="14" x2="292.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="292.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="end">ゴール</text>
+      <line x1="8.0" y1="18.3" x2="64.8" y2="70.0" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="64.8" y1="70.0" x2="135.8" y2="14.0" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="135.8" y1="14.0" x2="178.4" y2="14.0" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/><line x1="178.4" y1="14.0" x2="229.5" y2="57.1" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="229.5" y1="57.1" x2="263.6" y2="70.0" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="263.6" y1="70.0" x2="280.6" y2="18.3" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="280.6" y1="18.3" x2="292.0" y2="18.3" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="8" y="9" font-size="8" fill="#6B5F4D">高低差プロファイル(芝) 最大1.3m</text>
+    </svg>
+    <p class="elev-legend">
+      <span><i style="background:#B0433A"></i>上り</span>
+      <span><i style="background:#1E5FA8"></i>下り</span>
+      <span><i style="background:#8B8378"></i>ほぼ平坦</span>
+    </p>
+      <table class="course-table">
+        <tr><th>芝 1周</th><td>1600m(JRA最小)</td></tr>
+        <tr><th>芝 直線</th><td>292m</td></tr>
+        <tr><th>芝 高低差</th><td>1.9m</td></tr>
+        <tr><th>ダート 1周</th><td>1444.6m</td></tr>
+        <tr><th>ダート 直線</th><td>295.7m</td></tr>
+      </table>
+      <p class="course-feature"><strong>特徴:</strong> 1周する間に上り下りを2回繰り返すユニークな起伏構成。3・4コーナーにスパイラルカーブ。</p>
+      <p class="course-tendency"><strong>傾向:</strong> 小回りで先行有利。開催が進むと外差しも決まりやすくなる。</p>
+      
+      <details class="dist-details">
+        <summary>距離別データ(8コース) ▾</summary>
+        <div class="dist-scroll">
+        <table class="dist-table">
+          <thead>
+            <tr>
+              <th>コース</th><th>平均<br>頭数</th><th>1人気<br>勝率</th><th>枠傾向</th>
+              <th>複勝率<br>内/中/外</th><th>脚質傾向</th><th>複勝率<br>逃/先/差/追</th><th>R数</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1200m</td>
+          <td class="num">15.2</td>
+          <td class="num">23.8%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">21.4/19.4/20.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">48.6/32.6/18.5/5.1</td>
+          <td class="num small">407</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1800m</td>
+          <td class="num">14.7</td>
+          <td class="num">33.0%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">19.9/21.4/20.7</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">50.0/32.5/20.6/5.3</td>
+          <td class="num small">229</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2000m</td>
+          <td class="num">14.6</td>
+          <td class="num">25.1%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">19.7/22.4/19.6</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">46.7/33.4/21.2/5.0</td>
+          <td class="num small">184</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2600m</td>
+          <td class="num">14.0</td>
+          <td class="num">30.5%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">25.0/21.4/21.3</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">50.0/36.1/21.3/5.1</td>
+          <td class="num small">82</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2750m</td>
+          <td class="num">12.2</td>
+          <td class="num">32.9%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">20.3/28.7/21.4</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">87.8/53.0/18.3/1.2</td>
+          <td class="num small">76</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2770m</td>
+          <td class="num">12.1</td>
+          <td class="num">35.1%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">31.2/25.7/21.4</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">82.1/63.0/13.5/1.1</td>
+          <td class="num small">39</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1150m</td>
+          <td class="num">15.5</td>
+          <td class="num">30.3%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">19.0/19.1/20.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">64.4/33.8/14.9/3.5</td>
+          <td class="num small">222</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1700m</td>
+          <td class="num">14.5</td>
+          <td class="num">26.7%</td>
+          <td class="num ">やや外有利</td>
+          <td class="num">18.7/20.5/22.9</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">63.3/39.0/17.0/3.4</td>
+          <td class="num small">374</td>
+        </tr></tbody>
+        </table>
+        </div>
+        <p class="dist-note">2015年以降の実レース結果から集計。脚質は4コーナー通過順位を頭数で正規化して分類。
+        数値はすべて複勝率(3着内率)。</p>
+      </details>
+      <p class="course-official"><a href="https://www.jra.go.jp/facilities/race/fukushima/course/index.html" target="_blank" rel="noopener">JRA公式の正確なコース図を見る →</a></p>
+    </article>
+    <article class="course-card">
+      <h2>新潟競馬場</h2>
+      <svg viewBox="0 0 300 155" class="course-svg">
+      
+          <path d="M70,25 L230,25 A50,50 0 0 1 230,125 L70,125 A50,50 0 0 1 70,25 Z" fill="none" stroke="#1F4D3A" stroke-width="3"/>
+          <path d="M85,45 L215,45 A32,32 0 0 1 215,105 L85,105 A32,32 0 0 1 85,45 Z" fill="none" stroke="#1F4D3A" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>
+          <path d="M92,60 L208,60 A22,22 0 0 1 218,75 L218,95 A22,22 0 0 1 208,110 L92,110 A22,22 0 0 1 82,95 L82,75 A22,22 0 0 1 92,60 Z" fill="none" stroke="#C97A2B" stroke-width="2" stroke-dasharray="2 2"/>
+          <line x1="20" y1="75" x2="280" y2="75" stroke="#B8862B" stroke-width="3"/>
+          <text x="105" y="68" font-size="10" fill="#B8862B">千直(直線1000m)</text>
+          <text x="235" y="40" font-size="9" fill="#1F4D3A">芝外回り</text>
+          <text x="150" y="98" font-size="9" fill="#C97A2B">ダート</text>
+      <line x1="75" y1="125" x2="225" y2="125" stroke="#B0433A" stroke-width="4"/>
+      <text x="125" y="143" font-size="10" fill="#B0433A">ゴール前直線</text>
+      <text x="14" y="18" font-size="16" fill="#1F4D3A">↺</text>
+      <text x="34" y="18" font-size="10" fill="#6B5F4D">左回り</text>
+    </svg>
+    <p class="course-legend">
+      <span><i style="background:#1F4D3A"></i>芝コース</span>
+      <span><i style="background:#C97A2B"></i>ダートコース</span>
+    </p>
+      <svg viewBox="0 0 300 92" class="elev-svg">
+      <line x1="8.0" y1="14" x2="8.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="8.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="start">ゴール</text><line x1="79.0" y1="14" x2="79.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="79.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">1-2角</text><line x1="150.0" y1="14" x2="150.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="150.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">向正面</text><line x1="229.5" y1="14" x2="229.5" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="229.5" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">4角</text><line x1="292.0" y1="14" x2="292.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="292.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="end">ゴール</text>
+      <line x1="8.0" y1="54.7" x2="79.0" y2="54.7" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/><line x1="79.0" y1="54.7" x2="135.8" y2="49.6" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="135.8" y1="49.6" x2="178.4" y2="14.0" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="178.4" y1="14.0" x2="235.2" y2="54.7" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="235.2" y1="54.7" x2="292.0" y2="54.7" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="8" y="9" font-size="8" fill="#6B5F4D">高低差プロファイル(芝) 最大2.2m</text>
+    </svg>
+    <p class="elev-legend">
+      <span><i style="background:#B0433A"></i>上り</span>
+      <span><i style="background:#1E5FA8"></i>下り</span>
+      <span><i style="background:#8B8378"></i>ほぼ平坦</span>
+    </p>
+      <table class="course-table">
+        <tr><th>芝 1周</th><td>外回り2223m(日本最長)/内回り1623m</td></tr>
+        <tr><th>芝 直線</th><td>外回り658.7m(日本最長)/内回り353.9m</td></tr>
+        <tr><th>芝 高低差</th><td>外回り1.6m/内回りほぼ平坦(0.8m)</td></tr>
+        <tr><th>ダート 1周</th><td>—</td></tr>
+        <tr><th>ダート 直線</th><td>353.9m(ほぼ平坦)</td></tr>
+      </table>
+      <p class="course-feature"><strong>特徴:</strong> 日本で唯一、直線だけの1000mコース(通称「千直」)を持つ。2001年の改修で右回りから左回りに変更され、外回りコースは1周・直線ともJRA最長の規模になった。</p>
+      <p class="course-tendency"><strong>傾向:</strong> 長い直線ではしっかりした決め手が必要。千直は追い風なら逃げ・先行、向かい風なら差し・追い込みが有利になりやすい。</p>
+      
+      <details class="dist-details">
+        <summary>距離別データ(12コース) ▾</summary>
+        <div class="dist-scroll">
+        <table class="dist-table">
+          <thead>
+            <tr>
+              <th>コース</th><th>平均<br>頭数</th><th>1人気<br>勝率</th><th>枠傾向</th>
+              <th>複勝率<br>内/中/外</th><th>脚質傾向</th><th>複勝率<br>逃/先/差/追</th><th>R数</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1000m</td>
+          <td class="num">16.8</td>
+          <td class="num">29.1%</td>
+          <td class="num bias-out">外枠有利</td>
+          <td class="num">8.0/14.7/30.8</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">41.2/29.6/16.3/6.1</td>
+          <td class="num small">196</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1200m</td>
+          <td class="num">16.4</td>
+          <td class="num">28.1%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">19.0/18.4/18.6</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">42.7/28.0/18.1/7.2</td>
+          <td class="num small">136</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1400m</td>
+          <td class="num">16.7</td>
+          <td class="num">27.5%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">20.1/17.2/19.0</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">42.1/28.0/17.8/7.1</td>
+          <td class="num small">183</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1600m</td>
+          <td class="num">15.8</td>
+          <td class="num">34.9%</td>
+          <td class="num ">やや外有利</td>
+          <td class="num">16.6/20.3/20.7</td>
+          <td>前有利だが差しも届く</td>
+          <td class="num">29.0/24.5/21.0/12.1</td>
+          <td class="num small">235</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1800m</td>
+          <td class="num">14.6</td>
+          <td class="num">38.4%</td>
+          <td class="num ">やや外有利</td>
+          <td class="num">18.2/22.2/22.6</td>
+          <td>差し・追込も決まる</td>
+          <td class="num">25.4/24.9/24.4/14.2</td>
+          <td class="num small">243</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2000m</td>
+          <td class="num">14.3</td>
+          <td class="num">29.0%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">21.2/22.9/21.6</td>
+          <td>前有利だが差しも届く</td>
+          <td class="num">30.6/29.9/23.0/13.2</td>
+          <td class="num small">207</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2200m</td>
+          <td class="num">13.8</td>
+          <td class="num">34.6%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">27.0/22.4/20.9</td>
+          <td>前有利</td>
+          <td class="num">42.7/32.7/23.3/10.4</td>
+          <td class="num small">78</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2400m</td>
+          <td class="num">13.9</td>
+          <td class="num">32.1%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">19.7/24.5/21.0</td>
+          <td>前有利</td>
+          <td class="num">35.8/31.7/24.6/10.7</td>
+          <td class="num small">53</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2850m</td>
+          <td class="num">13.0</td>
+          <td class="num">40.0%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">22.2/23.4/23.9</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">79.7/50.4/16.1/0.6</td>
+          <td class="num small">75</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2890m</td>
+          <td class="num">12.9</td>
+          <td class="num">31.6%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">22.9/24.2/22.6</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">65.5/44.8/22.4/1.5</td>
+          <td class="num small">59</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1200m</td>
+          <td class="num">14.7</td>
+          <td class="num">32.7%</td>
+          <td class="num bias-out">外枠有利</td>
+          <td class="num">17.6/20.4/22.7</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">55.6/42.2/14.3/5.2</td>
+          <td class="num small">404</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1800m</td>
+          <td class="num">13.9</td>
+          <td class="num">31.7%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">20.4/22.7/21.5</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">52.9/45.3/16.7/4.6</td>
+          <td class="num small">452</td>
+        </tr></tbody>
+        </table>
+        </div>
+        <p class="dist-note">2015年以降の実レース結果から集計。脚質は4コーナー通過順位を頭数で正規化して分類。
+        数値はすべて複勝率(3着内率)。</p>
+      </details>
+      <p class="course-official"><a href="https://www.jra.go.jp/facilities/race/niigata/course/index.html" target="_blank" rel="noopener">JRA公式の正確なコース図を見る →</a></p>
+    </article>
+    <article class="course-card">
+      <h2>東京競馬場</h2>
+      <svg viewBox="0 0 300 155" class="course-svg">
+      <path d="M75,25 L225,25 A48,48 0 0 1 225,125 L75,125 A48,48 0 0 1 75,25 Z" fill="none" stroke="#1F4D3A" stroke-width="3"/><text x="238" y="20" font-size="9" fill="#1F4D3A">芝</text><path d="M90,45 L210,45 A28,28 0 0 1 210,105 L90,105 A28,28 0 0 1 90,45 Z" fill="none" stroke="#C97A2B" stroke-width="2.5"/><text x="140" y="78" font-size="9" fill="#C97A2B">ダート</text>
+      <line x1="75" y1="125" x2="225" y2="125" stroke="#B0433A" stroke-width="4"/>
+      <text x="125" y="143" font-size="10" fill="#B0433A">ゴール前直線</text>
+      <text x="14" y="18" font-size="16" fill="#1F4D3A">↺</text>
+      <text x="34" y="18" font-size="10" fill="#6B5F4D">左回り</text>
+    </svg>
+    <p class="course-legend">
+      <span><i style="background:#1F4D3A"></i>芝コース</span>
+      <span><i style="background:#C97A2B"></i>ダートコース</span>
+    </p>
+      <svg viewBox="0 0 300 92" class="elev-svg">
+      <line x1="8.0" y1="14" x2="8.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="8.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="start">ゴール</text><line x1="79.0" y1="14" x2="79.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="79.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">1-2角</text><line x1="150.0" y1="14" x2="150.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="150.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">向正面</text><line x1="229.5" y1="14" x2="229.5" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="229.5" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">4角</text><line x1="292.0" y1="14" x2="292.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="292.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="end">ゴール</text>
+      <line x1="8.0" y1="14.0" x2="50.6" y2="28.0" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="50.6" y1="28.0" x2="121.6" y2="67.2" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="121.6" y1="67.2" x2="164.2" y2="25.2" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="164.2" y1="25.2" x2="201.1" y2="36.4" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="201.1" y1="36.4" x2="229.5" y2="53.2" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="229.5" y1="53.2" x2="257.9" y2="53.2" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/><line x1="257.9" y1="53.2" x2="275.0" y2="14.0" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="275.0" y1="14.0" x2="292.0" y2="14.0" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="8" y="9" font-size="8" fill="#6B5F4D">高低差プロファイル(芝) 最大2.0m</text>
+    </svg>
+    <p class="elev-legend">
+      <span><i style="background:#B0433A"></i>上り</span>
+      <span><i style="background:#1E5FA8"></i>下り</span>
+      <span><i style="background:#8B8378"></i>ほぼ平坦</span>
+    </p>
+      <table class="course-table">
+        <tr><th>芝 1周</th><td>2083.1m</td></tr>
+        <tr><th>芝 直線</th><td>525.9m(全場最長)</td></tr>
+        <tr><th>芝 高低差</th><td>2.0m</td></tr>
+        <tr><th>ダート 1周</th><td>1899m(日本最大)</td></tr>
+        <tr><th>ダート 直線</th><td>501.6m(日本最大)</td></tr>
+      </table>
+      <p class="course-feature"><strong>特徴:</strong> 「日本競馬の顔」と呼ばれるスケールの大きいチャンピオンコース。1コーナーから向正面にかけて長い下り、3コーナー手前で上り、さらに直線残り460〜300m付近にも上り坂がある「2段坂」構成。ダートコースも1周・直線ともに日本最大級のスケールを持つ。</p>
+      <p class="course-tendency"><strong>傾向:</strong> スケールが大きく紛れが少ないため、実力がストレートに反映されやすい。</p>
+      
+      <details class="dist-details">
+        <summary>距離別データ(10コース) ▾</summary>
+        <div class="dist-scroll">
+        <table class="dist-table">
+          <thead>
+            <tr>
+              <th>コース</th><th>平均<br>頭数</th><th>1人気<br>勝率</th><th>枠傾向</th>
+              <th>複勝率<br>内/中/外</th><th>脚質傾向</th><th>複勝率<br>逃/先/差/追</th><th>R数</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1400m</td>
+          <td class="num">15.8</td>
+          <td class="num">34.2%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">20.2/19.5/19.5</td>
+          <td>前有利</td>
+          <td class="num">34.7/27.7/20.6/9.4</td>
+          <td class="num small">442</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1600m</td>
+          <td class="num">15.0</td>
+          <td class="num">35.0%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">20.5/20.3/22.0</td>
+          <td>前有利</td>
+          <td class="num">35.0/27.6/22.0/11.1</td>
+          <td class="num small">550</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1800m</td>
+          <td class="num">14.0</td>
+          <td class="num">38.1%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">21.4/23.8/21.4</td>
+          <td>前有利だが差しも届く</td>
+          <td class="num">28.4/29.0/26.4/11.9</td>
+          <td class="num small">445</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2000m</td>
+          <td class="num">12.7</td>
+          <td class="num">36.9%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">25.8/25.7/23.2</td>
+          <td>前有利だが差しも届く</td>
+          <td class="num">35.4/29.5/28.7/14.7</td>
+          <td class="num small">318</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2400m</td>
+          <td class="num">13.6</td>
+          <td class="num">40.4%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">25.9/23.3/23.2</td>
+          <td>差し・追込も決まる</td>
+          <td class="num">30.5/27.2/27.4/16.3</td>
+          <td class="num small">228</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>3000m</td>
+          <td class="num">12.5</td>
+          <td class="num">33.3%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">32.9/25.2/18.3</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">70.7/55.4/17.3/1.6</td>
+          <td class="num small">41</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1300m</td>
+          <td class="num">15.7</td>
+          <td class="num">35.5%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">18.6/20.2/17.9</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">38.2/33.4/17.0/6.3</td>
+          <td class="num small">186</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1400m</td>
+          <td class="num">15.7</td>
+          <td class="num">32.8%</td>
+          <td class="num ">やや外有利</td>
+          <td class="num">17.3/19.6/20.1</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">39.6/31.2/15.6/8.7</td>
+          <td class="num small">635</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1600m</td>
+          <td class="num">15.1</td>
+          <td class="num">34.4%</td>
+          <td class="num bias-out">外枠有利</td>
+          <td class="num">16.7/20.2/22.8</td>
+          <td>前有利</td>
+          <td class="num">32.8/31.4/19.3/8.9</td>
+          <td class="num small">733</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>2100m</td>
+          <td class="num">14.7</td>
+          <td class="num">28.1%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">19.4/22.6/18.9</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">37.5/35.7/18.6/7.8</td>
+          <td class="num small">256</td>
+        </tr></tbody>
+        </table>
+        </div>
+        <p class="dist-note">2015年以降の実レース結果から集計。脚質は4コーナー通過順位を頭数で正規化して分類。
+        数値はすべて複勝率(3着内率)。</p>
+      </details>
+      <p class="course-official"><a href="https://www.jra.go.jp/facilities/race/tokyo/course/index.html" target="_blank" rel="noopener">JRA公式の正確なコース図を見る →</a></p>
+    </article>
+    <article class="course-card">
+      <h2>中山競馬場</h2>
+      <svg viewBox="0 0 300 155" class="course-svg">
+      
+          <path d="M70,25 L230,25 A55,55 0 0 1 270,85 L270,105 A70,70 0 0 1 190,170 L110,170 A55,55 0 0 1 40,105 L40,85 A30,30 0 0 1 70,25 Z" fill="none" stroke="#1F4D3A" stroke-width="3"/>
+          <path d="M85,50 L215,50 A35,35 0 0 1 245,85 A35,35 0 0 1 205,145 L125,145 A38,38 0 0 1 65,100 A45,45 0 0 1 85,50 Z" fill="none" stroke="#1F4D3A" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>
+          <path d="M95,65 L205,65 A28,28 0 0 1 228,90 A28,28 0 0 1 195,132 L135,132 A30,30 0 0 1 80,98 A35,35 0 0 1 95,65 Z" fill="none" stroke="#C97A2B" stroke-width="2.5" stroke-dasharray="2 2"/>
+          <text x="255" y="65" font-size="10" fill="#1F4D3A">芝外回り</text>
+          <text x="150" y="100" font-size="10" fill="#6B5F4D">芝内回り</text>
+          <text x="100" y="115" font-size="9" fill="#C97A2B">ダート</text>
+      <line x1="75" y1="125" x2="225" y2="125" stroke="#B0433A" stroke-width="4"/>
+      <text x="125" y="143" font-size="10" fill="#B0433A">ゴール前直線</text>
+      <text x="14" y="18" font-size="16" fill="#1F4D3A">↻</text>
+      <text x="34" y="18" font-size="10" fill="#6B5F4D">右回り</text>
+    </svg>
+    <p class="course-legend">
+      <span><i style="background:#1F4D3A"></i>芝コース</span>
+      <span><i style="background:#C97A2B"></i>ダートコース</span>
+    </p>
+      <svg viewBox="0 0 300 92" class="elev-svg">
+      <line x1="8.0" y1="14" x2="8.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="8.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="start">ゴール</text><line x1="79.0" y1="14" x2="79.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="79.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">1-2角</text><line x1="150.0" y1="14" x2="150.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="150.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">向正面</text><line x1="229.5" y1="14" x2="229.5" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="229.5" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">4角</text><line x1="292.0" y1="14" x2="292.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="292.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="end">ゴール</text>
+      <line x1="8.0" y1="37.2" x2="50.6" y2="17.2" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="50.6" y1="17.2" x2="87.5" y2="14.0" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="87.5" y1="14.0" x2="135.8" y2="38.3" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="135.8" y1="38.3" x2="192.6" y2="57.3" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="192.6" y1="57.3" x2="235.2" y2="64.7" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="235.2" y1="64.7" x2="257.9" y2="60.5" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="257.9" y1="60.5" x2="275.0" y2="37.2" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="275.0" y1="37.2" x2="292.0" y2="37.2" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="8" y="9" font-size="8" fill="#6B5F4D">高低差プロファイル(芝) 最大5.3m</text>
+    </svg>
+    <p class="elev-legend">
+      <span><i style="background:#B0433A"></i>上り</span>
+      <span><i style="background:#1E5FA8"></i>下り</span>
+      <span><i style="background:#8B8378"></i>ほぼ平坦</span>
+    </p>
+      <table class="course-table">
+        <tr><th>芝 1周</th><td>内回り1667.1m/外回り1839.7m</td></tr>
+        <tr><th>芝 直線</th><td>310m(4大場で最短)</td></tr>
+        <tr><th>芝 高低差</th><td>5.3m(JRA全場で最大)</td></tr>
+        <tr><th>ダート 1周</th><td>1493m</td></tr>
+        <tr><th>ダート 直線</th><td>308m(4大場で最短)</td></tr>
+      </table>
+      <p class="course-feature"><strong>特徴:</strong> 内回りコースの外側に外回りコースが後から追加された構造のため、コース全体は左右非対称な「おにぎり型」に近い形状になっている(実際、芝外回り1200mのスタート地点は「おむすびの頂点」と表現されることがある)。ダートコースは芝内回りのさらに内側にある。ゴール前残り180〜70m地点には最大勾配2.24%(JRA最大)の急坂があり、"中山名物"として知られる。</p>
+      <p class="course-tendency"><strong>傾向:</strong> 急坂とタイトな直線により、パワー・スタミナと坂への対応力が問われる。ダートも高低差4.5mとタフで、逃げ・先行馬が圧倒的に有利。</p>
+      
+      <details class="dist-details">
+        <summary>距離別データ(10コース) ▾</summary>
+        <div class="dist-scroll">
+        <table class="dist-table">
+          <thead>
+            <tr>
+              <th>コース</th><th>平均<br>頭数</th><th>1人気<br>勝率</th><th>枠傾向</th>
+              <th>複勝率<br>内/中/外</th><th>脚質傾向</th><th>複勝率<br>逃/先/差/追</th><th>R数</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1200m</td>
+          <td class="num">15.2</td>
+          <td class="num">35.6%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">21.4/20.6/17.8</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">40.5/32.3/18.8/7.0</td>
+          <td class="num small">279</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1600m</td>
+          <td class="num">14.8</td>
+          <td class="num">34.0%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">22.6/20.5/20.1</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">41.1/31.4/19.8/8.3</td>
+          <td class="num small">484</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1800m</td>
+          <td class="num">13.8</td>
+          <td class="num">29.6%</td>
+          <td class="num ">やや外有利</td>
+          <td class="num">20.9/22.7/23.5</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">44.8/36.0/22.9/6.7</td>
+          <td class="num small">277</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2000m</td>
+          <td class="num">14.7</td>
+          <td class="num">32.7%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">22.4/21.4/20.9</td>
+          <td>前有利</td>
+          <td class="num">40.2/33.4/22.8/6.7</td>
+          <td class="num small">382</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2200m</td>
+          <td class="num">14.6</td>
+          <td class="num">31.0%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">23.4/20.7/21.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">40.3/36.6/20.5/6.2</td>
+          <td class="num small">129</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2500m</td>
+          <td class="num">12.7</td>
+          <td class="num">39.7%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">23.8/26.3/22.6</td>
+          <td>前有利</td>
+          <td class="num">33.3/37.8/25.6/10.6</td>
+          <td class="num small">78</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2880m</td>
+          <td class="num">11.9</td>
+          <td class="num">28.6%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">30.6/24.6/25.1</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">91.3/57.7/17.9/0.5</td>
+          <td class="num small">46</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1200m</td>
+          <td class="num">15.7</td>
+          <td class="num">33.5%</td>
+          <td class="num ">やや外有利</td>
+          <td class="num">17.4/19.0/21.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">48.9/35.6/14.1/5.1</td>
+          <td class="num small">850</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1800m</td>
+          <td class="num">15.0</td>
+          <td class="num">33.6%</td>
+          <td class="num bias-out">外枠有利</td>
+          <td class="num">17.6/20.1/23.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">59.0/38.8/14.7/3.6</td>
+          <td class="num small">918</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>2400m</td>
+          <td class="num">13.3</td>
+          <td class="num">27.4%</td>
+          <td class="num bias-out">外枠有利</td>
+          <td class="num">18.3/23.4/27.4</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">62.9/40.1/21.9/5.0</td>
+          <td class="num small">62</td>
+        </tr></tbody>
+        </table>
+        </div>
+        <p class="dist-note">2015年以降の実レース結果から集計。脚質は4コーナー通過順位を頭数で正規化して分類。
+        数値はすべて複勝率(3着内率)。</p>
+      </details>
+      <p class="course-official"><a href="https://www.jra.go.jp/facilities/race/nakayama/course/index.html" target="_blank" rel="noopener">JRA公式の正確なコース図を見る →</a></p>
+    </article>
+    <article class="course-card">
+      <h2>中京競馬場</h2>
+      <svg viewBox="0 0 300 155" class="course-svg">
+      <path d="M75,25 L225,25 A48,48 0 0 1 225,125 L75,125 A48,48 0 0 1 75,25 Z" fill="none" stroke="#1F4D3A" stroke-width="3"/><text x="238" y="20" font-size="9" fill="#1F4D3A">芝</text><path d="M90,45 L210,45 A28,28 0 0 1 210,105 L90,105 A28,28 0 0 1 90,45 Z" fill="none" stroke="#C97A2B" stroke-width="2.5"/><text x="140" y="78" font-size="9" fill="#C97A2B">ダート</text>
+      <line x1="75" y1="125" x2="225" y2="125" stroke="#B0433A" stroke-width="4"/>
+      <text x="125" y="143" font-size="10" fill="#B0433A">ゴール前直線</text>
+      <text x="14" y="18" font-size="16" fill="#1F4D3A">↺</text>
+      <text x="34" y="18" font-size="10" fill="#6B5F4D">左回り</text>
+    </svg>
+    <p class="course-legend">
+      <span><i style="background:#1F4D3A"></i>芝コース</span>
+      <span><i style="background:#C97A2B"></i>ダートコース</span>
+    </p>
+      <svg viewBox="0 0 300 92" class="elev-svg">
+      <line x1="8.0" y1="14" x2="8.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="8.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="start">ゴール</text><line x1="79.0" y1="14" x2="79.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="79.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">1-2角</text><line x1="150.0" y1="14" x2="150.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="150.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">向正面</text><line x1="229.5" y1="14" x2="229.5" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="229.5" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">4角</text><line x1="292.0" y1="14" x2="292.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="292.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="end">ゴール</text>
+      <line x1="8.0" y1="46.0" x2="64.8" y2="31.6" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="64.8" y1="31.6" x2="135.8" y2="14.0" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="135.8" y1="14.0" x2="184.1" y2="28.4" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="184.1" y1="28.4" x2="229.5" y2="54.0" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="229.5" y1="54.0" x2="252.2" y2="63.6" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="252.2" y1="63.6" x2="272.1" y2="31.6" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="272.1" y1="31.6" x2="292.0" y2="46.0" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/>
+      <text x="8" y="9" font-size="8" fill="#6B5F4D">高低差プロファイル(芝) 最大3.5m</text>
+    </svg>
+    <p class="elev-legend">
+      <span><i style="background:#B0433A"></i>上り</span>
+      <span><i style="background:#1E5FA8"></i>下り</span>
+      <span><i style="background:#8B8378"></i>ほぼ平坦</span>
+    </p>
+      <table class="course-table">
+        <tr><th>芝 1周</th><td>阪神・中山の内回りより長い規模</td></tr>
+        <tr><th>芝 直線</th><td>東京に次ぐ長さ</td></tr>
+        <tr><th>芝 高低差</th><td>芝3.5m/ダート3.4m</td></tr>
+        <tr><th>ダート 1周</th><td>1530m</td></tr>
+        <tr><th>ダート 直線</th><td>410.7m(東京に次ぐ長さ)</td></tr>
+      </table>
+      <p class="course-feature"><strong>特徴:</strong> ゴール地点からなだらかな上りが続き、向正面半ばで最高点に到達。3・4コーナーはスパイラルカーブで、直線入口すぐに勾配約2%の急坂がある。</p>
+      <p class="course-tendency"><strong>傾向:</strong> 急坂の存在で差し・追い込み馬が水準以上に活躍しやすい。</p>
+      
+      <details class="dist-details">
+        <summary>距離別データ(10コース) ▾</summary>
+        <div class="dist-scroll">
+        <table class="dist-table">
+          <thead>
+            <tr>
+              <th>コース</th><th>平均<br>頭数</th><th>1人気<br>勝率</th><th>枠傾向</th>
+              <th>複勝率<br>内/中/外</th><th>脚質傾向</th><th>複勝率<br>逃/先/差/追</th><th>R数</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1200m</td>
+          <td class="num">16.4</td>
+          <td class="num">24.4%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">23.2/21.3/12.6</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">45.7/26.4/19.0/8.1</td>
+          <td class="num small">173</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1400m</td>
+          <td class="num">16.0</td>
+          <td class="num">30.9%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">21.4/20.4/17.2</td>
+          <td>前有利</td>
+          <td class="num">36.0/25.5/20.7/9.8</td>
+          <td class="num small">246</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1600m</td>
+          <td class="num">14.1</td>
+          <td class="num">35.4%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">23.3/22.5/21.3</td>
+          <td>前有利</td>
+          <td class="num">35.9/32.1/21.6/11.8</td>
+          <td class="num small">288</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2000m</td>
+          <td class="num">14.1</td>
+          <td class="num">34.3%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">24.1/23.5/20.9</td>
+          <td>前有利</td>
+          <td class="num">41.8/32.2/23.1/11.2</td>
+          <td class="num small">356</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2200m</td>
+          <td class="num">13.9</td>
+          <td class="num">31.3%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">23.0/23.8/22.7</td>
+          <td>前有利だが差しも届く</td>
+          <td class="num">36.7/26.7/29.1/11.5</td>
+          <td class="num small">160</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>3000m</td>
+          <td class="num">13.0</td>
+          <td class="num">36.5%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">23.9/23.3/23.4</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">72.8/50.3/16.0/1.7</td>
+          <td class="num small">105</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1200m</td>
+          <td class="num">15.5</td>
+          <td class="num">32.1%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">23.1/17.8/19.6</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">56.1/34.5/14.8/5.0</td>
+          <td class="num small">238</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1400m</td>
+          <td class="num">15.5</td>
+          <td class="num">26.2%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">20.8/19.2/19.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">47.2/31.7/16.4/6.9</td>
+          <td class="num small">325</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1800m</td>
+          <td class="num">14.2</td>
+          <td class="num">33.5%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">24.3/21.1/20.7</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">56.9/37.7/18.0/5.8</td>
+          <td class="num small">413</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1900m</td>
+          <td class="num">13.8</td>
+          <td class="num">35.1%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">23.4/22.7/21.5</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">53.0/38.2/19.7/7.0</td>
+          <td class="num small">134</td>
+        </tr></tbody>
+        </table>
+        </div>
+        <p class="dist-note">2015年以降の実レース結果から集計。脚質は4コーナー通過順位を頭数で正規化して分類。
+        数値はすべて複勝率(3着内率)。</p>
+      </details>
+      <p class="course-official"><a href="https://www.jra.go.jp/facilities/race/chukyo/course/index.html" target="_blank" rel="noopener">JRA公式の正確なコース図を見る →</a></p>
+    </article>
+    <article class="course-card">
+      <h2>京都競馬場</h2>
+      <svg viewBox="0 0 300 155" class="course-svg">
+      
+          <path d="M70,25 L230,25 A50,50 0 0 1 230,125 L70,125 A50,50 0 0 1 70,25 Z" fill="none" stroke="#1F4D3A" stroke-width="3"/>
+          <path d="M85,45 L215,45 A32,32 0 0 1 215,105 L85,105 A32,32 0 0 1 85,45 Z" fill="none" stroke="#1F4D3A" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>
+          <text x="235" y="75" font-size="10" fill="#6B5F4D">芝外</text>
+          <text x="145" y="60" font-size="10" fill="#6B5F4D">芝内</text><path d="M95,60 L205,60 A24,24 0 0 1 218,80 A24,24 0 0 1 198,112 L102,112 A24,24 0 0 1 82,80 A24,24 0 0 1 95,60 Z" fill="none" stroke="#C97A2B" stroke-width="2" stroke-dasharray="2 2"/><text x="130" y="105" font-size="9" fill="#C97A2B">ダート</text>
+      <line x1="75" y1="125" x2="225" y2="125" stroke="#B0433A" stroke-width="4"/>
+      <text x="125" y="143" font-size="10" fill="#B0433A">ゴール前直線</text>
+      <text x="14" y="18" font-size="16" fill="#1F4D3A">↻</text>
+      <text x="34" y="18" font-size="10" fill="#6B5F4D">右回り</text>
+    </svg>
+    <p class="course-legend">
+      <span><i style="background:#1F4D3A"></i>芝コース</span>
+      <span><i style="background:#C97A2B"></i>ダートコース</span>
+    </p>
+      <svg viewBox="0 0 300 92" class="elev-svg">
+      <line x1="8.0" y1="14" x2="8.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="8.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="start">ゴール</text><line x1="79.0" y1="14" x2="79.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="79.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">1-2角</text><line x1="150.0" y1="14" x2="150.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="150.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">向正面</text><line x1="229.5" y1="14" x2="229.5" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="229.5" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">4角</text><line x1="292.0" y1="14" x2="292.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="292.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="end">ゴール</text>
+      <line x1="8.0" y1="62.2" x2="64.8" y2="62.2" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/><line x1="64.8" y1="62.2" x2="127.3" y2="59.6" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="127.3" y1="59.6" x2="172.7" y2="14.0" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="172.7" y1="14.0" x2="221.0" y2="58.3" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="221.0" y1="58.3" x2="257.9" y2="62.2" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="257.9" y1="62.2" x2="292.0" y2="62.2" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="8" y="9" font-size="8" fill="#6B5F4D">高低差プロファイル(芝) 最大4.3m</text>
+    </svg>
+    <p class="elev-legend">
+      <span><i style="background:#B0433A"></i>上り</span>
+      <span><i style="background:#1E5FA8"></i>下り</span>
+      <span><i style="background:#8B8378"></i>ほぼ平坦</span>
+    </p>
+      <table class="course-table">
+        <tr><th>芝 1周</th><td>内回り・外回りが3コーナーで分岐、4コーナーで合流</td></tr>
+        <tr><th>芝 直線</th><td>外回り400m台/内回り328m</td></tr>
+        <tr><th>芝 高低差</th><td>外回り4.3m(全場2位)/内回り3.1m</td></tr>
+        <tr><th>ダート 1周</th><td>1607.6m(東京に次ぐ規模)</td></tr>
+        <tr><th>ダート 直線</th><td>329.1m</td></tr>
+      </table>
+      <p class="course-feature"><strong>特徴:</strong> 3コーナー付近の"坂"が名物。外回りは向正面半ばから3コーナーにかけて上り、4コーナーにかけて一気に下るレイアウト。</p>
+      <p class="course-tendency"><strong>傾向:</strong> 坂の攻略力がカギ。ダートは起伏の影響で上がりの速い決着になりやすい。</p>
+      
+      <details class="dist-details">
+        <summary>距離別データ(12コース) ▾</summary>
+        <div class="dist-scroll">
+        <table class="dist-table">
+          <thead>
+            <tr>
+              <th>コース</th><th>平均<br>頭数</th><th>1人気<br>勝率</th><th>枠傾向</th>
+              <th>複勝率<br>内/中/外</th><th>脚質傾向</th><th>複勝率<br>逃/先/差/追</th><th>R数</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1200m</td>
+          <td class="num">15.1</td>
+          <td class="num">28.7%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">25.3/20.1/18.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">45.1/30.2/20.0/9.2</td>
+          <td class="num small">164</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1400m</td>
+          <td class="num">14.9</td>
+          <td class="num">28.9%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">22.3/21.7/19.6</td>
+          <td>前有利</td>
+          <td class="num">39.6/28.4/22.8/10.3</td>
+          <td class="num small">212</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1600m</td>
+          <td class="num">14.3</td>
+          <td class="num">29.8%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">22.4/22.4/21.3</td>
+          <td>前有利</td>
+          <td class="num">37.8/30.8/23.6/10.5</td>
+          <td class="num small">341</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1800m</td>
+          <td class="num">13.4</td>
+          <td class="num">41.7%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">22.4/25.2/23.3</td>
+          <td>前有利だが差しも届く</td>
+          <td class="num">34.6/33.3/26.3/12.7</td>
+          <td class="num small">266</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2000m</td>
+          <td class="num">12.5</td>
+          <td class="num">29.7%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">24.5/26.7/25.2</td>
+          <td>前有利</td>
+          <td class="num">50.6/32.7/27.2/13.2</td>
+          <td class="num small">263</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2200m</td>
+          <td class="num">13.0</td>
+          <td class="num">28.1%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">25.8/24.7/23.4</td>
+          <td>前有利だが差しも届く</td>
+          <td class="num">36.0/31.4/31.4/10.6</td>
+          <td class="num small">89</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2400m</td>
+          <td class="num">11.7</td>
+          <td class="num">41.7%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">30.9/27.9/25.4</td>
+          <td>前有利だが差しも届く</td>
+          <td class="num">37.1/32.6/33.5/16.2</td>
+          <td class="num small">97</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2910m</td>
+          <td class="num">11.9</td>
+          <td class="num">38.9%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">29.9/21.3/31.5</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">78.4/63.4/16.3/0.0</td>
+          <td class="num small">37</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1200m</td>
+          <td class="num">15.1</td>
+          <td class="num">32.3%</td>
+          <td class="num ">やや外有利</td>
+          <td class="num">18.8/20.1/21.4</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">54.6/34.3/15.7/6.5</td>
+          <td class="num small">392</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1400m</td>
+          <td class="num">15.0</td>
+          <td class="num">29.6%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">20.4/20.8/19.1</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">49.5/32.4/17.9/7.1</td>
+          <td class="num small">442</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1800m</td>
+          <td class="num">13.8</td>
+          <td class="num">30.1%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">23.4/22.6/21.6</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">56.6/39.1/19.2/5.9</td>
+          <td class="num small">652</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1900m</td>
+          <td class="num">13.4</td>
+          <td class="num">26.2%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">24.9/22.3/23.8</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">56.3/37.4/21.1/7.4</td>
+          <td class="num small">126</td>
+        </tr></tbody>
+        </table>
+        </div>
+        <p class="dist-note">2015年以降の実レース結果から集計。脚質は4コーナー通過順位を頭数で正規化して分類。
+        数値はすべて複勝率(3着内率)。</p>
+      </details>
+      <p class="course-official"><a href="https://www.jra.go.jp/facilities/race/kyoto/course/index.html" target="_blank" rel="noopener">JRA公式の正確なコース図を見る →</a></p>
+    </article>
+    <article class="course-card">
+      <h2>阪神競馬場</h2>
+      <svg viewBox="0 0 300 155" class="course-svg">
+      
+          <path d="M70,25 L230,25 A50,50 0 0 1 230,125 L70,125 A50,50 0 0 1 70,25 Z" fill="none" stroke="#1F4D3A" stroke-width="3"/>
+          <path d="M85,45 L215,45 A32,32 0 0 1 215,105 L85,105 A32,32 0 0 1 85,45 Z" fill="none" stroke="#1F4D3A" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>
+          <text x="235" y="75" font-size="10" fill="#6B5F4D">芝外</text>
+          <text x="145" y="60" font-size="10" fill="#6B5F4D">芝内</text><path d="M95,60 L205,60 A24,24 0 0 1 218,80 A24,24 0 0 1 198,112 L102,112 A24,24 0 0 1 82,80 A24,24 0 0 1 95,60 Z" fill="none" stroke="#C97A2B" stroke-width="2" stroke-dasharray="2 2"/><text x="130" y="105" font-size="9" fill="#C97A2B">ダート</text>
+      <line x1="75" y1="125" x2="225" y2="125" stroke="#B0433A" stroke-width="4"/>
+      <text x="125" y="143" font-size="10" fill="#B0433A">ゴール前直線</text>
+      <text x="14" y="18" font-size="16" fill="#1F4D3A">↻</text>
+      <text x="34" y="18" font-size="10" fill="#6B5F4D">右回り</text>
+    </svg>
+    <p class="course-legend">
+      <span><i style="background:#1F4D3A"></i>芝コース</span>
+      <span><i style="background:#C97A2B"></i>ダートコース</span>
+    </p>
+      <svg viewBox="0 0 300 92" class="elev-svg">
+      <line x1="8.0" y1="14" x2="8.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="8.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="start">ゴール</text><line x1="79.0" y1="14" x2="79.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="79.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">1-2角</text><line x1="150.0" y1="14" x2="150.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="150.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">向正面</text><line x1="229.5" y1="14" x2="229.5" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="229.5" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">4角</text><line x1="292.0" y1="14" x2="292.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="292.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="end">ゴール</text>
+      <line x1="8.0" y1="28.0" x2="59.1" y2="18.7" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="59.1" y1="18.7" x2="127.3" y2="14.0" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="127.3" y1="14.0" x2="178.4" y2="18.7" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="178.4" y1="18.7" x2="221.0" y2="46.7" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="221.0" y1="46.7" x2="252.2" y2="65.3" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="252.2" y1="65.3" x2="272.1" y2="28.0" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="272.1" y1="28.0" x2="292.0" y2="28.0" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="8" y="9" font-size="8" fill="#6B5F4D">高低差プロファイル(芝) 最大2.4m</text>
+    </svg>
+    <p class="elev-legend">
+      <span><i style="background:#B0433A"></i>上り</span>
+      <span><i style="background:#1E5FA8"></i>下り</span>
+      <span><i style="background:#8B8378"></i>ほぼ平坦</span>
+    </p>
+      <table class="course-table">
+        <tr><th>芝 1周</th><td>内回り1689m/外回り約2089m(右回り最長)</td></tr>
+        <tr><th>芝 直線</th><td>外回り473.6m(右回り最長級)/内回り356.5m</td></tr>
+        <tr><th>芝 高低差</th><td>外回り2.4m/内回り1.9m</td></tr>
+        <tr><th>ダート 1周</th><td>1517.6m</td></tr>
+        <tr><th>ダート 直線</th><td>352.7m</td></tr>
+      </table>
+      <p class="course-feature"><strong>特徴:</strong> ゴール前に勾配1.5%の急坂。内回りは残り800m、外回りは残り600m付近から直線半ばにかけてなだらかな下りが続き、その勢いのまま急坂に向かうレイアウト。ダートも残り200m付近に高低差1.6mの上り坂がある。</p>
+      <p class="course-tendency"><strong>傾向:</strong> 坂を苦にしないパワーとスピードの両立が必要。</p>
+      
+      <details class="dist-details">
+        <summary>距離別データ(12コース) ▾</summary>
+        <div class="dist-scroll">
+        <table class="dist-table">
+          <thead>
+            <tr>
+              <th>コース</th><th>平均<br>頭数</th><th>1人気<br>勝率</th><th>枠傾向</th>
+              <th>複勝率<br>内/中/外</th><th>脚質傾向</th><th>複勝率<br>逃/先/差/追</th><th>R数</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1200m</td>
+          <td class="num">13.8</td>
+          <td class="num">28.0%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">25.3/23.8/18.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">55.3/33.9/21.4/8.0</td>
+          <td class="num small">189</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1400m</td>
+          <td class="num">15.1</td>
+          <td class="num">32.7%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">25.1/22.2/16.6</td>
+          <td>前有利</td>
+          <td class="num">40.2/29.0/22.3/9.5</td>
+          <td class="num small">306</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1600m</td>
+          <td class="num">14.6</td>
+          <td class="num">39.8%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">24.3/22.2/19.3</td>
+          <td>前有利だが差しも届く</td>
+          <td class="num">32.3/28.6/23.3/12.6</td>
+          <td class="num small">420</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1800m</td>
+          <td class="num">13.6</td>
+          <td class="num">37.2%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">27.9/23.6/21.6</td>
+          <td>前有利だが差しも届く</td>
+          <td class="num">38.0/28.9/26.2/13.3</td>
+          <td class="num small">358</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2000m</td>
+          <td class="num">12.4</td>
+          <td class="num">32.6%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">27.2/25.6/25.3</td>
+          <td>前有利</td>
+          <td class="num">50.6/33.8/27.7/11.9</td>
+          <td class="num small">319</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2200m</td>
+          <td class="num">13.4</td>
+          <td class="num">32.5%</td>
+          <td class="num bias-in">内枠有利</td>
+          <td class="num">28.1/23.8/22.8</td>
+          <td>前有利</td>
+          <td class="num">42.2/34.7/25.1/12.2</td>
+          <td class="num small">83</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2400m</td>
+          <td class="num">12.0</td>
+          <td class="num">36.2%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">27.7/28.9/23.8</td>
+          <td>前有利だが差しも届く</td>
+          <td class="num">36.9/31.5/32.4/15.7</td>
+          <td class="num small">130</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2970m</td>
+          <td class="num">11.2</td>
+          <td class="num">35.9%</td>
+          <td class="num ">やや外有利</td>
+          <td class="num">23.4/30.6/26.7</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">83.8/63.1/21.9/1.1</td>
+          <td class="num small">68</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1200m</td>
+          <td class="num">15.1</td>
+          <td class="num">33.8%</td>
+          <td class="num ">やや外有利</td>
+          <td class="num">17.7/20.4/22.0</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">50.8/36.0/16.0/5.9</td>
+          <td class="num small">398</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1400m</td>
+          <td class="num">15.2</td>
+          <td class="num">32.0%</td>
+          <td class="num ">やや外有利</td>
+          <td class="num">17.1/20.3/21.8</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">39.6/33.7/17.8/7.3</td>
+          <td class="num small">513</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1800m</td>
+          <td class="num">14.0</td>
+          <td class="num">33.9%</td>
+          <td class="num ">やや外有利</td>
+          <td class="num">21.2/21.8/23.3</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">56.6/39.5/18.0/5.4</td>
+          <td class="num small">767</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>2000m</td>
+          <td class="num">13.5</td>
+          <td class="num">31.2%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">22.9/23.3/23.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">46.4/39.6/21.4/7.6</td>
+          <td class="num small">125</td>
+        </tr></tbody>
+        </table>
+        </div>
+        <p class="dist-note">2015年以降の実レース結果から集計。脚質は4コーナー通過順位を頭数で正規化して分類。
+        数値はすべて複勝率(3着内率)。</p>
+      </details>
+      <p class="course-official"><a href="https://www.jra.go.jp/facilities/race/hanshin/course/index.html" target="_blank" rel="noopener">JRA公式の正確なコース図を見る →</a></p>
+    </article>
+    <article class="course-card">
+      <h2>小倉競馬場</h2>
+      <svg viewBox="0 0 300 155" class="course-svg">
+      <path d="M75,25 L225,25 A48,48 0 0 1 225,125 L75,125 A48,48 0 0 1 75,25 Z" fill="none" stroke="#1F4D3A" stroke-width="3"/><text x="238" y="20" font-size="9" fill="#1F4D3A">芝</text><path d="M90,45 L210,45 A28,28 0 0 1 210,105 L90,105 A28,28 0 0 1 90,45 Z" fill="none" stroke="#C97A2B" stroke-width="2.5"/><text x="140" y="78" font-size="9" fill="#C97A2B">ダート</text>
+      <line x1="75" y1="125" x2="225" y2="125" stroke="#B0433A" stroke-width="4"/>
+      <text x="125" y="143" font-size="10" fill="#B0433A">ゴール前直線</text>
+      <text x="14" y="18" font-size="16" fill="#1F4D3A">↻</text>
+      <text x="34" y="18" font-size="10" fill="#6B5F4D">右回り</text>
+    </svg>
+    <p class="course-legend">
+      <span><i style="background:#1F4D3A"></i>芝コース</span>
+      <span><i style="background:#C97A2B"></i>ダートコース</span>
+    </p>
+      <svg viewBox="0 0 300 92" class="elev-svg">
+      <line x1="8.0" y1="14" x2="8.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="8.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="start">ゴール</text><line x1="79.0" y1="14" x2="79.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="79.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">1-2角</text><line x1="150.0" y1="14" x2="150.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="150.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">向正面</text><line x1="229.5" y1="14" x2="229.5" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="229.5" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="middle">4角</text><line x1="292.0" y1="14" x2="292.0" y2="70" stroke="#E4DAC0" stroke-width="1"/><text x="292.0" y="83" font-size="7.5" fill="#6B5F4D" text-anchor="end">ゴール</text>
+      <line x1="8.0" y1="43.9" x2="50.6" y2="19.6" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="50.6" y1="19.6" x2="79.0" y2="14.0" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="79.0" y1="14.0" x2="135.8" y2="36.4" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="135.8" y1="36.4" x2="192.6" y2="53.2" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="192.6" y1="53.2" x2="240.9" y2="62.5" stroke="#1E5FA8" stroke-width="3" stroke-linecap="round"/><line x1="240.9" y1="62.5" x2="263.6" y2="43.9" stroke="#B0433A" stroke-width="3" stroke-linecap="round"/><line x1="263.6" y1="43.9" x2="292.0" y2="43.9" stroke="#8B8378" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="8" y="9" font-size="8" fill="#6B5F4D">高低差プロファイル(芝) 最大3.0m</text>
+    </svg>
+    <p class="elev-legend">
+      <span><i style="background:#B0433A"></i>上り</span>
+      <span><i style="background:#1E5FA8"></i>下り</span>
+      <span><i style="background:#8B8378"></i>ほぼ平坦</span>
+    </p>
+      <table class="course-table">
+        <tr><th>芝 1周</th><td>1615.1m(福島に次いで小さい)</td></tr>
+        <tr><th>芝 直線</th><td>293m</td></tr>
+        <tr><th>芝 高低差</th><td>3.0m</td></tr>
+        <tr><th>ダート 1周</th><td>1445.4m</td></tr>
+        <tr><th>ダート 直線</th><td>291.3m</td></tr>
+      </table>
+      <p class="course-feature"><strong>特徴:</strong> 2コーナー付近が最高地点で、そこから向正面・3〜4コーナーにかけて下り、直線は完全に平坦。幅員30mとローカル場としては広め。</p>
+      <p class="course-tendency"><strong>傾向:</strong> 前半のペースが速くなりやすく、逃げ・先行馬が明確に有利。</p>
+      
+      <details class="dist-details">
+        <summary>距離別データ(7コース) ▾</summary>
+        <div class="dist-scroll">
+        <table class="dist-table">
+          <thead>
+            <tr>
+              <th>コース</th><th>平均<br>頭数</th><th>1人気<br>勝率</th><th>枠傾向</th>
+              <th>複勝率<br>内/中/外</th><th>脚質傾向</th><th>複勝率<br>逃/先/差/追</th><th>R数</th>
+            </tr>
+          </thead>
+          <tbody>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1200m</td>
+          <td class="num">16.1</td>
+          <td class="num">28.9%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">17.9/19.9/19.8</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">49.2/32.0/17.0/6.2</td>
+          <td class="num small">603</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>1800m</td>
+          <td class="num">14.1</td>
+          <td class="num">33.2%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">24.5/20.8/22.8</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">47.0/34.8/21.8/6.7</td>
+          <td class="num small">319</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2000m</td>
+          <td class="num">14.3</td>
+          <td class="num">30.9%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">20.7/23.4/21.4</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">45.6/36.9/21.7/6.4</td>
+          <td class="num small">298</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2600m</td>
+          <td class="num">13.0</td>
+          <td class="num">33.3%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">25.9/25.2/21.1</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">56.9/43.9/19.6/5.8</td>
+          <td class="num small">72</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-turf">芝</span>2860m</td>
+          <td class="num">10.3</td>
+          <td class="num">45.1%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">32.0/28.2/31.9</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">90.4/68.7/22.5/0.5</td>
+          <td class="num small">52</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1000m</td>
+          <td class="num">13.6</td>
+          <td class="num">26.1%</td>
+          <td class="num ">やや内有利</td>
+          <td class="num">24.0/22.0/22.0</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">76.2/44.6/13.3/2.3</td>
+          <td class="num small">191</td>
+        </tr>
+        <tr>
+          <td><span class="surf surf-dirt">ダート</span>1700m</td>
+          <td class="num">15.0</td>
+          <td class="num">27.6%</td>
+          <td class="num ">枠差小</td>
+          <td class="num">20.8/20.8/19.2</td>
+          <td>前が圧倒的に有利</td>
+          <td class="num">60.5/40.3/14.2/2.5</td>
+          <td class="num small">400</td>
+        </tr></tbody>
+        </table>
+        </div>
+        <p class="dist-note">2015年以降の実レース結果から集計。脚質は4コーナー通過順位を頭数で正規化して分類。
+        数値はすべて複勝率(3着内率)。</p>
+      </details>
+      <p class="course-official"><a href="https://www.jra.go.jp/facilities/race/kokura/course/" target="_blank" rel="noopener">JRA公式の正確なコース図を見る →</a></p>
+    </article></main>
+<footer>
+  数値・コース構成はJRA公式サイトの「コース紹介」などの一次情報を基にした要約です。
+  コース図は芝(緑)・ダート(橙)の位置関係や回り・内外コースの有無といった構造的な特徴を踏まえた
+  独自の簡略図であり、発走地点ごとの正確な位置・距離は反映していません。正確なコース図は各カード内の
+  リンクからJRA公式サイトをご参照ください。
+</footer>
+</body>
+</html>
