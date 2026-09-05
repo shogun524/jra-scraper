@@ -50,7 +50,9 @@ jobs:
         run: python src/predict.py data/entries_this_week.csv
 
       - name: ダッシュボードHTML生成
-        run: python src/generate_html.py data/predictions.csv docs/index.html
+        run: |
+          python src/generate_html.py data/predictions.csv docs/index.html
+          python src/generate_course_guide.py
 
       - name: 中間ファイルをダウンロードできるように保存(デバッグ用)
         if: always()
