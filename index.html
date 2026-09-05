@@ -45,6 +45,18 @@
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
+  nav.race-tabs {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;
+  }
+  .race-tab-btn {
+    background: #fff; border: 1px solid var(--paper-line); color: var(--ink-soft);
+    font-family: "Noto Sans JP", sans-serif; font-weight: 700; font-size: .82rem;
+    padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  }
+  .race-tab-btn.active { background: var(--turf); border-color: var(--turf); color: #fff; }
+  .race-panel { display: none; }
+  .race-panel.active { display: block; }
+
   .race-card {
     background: #fff; border: 1px solid var(--paper-line); border-radius: 6px;
     margin-bottom: 16px; overflow: hidden;
@@ -109,11 +121,13 @@
 <header class="top">
   <div class="inner">
     <h1>JRA週末AI予想</h1>
-    <p>最終更新 2026-09-05 15:45 ・ 1着率と3連対率はLightGBMモデルによる推定値</p>
+    <p>最終更新 2026-09-05 16:05 ・ 1着率と3連対率はLightGBMモデルによる推定値 ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイドを見る →</a></p>
   </div>
   <nav class="tabs"><button class="tab-btn active" data-tab="tab-0">札幌<span class="tab-count">12R</span></button><button class="tab-btn " data-tab="tab-1">中山<span class="tab-count">12R</span></button><button class="tab-btn " data-tab="tab-2">阪神<span class="tab-count">12R</span></button></nav>
 </header>
 <main><section class="tab-panel active" id="tab-0">
+      <nav class="race-tabs"><button class="race-tab-btn active" data-race="race-0-0">1R</button><button class="race-tab-btn " data-race="race-0-1">2R</button><button class="race-tab-btn " data-race="race-0-2">3R</button><button class="race-tab-btn " data-race="race-0-3">4R</button><button class="race-tab-btn " data-race="race-0-4">5R</button><button class="race-tab-btn " data-race="race-0-5">6R</button><button class="race-tab-btn " data-race="race-0-6">7R</button><button class="race-tab-btn " data-race="race-0-7">8R</button><button class="race-tab-btn " data-race="race-0-8">9R</button><button class="race-tab-btn " data-race="race-0-9">10R</button><button class="race-tab-btn " data-race="race-0-10">11R</button><button class="race-tab-btn " data-race="race-0-11">12R</button></nav>
+      <div class="race-panel active" id="race-0-0">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">1<small>R</small></span>
@@ -274,7 +288,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-0-1">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">2<small>R</small></span>
@@ -402,7 +416,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-0-2">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">3<small>R</small></span>
@@ -574,7 +588,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-0-3">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">4<small>R</small></span>
@@ -768,7 +782,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-0-4">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">5<small>R</small></span>
@@ -962,7 +976,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-0-5">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">6<small>R</small></span>
@@ -1112,7 +1126,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-0-6">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">7<small>R</small></span>
@@ -1306,7 +1320,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-0-7">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">8<small>R</small></span>
@@ -1478,7 +1492,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-0-8">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">9<small>R</small></span>
@@ -1650,7 +1664,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-0-9">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">10<small>R</small></span>
@@ -1822,7 +1836,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-0-10">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">11<small>R</small></span>
@@ -1994,7 +2008,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-0-11">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">12<small>R</small></span>
@@ -2144,7 +2158,10 @@
         </tr></tbody>
       </table>
       </div>
-    </article></section><section class="tab-panel " id="tab-1">
+    </article></div>
+    </section><section class="tab-panel " id="tab-1">
+      <nav class="race-tabs"><button class="race-tab-btn active" data-race="race-1-0">1R</button><button class="race-tab-btn " data-race="race-1-1">2R</button><button class="race-tab-btn " data-race="race-1-2">3R</button><button class="race-tab-btn " data-race="race-1-3">4R</button><button class="race-tab-btn " data-race="race-1-4">5R</button><button class="race-tab-btn " data-race="race-1-5">6R</button><button class="race-tab-btn " data-race="race-1-6">7R</button><button class="race-tab-btn " data-race="race-1-7">8R</button><button class="race-tab-btn " data-race="race-1-8">9R</button><button class="race-tab-btn " data-race="race-1-9">10R</button><button class="race-tab-btn " data-race="race-1-10">11R</button><button class="race-tab-btn " data-race="race-1-11">12R</button></nav>
+      <div class="race-panel active" id="race-1-0">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">1<small>R</small></span>
@@ -2239,7 +2256,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-1-1">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">2<small>R</small></span>
@@ -2411,7 +2428,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-1-2">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">3<small>R</small></span>
@@ -2594,7 +2611,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-1-3">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">4<small>R</small></span>
@@ -2788,7 +2805,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-1-4">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">5<small>R</small></span>
@@ -2971,7 +2988,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-1-5">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">6<small>R</small></span>
@@ -3121,7 +3138,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-1-6">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">7<small>R</small></span>
@@ -3337,7 +3354,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-1-7">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">8<small>R</small></span>
@@ -3531,7 +3548,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-1-8">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">9<small>R</small></span>
@@ -3725,7 +3742,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-1-9">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">10<small>R</small></span>
@@ -3842,7 +3859,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-1-10">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">11<small>R</small></span>
@@ -3981,7 +3998,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-1-11">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">12<small>R</small></span>
@@ -4175,7 +4192,10 @@
         </tr></tbody>
       </table>
       </div>
-    </article></section><section class="tab-panel " id="tab-2">
+    </article></div>
+    </section><section class="tab-panel " id="tab-2">
+      <nav class="race-tabs"><button class="race-tab-btn active" data-race="race-2-0">1R</button><button class="race-tab-btn " data-race="race-2-1">2R</button><button class="race-tab-btn " data-race="race-2-2">3R</button><button class="race-tab-btn " data-race="race-2-3">4R</button><button class="race-tab-btn " data-race="race-2-4">5R</button><button class="race-tab-btn " data-race="race-2-5">6R</button><button class="race-tab-btn " data-race="race-2-6">7R</button><button class="race-tab-btn " data-race="race-2-7">8R</button><button class="race-tab-btn " data-race="race-2-8">9R</button><button class="race-tab-btn " data-race="race-2-9">10R</button><button class="race-tab-btn " data-race="race-2-10">11R</button><button class="race-tab-btn " data-race="race-2-11">12R</button></nav>
+      <div class="race-panel active" id="race-2-0">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">1<small>R</small></span>
@@ -4303,7 +4323,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-2-1">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">2<small>R</small></span>
@@ -4497,7 +4517,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-2-2">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">3<small>R</small></span>
@@ -4680,7 +4700,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-2-3">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">4<small>R</small></span>
@@ -4874,7 +4894,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-2-4">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">5<small>R</small></span>
@@ -5002,7 +5022,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-2-5">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">6<small>R</small></span>
@@ -5152,7 +5172,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-2-6">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">7<small>R</small></span>
@@ -5324,7 +5344,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-2-7">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">8<small>R</small></span>
@@ -5419,7 +5439,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-2-8">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">9<small>R</small></span>
@@ -5613,7 +5633,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-2-9">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">10<small>R</small></span>
@@ -5774,7 +5794,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-2-10">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">11<small>R</small></span>
@@ -5968,7 +5988,7 @@
         </tr></tbody>
       </table>
       </div>
-    </article>
+    </article></div><div class="race-panel " id="race-2-11">
     <article class="race-card">
       <header class="race-card-head">
         <span class="race-num">12<small>R</small></span>
@@ -6162,7 +6182,8 @@
         </tr></tbody>
       </table>
       </div>
-    </article></section></main>
+    </article></div>
+    </section></main>
 <footer>
   期待値 = 予測1着確率 × 単勝オッズ。1.0を上回るほど市場価格に対して割安と推定されることを示しますが、
   的中や回収率のプラスを保証するものではありません(バックテストでは市場を上回るエッジは確認できていません)。
@@ -6175,6 +6196,15 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+document.querySelectorAll('.race-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const panel = btn.closest('.tab-panel');
+    panel.querySelectorAll('.race-tab-btn').forEach(b => b.classList.remove('active'));
+    panel.querySelectorAll('.race-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.race).classList.add('active');
   });
 });
 </script>
