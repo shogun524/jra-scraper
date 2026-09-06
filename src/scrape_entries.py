@@ -64,6 +64,28 @@ def parse_race_name(html: str) -> str | None:
     return name or None
 
 
+def _parse_odds(v):
+    """オッズ欄を数値に変換する。
+    netkeibaはオッズ未確定時に「---.-」「**.*」「--」などのプレースホルダを出したり、
+    「5.2-7.1」のような予想オッズ帯を出すことがあるため、単純なto_numericでは取り逃す。
+    帯の場合は下限値を採用する。"""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return None
+    s = str(v).strip().replace(",", "")  # 桁区切りカンマを除去("1,234.5" -> "1234.5")
+    if not s or s in ("-", "--", "---", "**", "---.-", "**.*"):
+        return None
+    # 数値(小数可)を全部拾い、最初の1つを使う("5.2-7.1" -> 5.2)
+    nums = re.findall(r"\d+(?:\.\d+)?", s)
+    if not nums:
+        return None
+    try:
+        val = float(nums[0])
+    except ValueError:
+        return None
+    # 単勝オッズとしてあり得ない値は無効扱い
+    return val if 1.0 <= val <= 10000 else None
+
+
 def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
     """出馬表テーブルをパースし、predict.pyへの入力(entries CSV)と同じスキーマの行に変換する"""
     import io
@@ -115,7 +137,7 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
             "jockey": re.sub(r"^[▲△☆★◇]", "", str(_scalar(r.get("騎手"))).strip()) if pd.notna(_scalar(r.get("騎手"))) else None,
             "trainer": str(_scalar(r.get("調教師"))).strip() if pd.notna(_scalar(r.get("調教師"))) else None,
             "weight_carry": _scalar(r.get("斤量")),
-            "odds_win": pd.to_numeric(_scalar(r.get("単勝")), errors="coerce"),
+            "odds_win": _parse_odds(_scalar(r.get("単勝"))),
         }
         sexage = str(_scalar(r.get("性齢", "")))
         m = re.match(r"([牡牝セ])(\d+)", sexage)
