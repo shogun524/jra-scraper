@@ -59,6 +59,10 @@ jobs:
             python src/scrape_entries.py --diagnose "$RACE_ID" > data/diagnose_output.txt 2>&1 || true
           fi
 
+      - name: 【デバッグ用】オッズ取得状況の診断
+        if: always()
+        run: python src/diagnose_odds.py data/entries_this_week.csv > data/diagnose_odds.txt 2>&1 || true
+
       - name: AI予測を実行
         run: python src/predict.py data/entries_this_week.csv
 
@@ -76,6 +80,7 @@ jobs:
             data/entries_this_week.csv
             data/predictions.csv
             data/diagnose_output.txt
+            data/diagnose_odds.txt
             data/diagnose_shutuba_screenshot.png
           retention-days: 7
           if-no-files-found: ignore
