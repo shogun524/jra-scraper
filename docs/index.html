@@ -115,6 +115,13 @@
   .conf-high { background: #E4F1E7; color: var(--good); }
   .conf-mid { background: #F5EAD0; color: var(--mid); }
   .conf-low { background: #EFEAE0; color: #948A7B; }
+  .pace { font-weight: 700; font-size: .9rem; }
+  .pace-good { color: var(--good); }
+  .pace-mid { color: var(--ink-soft); }
+  .pace-bad { color: #B0433A; }
+  .cf { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .cf-good { color: var(--good); }
+  .cf-bad { color: #B0433A; }
 
   footer {
     max-width: 900px; margin: 16px auto 0; padding: 0 20px;
@@ -131,7 +138,7 @@
 <header class="top">
   <div class="inner">
     <h1>JRA週末AI予想</h1>
-    <p>最終更新 2026-09-06 14:05 (JST) ・ オッズ取得 1/1レース ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイドを見る →</a></p>
+    <p>最終更新 2026-09-06 19:39 (JST) ・ オッズ取得 1/1レース ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイドを見る →</a></p>
   </div>
   <nav class="tabs"><button class="tab-btn active" data-tab="tab-0">新潟<span class="tab-count">1R</span></button></nav>
 </header>
@@ -151,7 +158,7 @@
         <thead>
           <tr><th>予想</th><th>枠</th><th>馬番</th><th>馬名</th><th>騎手</th>
               <th>1着率</th><th>3連対率</th><th>1位との差</th><th>安定度</th>
-              <th>脚質</th><th>信頼度</th><th>単勝</th><th>期待値</th></tr>
+              <th>脚質</th><th>展開</th><th>コース<br>相性</th><th>信頼度</th><th>単勝</th><th>期待値</th></tr>
         </thead>
         <tbody>
         <tr class="top-pick">
@@ -165,6 +172,8 @@
           <td class="gap">—</td>
           <td><span class="tag tag-win">一発型 2.3</span></td>
           <td class="style">不明</td>
+          <td><span class="pace ">—</span></td>
+          <td><span class="cf ">0.99</span></td>
           <td><span class="conf conf-low">0</span></td>
           <td>3.3倍</td>
           <td><span class="badge ev-low">0.53</span></td>
@@ -180,6 +189,8 @@
           <td class="gap">-4.4pt</td>
           <td><span class="tag">2.5</span></td>
           <td class="style">不明</td>
+          <td><span class="pace ">—</span></td>
+          <td><span class="cf ">1.05</span></td>
           <td><span class="conf conf-low">0</span></td>
           <td>3.6倍</td>
           <td><span class="badge ev-low">0.41</span></td>
@@ -194,7 +205,9 @@
           <td class="pct">29.3%</td>
           <td class="gap">-4.6pt</td>
           <td><span class="tag">2.6</span></td>
-          <td class="style">不明</td>
+          <td class="style">先行</td>
+          <td><span class="pace pace-mid">○</span></td>
+          <td><span class="cf cf-good">1.14</span></td>
           <td><span class="conf conf-low">0</span></td>
           <td>4.0倍</td>
           <td><span class="badge ev-low">0.45</span></td>
@@ -210,6 +223,8 @@
           <td class="gap">-4.6pt</td>
           <td><span class="tag">2.7</span></td>
           <td class="style">不明</td>
+          <td><span class="pace ">—</span></td>
+          <td><span class="cf ">0.99</span></td>
           <td><span class="conf conf-low">0</span></td>
           <td>12.2倍</td>
           <td><span class="badge ev-good">1.39</span></td>
@@ -225,6 +240,8 @@
           <td class="gap">-6.0pt</td>
           <td><span class="tag">3.0</span></td>
           <td class="style">不明</td>
+          <td><span class="pace ">—</span></td>
+          <td><span class="cf ">1.05</span></td>
           <td><span class="conf conf-low">0</span></td>
           <td>14.4倍</td>
           <td><span class="badge ev-good">1.43</span></td>
@@ -239,7 +256,9 @@
           <td class="pct">28.7%</td>
           <td class="gap">-7.2pt</td>
           <td><span class="tag">3.3</span></td>
-          <td class="style">不明</td>
+          <td class="style">差し</td>
+          <td><span class="pace pace-mid">○</span></td>
+          <td><span class="cf ">0.96</span></td>
           <td><span class="conf conf-low">0</span></td>
           <td>30.0倍</td>
           <td><span class="badge ev-good">2.61</span></td>
@@ -255,6 +274,8 @@
           <td class="gap">-7.5pt</td>
           <td><span class="tag">3.2</span></td>
           <td class="style">不明</td>
+          <td><span class="pace ">—</span></td>
+          <td><span class="cf ">0.99</span></td>
           <td><span class="conf conf-low">0</span></td>
           <td>16.2倍</td>
           <td><span class="badge ev-good">1.37</span></td>
@@ -269,7 +290,9 @@
           <td class="pct">27.2%</td>
           <td class="gap">-7.8pt</td>
           <td><span class="tag">3.4</span></td>
-          <td class="style">不明</td>
+          <td class="style">先行</td>
+          <td><span class="pace pace-mid">○</span></td>
+          <td><span class="cf cf-good">1.14</span></td>
           <td><span class="conf conf-low">0</span></td>
           <td>8.3倍</td>
           <td><span class="badge ev-low">0.67</span></td>
@@ -284,7 +307,9 @@
           <td class="pct">21.8%</td>
           <td class="gap">-9.1pt</td>
           <td><span class="tag">3.2</span></td>
-          <td class="style">不明</td>
+          <td class="style">先行</td>
+          <td><span class="pace pace-mid">○</span></td>
+          <td><span class="cf cf-good">1.14</span></td>
           <td><span class="conf conf-low">0</span></td>
           <td>50.9倍</td>
           <td><span class="badge ev-good">3.46</span></td>
@@ -299,7 +324,9 @@
           <td class="pct">22.0%</td>
           <td class="gap">-11.6pt</td>
           <td><span class="tag tag-place">複勝向き 5.1</span></td>
-          <td class="style">不明</td>
+          <td class="style">差し</td>
+          <td><span class="pace pace-mid">○</span></td>
+          <td><span class="cf ">0.96</span></td>
           <td><span class="conf conf-low">0</span></td>
           <td>73.2倍</td>
           <td><span class="badge ev-good">3.18</span></td>
@@ -314,7 +341,9 @@
           <td class="pct">17.8%</td>
           <td class="gap">-12.5pt</td>
           <td><span class="tag tag-place">複勝向き 5.2</span></td>
-          <td class="style">不明</td>
+          <td class="style">差し</td>
+          <td><span class="pace pace-mid">○</span></td>
+          <td><span class="cf ">0.97</span></td>
           <td><span class="conf conf-low">0</span></td>
           <td>32.1倍</td>
           <td><span class="badge ev-good">1.11</span></td>
@@ -331,6 +360,10 @@
     <b>安定度</b>: 3連対率÷1着率。数値が大きいほど「勝ち切れないが崩れにくい」(複勝・ワイド向き)、
     小さいほど「勝つか凡走かの一発型」(単勝向き)。<br>
     <b>脚質</b>: 過去の4コーナー通過位置から推定した逃げ/先行/差し/追込。<br>
+    <b>展開</b>: そのレースの脚質構成から想定されるペースで恩恵を受けるか。◎=恩恵大、○=標準、△=不利。
+    逃げ・先行馬が多ければハイペース想定で差し・追込に◎、少なければスロー想定で前の馬に◎。<br>
+    <b>コース相性</b>: そのコース(競馬場×芝ダ×距離)の過去実データで、その馬の脚質・枠がどれだけ有利か。
+    1.00が平均、1.10なら平均より1割有利。<br>
     <b>信頼度</b>: その馬の過去データがどれだけ揃っているか(0-100)。低い馬は予測の根拠が薄いので注意。<br>
     <b>期待値</b>: 予測1着確率 × 単勝オッズ。オッズ未取得時は「オッズ待ち」と表示。
   </p>
