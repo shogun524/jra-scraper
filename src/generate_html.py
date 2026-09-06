@@ -93,6 +93,17 @@ def race_card(race_id, g):
             conf_html = "-"
 
         style = r.get("running_style") if pd.notnull(r.get("running_style")) else "-"
+        pace = r.get("pace_edge") if pd.notnull(r.get("pace_edge")) else "—"
+        pace_cls = {"◎": "pace-good", "○": "pace-mid", "△": "pace-bad"}.get(pace, "")
+        pace_html = f'<span class="pace {pace_cls}">{pace}</span>'
+
+        cf = r.get("course_fit")
+        if pd.notnull(cf):
+            cf_cls = "cf-good" if cf >= 1.08 else ("cf-bad" if cf <= 0.93 else "")
+            cf_html = f'<span class="cf {cf_cls}">{cf:.2f}</span>'
+        else:
+            cf_html = "-"
+
         gap = r.get("gap_from_top")
         gap_html = "—" if (pd.notnull(gap) and gap == 0) else (f"-{gap:.1f}pt" if pd.notnull(gap) else "-")
 
@@ -108,6 +119,8 @@ def race_card(race_id, g):
           <td class="gap">{gap_html}</td>
           <td>{stab_html}</td>
           <td class="style">{style}</td>
+          <td>{pace_html}</td>
+          <td>{cf_html}</td>
           <td>{conf_html}</td>
           <td>{odds}</td>
           <td>{ev_badge}</td>
@@ -127,7 +140,7 @@ def race_card(race_id, g):
         <thead>
           <tr><th>予想</th><th>枠</th><th>馬番</th><th>馬名</th><th>騎手</th>
               <th>1着率</th><th>3連対率</th><th>1位との差</th><th>安定度</th>
-              <th>脚質</th><th>信頼度</th><th>単勝</th><th>期待値</th></tr>
+              <th>脚質</th><th>展開</th><th>コース<br>相性</th><th>信頼度</th><th>単勝</th><th>期待値</th></tr>
         </thead>
         <tbody>{rows}</tbody>
       </table>
@@ -276,6 +289,13 @@ html = f"""<!DOCTYPE html>
   .conf-high {{ background: #E4F1E7; color: var(--good); }}
   .conf-mid {{ background: #F5EAD0; color: var(--mid); }}
   .conf-low {{ background: #EFEAE0; color: #948A7B; }}
+  .pace {{ font-weight: 700; font-size: .9rem; }}
+  .pace-good {{ color: var(--good); }}
+  .pace-mid {{ color: var(--ink-soft); }}
+  .pace-bad {{ color: #B0433A; }}
+  .cf {{ font-variant-numeric: tabular-nums; font-weight: 600; }}
+  .cf-good {{ color: var(--good); }}
+  .cf-bad {{ color: #B0433A; }}
 
   footer {{
     max-width: 900px; margin: 16px auto 0; padding: 0 20px;
@@ -305,6 +325,10 @@ html = f"""<!DOCTYPE html>
     <b>安定度</b>: 3連対率÷1着率。数値が大きいほど「勝ち切れないが崩れにくい」(複勝・ワイド向き)、
     小さいほど「勝つか凡走かの一発型」(単勝向き)。<br>
     <b>脚質</b>: 過去の4コーナー通過位置から推定した逃げ/先行/差し/追込。<br>
+    <b>展開</b>: そのレースの脚質構成から想定されるペースで恩恵を受けるか。◎=恩恵大、○=標準、△=不利。
+    逃げ・先行馬が多ければハイペース想定で差し・追込に◎、少なければスロー想定で前の馬に◎。<br>
+    <b>コース相性</b>: そのコース(競馬場×芝ダ×距離)の過去実データで、その馬の脚質・枠がどれだけ有利か。
+    1.00が平均、1.10なら平均より1割有利。<br>
     <b>信頼度</b>: その馬の過去データがどれだけ揃っているか(0-100)。低い馬は予測の根拠が薄いので注意。<br>
     <b>期待値</b>: 予測1着確率 × 単勝オッズ。オッズ未取得時は「オッズ待ち」と表示。
   </p>
