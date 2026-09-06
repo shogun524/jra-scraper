@@ -264,11 +264,50 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
     # 100%を上限にキャップし、超えた分は他の馬に配り直す。
     feat_df["pred_top3_norm"] = feat_df.groupby("race_id")["pred_top3"].transform(lambda s: _normalize_capped(s, target_sum=3.0))
 
+    # ------------------------------------------------------------------
+    # 追加ファクター(1着率・3連対率だけでは見えない情報を補う)
+    # ------------------------------------------------------------------
+
+    # 1) 信頼度スコア: この予測がどれだけ確かなデータに基づいているか(0-100)
+    #    出走実績が少ない馬・DBが古い馬は予測の根拠が薄いため、それを明示する。
+    def _confidence(row):
+        score = 0
+        starts = row.get("career_starts") or 0
+        score += min(starts, 15) / 15 * 45           # キャリア実績(最大45点)
+        r5 = row.get("recent5_starts") or 0
+        score += min(r5, 5) / 5 * 30                  # 直近5走が揃っているか(最大30点)
+        apt = row.get("dist_aptitude_starts") or 0
+        score += min(apt, 5) / 5 * 25                 # 同条件での実績(最大25点)
+        return round(score)
+    feat_df["confidence"] = feat_df.apply(_confidence, axis=1)
+
+    # 2) 安定度: 3連対率 ÷ 1着率。値が大きいほど「勝ち切れないが崩れにくい」タイプ、
+    #    小さいほど「勝つか凡走かの一発型」。複勝・ワイド向きか単勝向きかの判断材料。
+    feat_df["stability"] = (feat_df["pred_top3_norm"] / feat_df["pred_win_norm"].clip(lower=1e-6)).round(2)
+
+    # 3) 想定脚質: 過去の4コーナー通過位置(頭数比)から、逃げ/先行/差し/追込を推定。
+    def _style(v):
+        if pd.isna(v):
+            return "不明"
+        if v <= 0.15:
+            return "逃げ"
+        if v <= 0.40:
+            return "先行"
+        if v <= 0.70:
+            return "差し"
+        return "追込"
+    feat_df["running_style"] = feat_df["recent5_style_ratio"].apply(_style)
+
+    # 4) near_top: 1着率上位馬との差。1位との差が小さいほど「混戦」であることを示す。
+    feat_df["gap_from_top"] = feat_df.groupby("race_id")["pred_win_norm"].transform(
+        lambda s: (s.max() - s) * 100).round(1)
+
     if "odds_win" in feat_df.columns:
         feat_df["expected_value"] = (feat_df["pred_win_norm"] * feat_df["odds_win"]).round(2)
 
     out_cols = ["race_id", "race_date", "track_code", "horse", "umaban", "waku", "jockey",
-                "pred_win_norm", "pred_top3_norm", "pred_win_rank", "pred_top3_rank"]
+                "pred_win_norm", "pred_top3_norm", "pred_win_rank", "pred_top3_rank",
+                "confidence", "stability", "running_style", "gap_from_top"]
     for optional_col in ["track_name", "race_number", "race_name", "post_time"]:
         if optional_col in feat_df.columns:
             out_cols.append(optional_col)
