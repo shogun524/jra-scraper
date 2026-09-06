@@ -105,6 +105,16 @@
   .ev-good { background: #E4F1E7; color: var(--good); }
   .ev-mid  { background: #F5EAD0; color: var(--mid); }
   .ev-low  { background: #F5DEDC; color: var(--low); }
+  .na { color: #A9A093; font-size: .72rem; }
+  .gap { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .style { font-weight: 600; }
+  .tag { padding: 2px 7px; border-radius: 4px; font-size: .72rem; font-weight: 600; background: #F0EBDD; color: var(--ink-soft); }
+  .tag-place { background: #E4F1E7; color: var(--good); }
+  .tag-win { background: #F5EAD0; color: var(--mid); }
+  .conf { display: inline-block; min-width: 26px; text-align: center; padding: 2px 5px; border-radius: 4px; font-size: .72rem; font-weight: 700; }
+  .conf-high { background: #E4F1E7; color: var(--good); }
+  .conf-mid { background: #F5EAD0; color: var(--mid); }
+  .conf-low { background: #EFEAE0; color: #948A7B; }
 
   footer {
     max-width: 900px; margin: 16px auto 0; padding: 0 20px;
@@ -112,7 +122,7 @@
   }
 
   @media (max-width: 480px) {
-    table { font-size: .76rem; min-width: 620px; }
+    table { font-size: .74rem; min-width: 840px; }
     th, td { padding: 7px 6px; }
   }
 </style>
@@ -121,7 +131,7 @@
 <header class="top">
   <div class="inner">
     <h1>JRA週末AI予想</h1>
-    <p>最終更新 2026-09-05 08:08 ・ 1着率と3連対率はLightGBMモデルによる推定値 ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイドを見る →</a></p>
+    <p>最終更新 2026-09-06 14:05 (JST) ・ オッズ取得 1/1レース ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイドを見る →</a></p>
   </div>
   <nav class="tabs"><button class="tab-btn active" data-tab="tab-0">新潟<span class="tab-count">1R</span></button></nav>
 </header>
@@ -140,7 +150,8 @@
       <table>
         <thead>
           <tr><th>予想</th><th>枠</th><th>馬番</th><th>馬名</th><th>騎手</th>
-              <th>1着率</th><th>3連対率</th><th>単勝</th><th>期待値</th></tr>
+              <th>1着率</th><th>3連対率</th><th>1位との差</th><th>安定度</th>
+              <th>脚質</th><th>信頼度</th><th>単勝</th><th>期待値</th></tr>
         </thead>
         <tbody>
         <tr class="top-pick">
@@ -151,8 +162,12 @@
           <td>川田</td>
           <td class="pct">15.9%</td>
           <td class="pct">37.1%</td>
+          <td class="gap">—</td>
+          <td><span class="tag tag-win">一発型 2.3</span></td>
+          <td class="style">不明</td>
+          <td><span class="conf conf-low">0</span></td>
           <td>3.3倍</td>
-          <td><span class="badge ev-low">期待値 0.53</span></td>
+          <td><span class="badge ev-low">0.53</span></td>
         </tr>
         <tr class="">
           <td class="rank">2</td>
@@ -162,8 +177,12 @@
           <td>岩田望来</td>
           <td class="pct">11.5%</td>
           <td class="pct">29.0%</td>
+          <td class="gap">-4.4pt</td>
+          <td><span class="tag">2.5</span></td>
+          <td class="style">不明</td>
+          <td><span class="conf conf-low">0</span></td>
           <td>3.6倍</td>
-          <td><span class="badge ev-low">期待値 0.41</span></td>
+          <td><span class="badge ev-low">0.41</span></td>
         </tr>
         <tr class="">
           <td class="rank">3</td>
@@ -173,8 +192,12 @@
           <td>ルメール</td>
           <td class="pct">11.4%</td>
           <td class="pct">29.3%</td>
+          <td class="gap">-4.6pt</td>
+          <td><span class="tag">2.6</span></td>
+          <td class="style">不明</td>
+          <td><span class="conf conf-low">0</span></td>
           <td>4.0倍</td>
-          <td><span class="badge ev-low">期待値 0.45</span></td>
+          <td><span class="badge ev-low">0.45</span></td>
         </tr>
         <tr class="">
           <td class="rank">4</td>
@@ -184,8 +207,12 @@
           <td>戸崎圭太</td>
           <td class="pct">11.4%</td>
           <td class="pct">30.3%</td>
+          <td class="gap">-4.6pt</td>
+          <td><span class="tag">2.7</span></td>
+          <td class="style">不明</td>
+          <td><span class="conf conf-low">0</span></td>
           <td>12.2倍</td>
-          <td><span class="badge ev-good">期待値 1.39</span></td>
+          <td><span class="badge ev-good">1.39</span></td>
         </tr>
         <tr class="">
           <td class="rank">5</td>
@@ -195,8 +222,12 @@
           <td>津村</td>
           <td class="pct">9.9%</td>
           <td class="pct">30.0%</td>
+          <td class="gap">-6.0pt</td>
+          <td><span class="tag">3.0</span></td>
+          <td class="style">不明</td>
+          <td><span class="conf conf-low">0</span></td>
           <td>14.4倍</td>
-          <td><span class="badge ev-good">期待値 1.43</span></td>
+          <td><span class="badge ev-good">1.43</span></td>
         </tr>
         <tr class="">
           <td class="rank">6</td>
@@ -206,8 +237,12 @@
           <td>池添</td>
           <td class="pct">8.7%</td>
           <td class="pct">28.7%</td>
+          <td class="gap">-7.2pt</td>
+          <td><span class="tag">3.3</span></td>
+          <td class="style">不明</td>
+          <td><span class="conf conf-low">0</span></td>
           <td>30.0倍</td>
-          <td><span class="badge ev-good">期待値 2.61</span></td>
+          <td><span class="badge ev-good">2.61</span></td>
         </tr>
         <tr class="">
           <td class="rank">7</td>
@@ -217,8 +252,12 @@
           <td>三浦</td>
           <td class="pct">8.5%</td>
           <td class="pct">26.9%</td>
+          <td class="gap">-7.5pt</td>
+          <td><span class="tag">3.2</span></td>
+          <td class="style">不明</td>
+          <td><span class="conf conf-low">0</span></td>
           <td>16.2倍</td>
-          <td><span class="badge ev-good">期待値 1.37</span></td>
+          <td><span class="badge ev-good">1.37</span></td>
         </tr>
         <tr class="">
           <td class="rank">8</td>
@@ -228,8 +267,12 @@
           <td>田辺</td>
           <td class="pct">8.1%</td>
           <td class="pct">27.2%</td>
+          <td class="gap">-7.8pt</td>
+          <td><span class="tag">3.4</span></td>
+          <td class="style">不明</td>
+          <td><span class="conf conf-low">0</span></td>
           <td>8.3倍</td>
-          <td><span class="badge ev-low">期待値 0.67</span></td>
+          <td><span class="badge ev-low">0.67</span></td>
         </tr>
         <tr class="">
           <td class="rank">9</td>
@@ -239,8 +282,12 @@
           <td>杉原</td>
           <td class="pct">6.8%</td>
           <td class="pct">21.8%</td>
+          <td class="gap">-9.1pt</td>
+          <td><span class="tag">3.2</span></td>
+          <td class="style">不明</td>
+          <td><span class="conf conf-low">0</span></td>
           <td>50.9倍</td>
-          <td><span class="badge ev-good">期待値 3.46</span></td>
+          <td><span class="badge ev-good">3.46</span></td>
         </tr>
         <tr class="">
           <td class="rank">10</td>
@@ -250,8 +297,12 @@
           <td>丸山</td>
           <td class="pct">4.3%</td>
           <td class="pct">22.0%</td>
+          <td class="gap">-11.6pt</td>
+          <td><span class="tag tag-place">複勝向き 5.1</span></td>
+          <td class="style">不明</td>
+          <td><span class="conf conf-low">0</span></td>
           <td>73.2倍</td>
-          <td><span class="badge ev-good">期待値 3.18</span></td>
+          <td><span class="badge ev-good">3.18</span></td>
         </tr>
         <tr class="">
           <td class="rank">11</td>
@@ -261,17 +312,31 @@
           <td>菊沢</td>
           <td class="pct">3.5%</td>
           <td class="pct">17.8%</td>
+          <td class="gap">-12.5pt</td>
+          <td><span class="tag tag-place">複勝向き 5.2</span></td>
+          <td class="style">不明</td>
+          <td><span class="conf conf-low">0</span></td>
           <td>32.1倍</td>
-          <td><span class="badge ev-good">期待値 1.11</span></td>
+          <td><span class="badge ev-good">1.11</span></td>
         </tr></tbody>
       </table>
       </div>
     </article></div>
     </section></main>
 <footer>
-  期待値 = 予測1着確率 × 単勝オッズ。1.0を上回るほど市場価格に対して割安と推定されることを示しますが、
-  的中や回収率のプラスを保証するものではありません(バックテストでは市場を上回るエッジは確認できていません)。
-  馬券の最終判断はご自身でお願いします。枠番の色は実際の帽色に合わせています。
+  <p><strong>各項目の見方</strong></p>
+  <p>
+    <b>1着率 / 3連対率</b>: モデルの推定確率。レース内で合計が100% / 300%になるよう調整。<br>
+    <b>1位との差</b>: 1着率1位の馬との差(pt)。差が小さいレースほど混戦。<br>
+    <b>安定度</b>: 3連対率÷1着率。数値が大きいほど「勝ち切れないが崩れにくい」(複勝・ワイド向き)、
+    小さいほど「勝つか凡走かの一発型」(単勝向き)。<br>
+    <b>脚質</b>: 過去の4コーナー通過位置から推定した逃げ/先行/差し/追込。<br>
+    <b>信頼度</b>: その馬の過去データがどれだけ揃っているか(0-100)。低い馬は予測の根拠が薄いので注意。<br>
+    <b>期待値</b>: 予測1着確率 × 単勝オッズ。オッズ未取得時は「オッズ待ち」と表示。
+  </p>
+  <p>期待値が1.0を上回るほど市場価格に対して割安と推定されますが、的中や回収率のプラスを保証するものでは
+  ありません(バックテストでは市場を上回るエッジは確認できていません)。馬券の最終判断はご自身でお願いします。
+  枠番の色は実際の帽色に合わせています。</p>
 </footer>
 <script>
 document.querySelectorAll('.tab-btn').forEach(btn => {
