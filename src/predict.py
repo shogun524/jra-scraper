@@ -15,6 +15,8 @@ JRA競馬AI - 予測(ランキング出力)
   horse_weight(任意), odds_win(任意, 直前オッズがあれば期待値も計算)
 """
 import sys
+import os
+import json
 import duckdb
 import lightgbm as lgb
 import pandas as pd
@@ -46,6 +48,7 @@ def _normalize_capped(s: pd.Series, target_sum: float, cap: float = 1.0) -> pd.S
     return s
 
 RACE_RESULT = "data/race_result_merged.csv"
+COURSE_STATS_PATH = "data/course_stats.json"
 NUMERIC_FEATURES = [
     "age", "weight_carry", "waku", "umaban", "field_size", "distance", "pace_ratio",
     "recent5_avg_finish", "recent5_winrate", "recent5_top3rate", "recent5_starts",
@@ -173,6 +176,10 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
             # 直近成績だけでなく、キャリア通算成績・距離適性など「この馬固有」の
             # 特徴量はすべて不明(NaN)として扱う。古い時代の数字をそれらしく使うと、
             # 実際は下降傾向の馬を「勝率2割の実力馬」のように誤って高評価してしまう。
+            #
+            # ただし【脚質だけは例外】。勝率・着順は時間とともに変わる「能力・調子」の指標だが、
+            # 脚質(逃げ/先行/差し/追込)は馬の性質でありキャリアを通じて比較的安定するため、
+            # 古いデータからでも参考値として意味がある。表示用に残す。
             row["career_winrate"] = np.nan
             row["career_top3rate"] = np.nan
             row["career_starts"] = 0
@@ -185,10 +192,12 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
             row["recent5_winrate"] = np.nan
             row["recent5_top3rate"] = np.nan
             row["recent5_starts"] = 0
-            row["recent5_style_ratio"] = np.nan
             row["last_race_finish"] = np.nan
             row["distance_change_from_last"] = np.nan
             row["weight_carry_change_from_last"] = np.nan
+            # 脚質のみ、古いデータからでも算出する(モデル入力には使わず表示用)
+            row["recent5_style_ratio"] = np.nan
+            row["style_ratio_display"] = (h["corner4"] / h["field_size"]).mean() if len(h) else np.nan
         else:
             row["career_winrate"] = career["w"]
             row["career_top3rate"] = career["t3"]
@@ -203,6 +212,7 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
             row["recent5_top3rate"] = h["y_top3"].mean() if len(h) else np.nan
             row["recent5_starts"] = len(h)
             row["recent5_style_ratio"] = (h["corner4"] / h["field_size"]).mean() if len(h) else np.nan
+            row["style_ratio_display"] = row["recent5_style_ratio"]
             if len(h):
                 last_row = h.iloc[0]
                 row["last_race_finish"] = last_row["finish"]
@@ -296,18 +306,75 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
         if v <= 0.70:
             return "差し"
         return "追込"
-    feat_df["running_style"] = feat_df["recent5_style_ratio"].apply(_style)
+    feat_df["running_style"] = feat_df["style_ratio_display"].apply(_style)
 
     # 4) near_top: 1着率上位馬との差。1位との差が小さいほど「混戦」であることを示す。
     feat_df["gap_from_top"] = feat_df.groupby("race_id")["pred_win_norm"].transform(
         lambda s: (s.max() - s) * 100).round(1)
+
+    # 5) 展開利: そのレースの脚質構成から、各馬がペースの恩恵を受けやすいかを判定する。
+    #    逃げ馬が多い -> ハイペースになりやすく差し・追込有利
+    #    逃げ馬が少ない -> スロー濃厚で逃げ・先行有利
+    pace_edge = pd.Series("—", index=feat_df.index, dtype=object)
+    for _, idx in feat_df.groupby("race_id").groups.items():
+        g = feat_df.loc[idx]
+        n_front = g["running_style"].isin(["逃げ", "先行"]).sum()
+        n_known = (g["running_style"] != "不明").sum()
+        if n_known < 3:
+            continue
+        front_ratio = n_front / n_known
+        for i, st in g["running_style"].items():
+            if st == "不明":
+                continue
+            if front_ratio >= 0.55:            # 前に行く馬が多い = ハイペース想定
+                pace_edge[i] = "◎" if st in ("差し", "追込") else "△"
+            elif front_ratio <= 0.30:          # 前に行く馬が少ない = スロー想定
+                pace_edge[i] = "◎" if st in ("逃げ", "先行") else "△"
+            else:
+                pace_edge[i] = "○"
+    feat_df["pace_edge"] = pace_edge
+
+    # 6) コース相性: そのコース(競馬場×芝ダ×距離)で、その馬の脚質・枠がどれだけ有利か。
+    #    build_course_stats.py が出力した実データ集計(course_stats.json)を参照する。
+    course_stats = {}
+    if os.path.exists(COURSE_STATS_PATH):
+        with open(COURSE_STATS_PATH, encoding="utf-8") as fp:
+            course_stats = json.load(fp)
+
+    STYLE_KEY = {"逃げ": "nige_top3_pct", "先行": "senko_top3_pct",
+                 "差し": "sashi_top3_pct", "追込": "oikomi_top3_pct"}
+
+    def _course_fit(row):
+        code = str(row.get("track_code")).zfill(2)
+        key = f"{code}_{row.get('surface')}_{int(row['distance'])}" if pd.notna(row.get("distance")) else None
+        st = course_stats.get(key) if key else None
+        if not st:
+            return None
+        scores = []
+        # 脚質の相性: そのコースでの当該脚質の複勝率 ÷ 全脚質平均
+        sk = STYLE_KEY.get(row.get("running_style"))
+        if sk and st.get(sk) is not None:
+            vals = [st[v] for v in STYLE_KEY.values() if st.get(v) is not None]
+            if vals:
+                scores.append(st[sk] / (sum(vals) / len(vals)))
+        # 枠の相性: そのコースでの当該ゾーンの複勝率 ÷ 全ゾーン平均
+        waku = row.get("waku")
+        if pd.notna(waku):
+            zone = "inner_top3_pct" if waku <= 2 else ("outer_top3_pct" if waku >= 7 else "mid_top3_pct")
+            zvals = [st[z] for z in ("inner_top3_pct", "mid_top3_pct", "outer_top3_pct") if st.get(z) is not None]
+            if st.get(zone) is not None and zvals:
+                scores.append(st[zone] / (sum(zvals) / len(zvals)))
+        if not scores:
+            return None
+        return round(sum(scores) / len(scores), 2)
+    feat_df["course_fit"] = feat_df.apply(_course_fit, axis=1)
 
     if "odds_win" in feat_df.columns:
         feat_df["expected_value"] = (feat_df["pred_win_norm"] * feat_df["odds_win"]).round(2)
 
     out_cols = ["race_id", "race_date", "track_code", "horse", "umaban", "waku", "jockey",
                 "pred_win_norm", "pred_top3_norm", "pred_win_rank", "pred_top3_rank",
-                "confidence", "stability", "running_style", "gap_from_top"]
+                "confidence", "stability", "running_style", "gap_from_top", "pace_edge", "course_fit"]
     for optional_col in ["track_name", "race_number", "race_name", "post_time"]:
         if optional_col in feat_df.columns:
             out_cols.append(optional_col)
