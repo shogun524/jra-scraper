@@ -402,9 +402,9 @@ html = f"""<!DOCTYPE html>
   header.top h1 {{ margin: 0 0 4px; font-size: 1.4rem; font-weight: 800; }}
   header.top p {{ margin: 0; font-size: .8rem; color: #CFE3D8; }}
   header.top a {{ color: #F0D896; text-decoration: none; font-size: .82rem; }}
-  main {{ max-width: 900px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: 1fr; gap: 16px; }}
-  @media (min-width: 720px) {{ main {{ grid-template-columns: 1fr 1fr; }} }}
-  .course-card {{ background: #fff; border: 1px solid var(--paper-line); border-radius: 6px; padding: 16px; }}
+  main {{ max-width: 900px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }}
+  @media (min-width: 720px) {{ main {{ grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }} }}
+  .course-card {{ background: #fff; border: 1px solid var(--paper-line); border-radius: 6px; padding: 16px; min-width: 0; overflow: hidden; }}
   .course-card h2 {{ margin: 0 0 8px; font-size: 1.15rem; }}
   .course-svg {{ width: 100%; height: auto; margin-bottom: 10px; }}
   table.course-table {{ width: 100%; border-collapse: collapse; font-size: .82rem; margin-bottom: 10px; }}
@@ -422,7 +422,7 @@ html = f"""<!DOCTYPE html>
 
   .dist-details {{ margin-top: 12px; border-top: 1px solid var(--paper-line); padding-top: 10px; }}
   .dist-details summary {{ cursor: pointer; font-size: .82rem; font-weight: 700; color: var(--turf); }}
-  .dist-scroll {{ overflow-x: auto; margin-top: 10px; }}
+  .dist-scroll {{ overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px; max-width: 100%; }}
   table.dist-table {{ width: 100%; border-collapse: collapse; font-size: .72rem; min-width: 560px; }}
   table.dist-table th {{
     text-align: left; color: var(--ink-soft); font-weight: 500; padding: 5px 6px;
