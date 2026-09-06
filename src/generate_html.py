@@ -9,7 +9,7 @@ data/predictions.csv を読み込み、競馬場ごとのタブ形式で docs/in
 """
 import pandas as pd
 import sys
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 IN_CSV = sys.argv[1] if len(sys.argv) > 1 else "data/predictions.csv"
 OUT_HTML = sys.argv[2] if len(sys.argv) > 2 else "docs/index.html"
@@ -32,7 +32,14 @@ if "track_code" in df.columns:
 else:
     df["track_name"] = "不明"
 df["race_number"] = df.get("race_number", df["race_id"].astype(str).str[-2:].astype(int))
-generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+generated_at = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M")
+# オッズが取れているレースの割合(直前実行で更新されるほど高くなる)
+if "odds_win" in df.columns:
+    n_with_odds = df.groupby("race_id")["odds_win"].apply(lambda s: s.notna().any()).sum()
+    n_races_total = df["race_id"].nunique()
+    odds_status = f"オッズ取得 {n_with_odds}/{n_races_total}レース"
+else:
+    odds_status = "オッズ未取得"
 
 
 def waku_badge(waku):
@@ -58,10 +65,37 @@ def race_card(race_id, g):
         ev_badge = ""
         if pd.notnull(ev):
             cls = "ev-good" if ev >= 1.1 else ("ev-mid" if ev >= 0.9 else "ev-low")
-            ev_badge = f'<span class="badge {cls}">期待値 {ev:.2f}</span>'
+            ev_badge = f'<span class="badge {cls}">{ev:.2f}</span>'
+        else:
+            ev_badge = '<span class="na">オッズ待ち</span>'
         odds = f'{r["odds_win"]:.1f}倍' if pd.notnull(r.get("odds_win")) else "-"
         umaban = int(r["umaban"]) if pd.notnull(r.get("umaban")) else "-"
         rank_cls = "top-pick" if r["pred_win_rank"] == 1 else ""
+
+        # 安定度: 3連対率÷1着率。大きいほど「勝ち切れないが崩れにくい」
+        stab = r.get("stability")
+        if pd.notnull(stab):
+            if stab >= 4.0:
+                stab_html = f'<span class="tag tag-place">複勝向き {stab:.1f}</span>'
+            elif stab <= 2.5:
+                stab_html = f'<span class="tag tag-win">一発型 {stab:.1f}</span>'
+            else:
+                stab_html = f'<span class="tag">{stab:.1f}</span>'
+        else:
+            stab_html = "-"
+
+        # 信頼度: 予測の根拠となる過去データの量(0-100)
+        conf = r.get("confidence")
+        if pd.notnull(conf):
+            conf_cls = "conf-high" if conf >= 70 else ("conf-mid" if conf >= 35 else "conf-low")
+            conf_html = f'<span class="conf {conf_cls}">{int(conf)}</span>'
+        else:
+            conf_html = "-"
+
+        style = r.get("running_style") if pd.notnull(r.get("running_style")) else "-"
+        gap = r.get("gap_from_top")
+        gap_html = "—" if (pd.notnull(gap) and gap == 0) else (f"-{gap:.1f}pt" if pd.notnull(gap) else "-")
+
         rows += f"""
         <tr class="{rank_cls}">
           <td class="rank">{int(r['pred_win_rank'])}</td>
@@ -71,6 +105,10 @@ def race_card(race_id, g):
           <td>{r['jockey']}</td>
           <td class="pct">{r['pred_win_norm']*100:.1f}%</td>
           <td class="pct">{r['pred_top3_norm']*100:.1f}%</td>
+          <td class="gap">{gap_html}</td>
+          <td>{stab_html}</td>
+          <td class="style">{style}</td>
+          <td>{conf_html}</td>
           <td>{odds}</td>
           <td>{ev_badge}</td>
         </tr>"""
@@ -88,7 +126,8 @@ def race_card(race_id, g):
       <table>
         <thead>
           <tr><th>予想</th><th>枠</th><th>馬番</th><th>馬名</th><th>騎手</th>
-              <th>1着率</th><th>3連対率</th><th>単勝</th><th>期待値</th></tr>
+              <th>1着率</th><th>3連対率</th><th>1位との差</th><th>安定度</th>
+              <th>脚質</th><th>信頼度</th><th>単勝</th><th>期待値</th></tr>
         </thead>
         <tbody>{rows}</tbody>
       </table>
@@ -227,6 +266,16 @@ html = f"""<!DOCTYPE html>
   .ev-good {{ background: #E4F1E7; color: var(--good); }}
   .ev-mid  {{ background: #F5EAD0; color: var(--mid); }}
   .ev-low  {{ background: #F5DEDC; color: var(--low); }}
+  .na {{ color: #A9A093; font-size: .72rem; }}
+  .gap {{ color: var(--ink-soft); font-variant-numeric: tabular-nums; }}
+  .style {{ font-weight: 600; }}
+  .tag {{ padding: 2px 7px; border-radius: 4px; font-size: .72rem; font-weight: 600; background: #F0EBDD; color: var(--ink-soft); }}
+  .tag-place {{ background: #E4F1E7; color: var(--good); }}
+  .tag-win {{ background: #F5EAD0; color: var(--mid); }}
+  .conf {{ display: inline-block; min-width: 26px; text-align: center; padding: 2px 5px; border-radius: 4px; font-size: .72rem; font-weight: 700; }}
+  .conf-high {{ background: #E4F1E7; color: var(--good); }}
+  .conf-mid {{ background: #F5EAD0; color: var(--mid); }}
+  .conf-low {{ background: #EFEAE0; color: #948A7B; }}
 
   footer {{
     max-width: 900px; margin: 16px auto 0; padding: 0 20px;
@@ -234,7 +283,7 @@ html = f"""<!DOCTYPE html>
   }}
 
   @media (max-width: 480px) {{
-    table {{ font-size: .76rem; min-width: 620px; }}
+    table {{ font-size: .74rem; min-width: 840px; }}
     th, td {{ padding: 7px 6px; }}
   }}
 </style>
@@ -243,15 +292,25 @@ html = f"""<!DOCTYPE html>
 <header class="top">
   <div class="inner">
     <h1>JRA週末AI予想</h1>
-    <p>最終更新 {generated_at} ・ 1着率と3連対率はLightGBMモデルによる推定値 ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイドを見る →</a></p>
+    <p>最終更新 {generated_at} (JST) ・ {odds_status} ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイドを見る →</a></p>
   </div>
   <nav class="tabs">{tab_buttons}</nav>
 </header>
 <main>{tab_panels}</main>
 <footer>
-  期待値 = 予測1着確率 × 単勝オッズ。1.0を上回るほど市場価格に対して割安と推定されることを示しますが、
-  的中や回収率のプラスを保証するものではありません(バックテストでは市場を上回るエッジは確認できていません)。
-  馬券の最終判断はご自身でお願いします。枠番の色は実際の帽色に合わせています。
+  <p><strong>各項目の見方</strong></p>
+  <p>
+    <b>1着率 / 3連対率</b>: モデルの推定確率。レース内で合計が100% / 300%になるよう調整。<br>
+    <b>1位との差</b>: 1着率1位の馬との差(pt)。差が小さいレースほど混戦。<br>
+    <b>安定度</b>: 3連対率÷1着率。数値が大きいほど「勝ち切れないが崩れにくい」(複勝・ワイド向き)、
+    小さいほど「勝つか凡走かの一発型」(単勝向き)。<br>
+    <b>脚質</b>: 過去の4コーナー通過位置から推定した逃げ/先行/差し/追込。<br>
+    <b>信頼度</b>: その馬の過去データがどれだけ揃っているか(0-100)。低い馬は予測の根拠が薄いので注意。<br>
+    <b>期待値</b>: 予測1着確率 × 単勝オッズ。オッズ未取得時は「オッズ待ち」と表示。
+  </p>
+  <p>期待値が1.0を上回るほど市場価格に対して割安と推定されますが、的中や回収率のプラスを保証するものでは
+  ありません(バックテストでは市場を上回るエッジは確認できていません)。馬券の最終判断はご自身でお願いします。
+  枠番の色は実際の帽色に合わせています。</p>
 </footer>
 <script>
 document.querySelectorAll('.tab-btn').forEach(btn => {{
