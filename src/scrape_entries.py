@@ -42,7 +42,19 @@ COLUMN_MAP = {
 
 def fetch_shutuba_page(page, race_id: str) -> str:
     page.goto(SHUTUBA_URL.format(race_id=race_id), timeout=30000, wait_until="domcontentloaded")
-    page.wait_for_timeout(1500)
+    # オッズはページ読み込み後にJavaScriptで差し込まれる。固定待機だと描画が遅いケース
+    # (後半レースなど)で取りこぼすため、実数のオッズが現れるまで最大8秒待つ。
+    try:
+        page.wait_for_function(
+            """() => {
+                const el = document.querySelector('.Shutuba_Table') || document.body;
+                return /\\d+\\.\\d/.test(el.innerText);
+            }""",
+            timeout=8000,
+        )
+    except Exception:
+        pass  # 時間切れでも、取れる範囲でパースを続ける
+    page.wait_for_timeout(800)
     return page.content()
 
 
@@ -202,7 +214,11 @@ def scrape_date(date_str: str, out_csv: str):
             try:
                 html = fetch_shutuba_page(page, race_id)
                 rows = parse_shutuba(html, race_id, date_str)
-                print(f"  [{race_id}] {len(rows)}頭")
+                n_odds = sum(1 for r in rows if r.get("odds_win") is not None)
+                rno = int(race_id[-2:])
+                ptime = rows[0].get("post_time") if rows else None
+                flag = "" if n_odds else "  ← オッズ取得できず"
+                print(f"  [{race_id}] {rno}R 発走{ptime or '?'} {len(rows)}頭 オッズ{n_odds}頭{flag}")
                 all_rows.extend(rows)
             except Exception as e:
                 if not first_error_shown:
