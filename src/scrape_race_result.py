@@ -63,6 +63,44 @@ def _normalize_col(c) -> str:
     return re.sub(r"[\s\u3000]+", "", str(c))
 
 
+def parse_corner_section(html: str) -> dict:
+    """ページ下部の「コーナー通過順位」セクションから、馬番→各コーナー通過順位を復元する。
+
+    結果テーブルの「通過」列が空のレースでも、このセクションには
+      3コーナー  2(1,4)(3,8)(5,6)9(10,11)7
+    のような形式で全馬の通過順が載っている。カッコは「横並び(ほぼ同位置)」を意味する。
+    戻り値: {馬番: {"1コーナー": 順位, ... }}
+    """
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    text = soup.get_text("\n", strip=True)
+
+    result = {}
+    for corner_no in (1, 2, 3, 4):
+        # 改行をまたがないよう [^\S\n](改行以外の空白)に限定する。
+        # \s を使うと空欄の「1コーナー」が次行「3コーナー」の中身まで飲み込んでしまう。
+        m = re.search(rf"{corner_no}コーナー[ \t\u3000]*([0-9()（）,，、=\*\-][0-9()（）,，、=\*\- \t\u3000]*)", text)
+        if not m:
+            continue
+        seq = m.group(1).strip()
+        if not seq or not re.search(r"\d", seq):
+            continue
+        # カッコで括られたグループは同順位扱い。左から順に順位を振る。
+        pos = 0
+        # "(1,4)" や "1" を順に取り出す
+        for token in re.finditer(r"\(([^)]*)\)|(\d+)", seq):
+            if token.group(1) is not None:
+                nums = re.findall(r"\d+", token.group(1))
+            else:
+                nums = [token.group(2)]
+            if not nums:
+                continue
+            pos += 1
+            for n in nums:
+                result.setdefault(int(n), {})[f"{corner_no}コーナー"] = pos
+    return result
+
+
 def parse_race_result(html: str, race_id: str) -> list[dict]:
     """結果テーブルをDataFrame化 -> dictのリストへ"""
     import io
@@ -78,6 +116,7 @@ def parse_race_result(html: str, race_id: str) -> list[dict]:
 
     df = result_table.rename(columns={c: COLUMN_MAP.get(_normalize_col(c), _normalize_col(c)) for c in result_table.columns})
     cond = parse_race_conditions(html)
+    corner_section = parse_corner_section(html)
 
     rows = []
     for _, r in df.iterrows():
@@ -117,6 +156,13 @@ def parse_race_result(html: str, race_id: str) -> list[dict]:
             parts = str(passage).split("-")
             for i, key in enumerate(["1コーナー", "2コーナー", "3コーナー", "4コーナー"]):
                 row[key] = parts[i] if i < len(parts) else None
+        else:
+            # 結果テーブルに通過列が無い/空のレースは、ページ下部の
+            # 「コーナー通過順位」セクションから復元する(これが無いと脚質が算出できない)
+            umaban = row.get("馬番")
+            if pd.notna(umaban) and corner_section:
+                for key, val in corner_section.get(int(umaban), {}).items():
+                    row[key] = val
         rows.append(row)
     return rows
 
