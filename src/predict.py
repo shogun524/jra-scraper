@@ -276,105 +276,110 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
 
     # ------------------------------------------------------------------
     # 追加ファクター(1着率・3連対率だけでは見えない情報を補う)
+    #
+    # 【設計方針】各馬の過去成績に依存するファクター(脚質・展開・信頼度)は、
+    # DBに載っていない馬・DBが古い馬が多いと大半が「不明」になって役に立たなかった。
+    # そのため、出馬表とオッズ・コース集計だけで必ず算出できるものに絞っている。
     # ------------------------------------------------------------------
 
-    # 1) 信頼度スコア: この予測がどれだけ確かなデータに基づいているか(0-100)
-    #    出走実績が少ない馬・DBが古い馬は予測の根拠が薄いため、それを明示する。
-    def _confidence(row):
-        score = 0
-        starts = row.get("career_starts") or 0
-        score += min(starts, 15) / 15 * 45           # キャリア実績(最大45点)
-        r5 = row.get("recent5_starts") or 0
-        score += min(r5, 5) / 5 * 30                  # 直近5走が揃っているか(最大30点)
-        apt = row.get("dist_aptitude_starts") or 0
-        score += min(apt, 5) / 5 * 25                 # 同条件での実績(最大25点)
-        return round(score)
-    feat_df["confidence"] = feat_df.apply(_confidence, axis=1)
-
-    # 2) 安定度: 3連対率 ÷ 1着率。値が大きいほど「勝ち切れないが崩れにくい」タイプ、
+    # 1) 安定度: 3連対率 ÷ 1着率。値が大きいほど「勝ち切れないが崩れにくい」タイプ、
     #    小さいほど「勝つか凡走かの一発型」。複勝・ワイド向きか単勝向きかの判断材料。
     feat_df["stability"] = (feat_df["pred_top3_norm"] / feat_df["pred_win_norm"].clip(lower=1e-6)).round(2)
 
-    # 3) 想定脚質: 過去の4コーナー通過位置(頭数比)から、逃げ/先行/差し/追込を推定。
-    def _style(v):
-        if pd.isna(v):
-            return "不明"
-        if v <= 0.15:
-            return "逃げ"
-        if v <= 0.40:
-            return "先行"
-        if v <= 0.70:
-            return "差し"
-        return "追込"
-    feat_df["running_style"] = feat_df["style_ratio_display"].apply(_style)
-
-    # 4) near_top: 1着率上位馬との差。1位との差が小さいほど「混戦」であることを示す。
+    # 2) 1位との差: 1着率1位の馬との差(pt)。小さいレースほど混戦。
     feat_df["gap_from_top"] = feat_df.groupby("race_id")["pred_win_norm"].transform(
         lambda s: (s.max() - s) * 100).round(1)
 
-    # 5) 展開利: そのレースの脚質構成から、各馬がペースの恩恵を受けやすいかを判定する。
-    #    逃げ馬が多い -> ハイペースになりやすく差し・追込有利
-    #    逃げ馬が少ない -> スロー濃厚で逃げ・先行有利
-    pace_edge = pd.Series("—", index=feat_df.index, dtype=object)
-    for _, idx in feat_df.groupby("race_id").groups.items():
-        g = feat_df.loc[idx]
-        n_front = g["running_style"].isin(["逃げ", "先行"]).sum()
-        n_known = (g["running_style"] != "不明").sum()
-        if n_known < 3:
-            continue
-        front_ratio = n_front / n_known
-        for i, st in g["running_style"].items():
-            if st == "不明":
-                continue
-            if front_ratio >= 0.55:            # 前に行く馬が多い = ハイペース想定
-                pace_edge[i] = "◎" if st in ("差し", "追込") else "△"
-            elif front_ratio <= 0.30:          # 前に行く馬が少ない = スロー想定
-                pace_edge[i] = "◎" if st in ("逃げ", "先行") else "△"
-            else:
-                pace_edge[i] = "○"
-    feat_df["pace_edge"] = pace_edge
+    # 3) 市場との乖離: AIの評価順位と、オッズから決まる人気順位の差。
+    #    プラス = 市場より AI が高く買っている(妙味)、マイナス = 過剰人気の疑い。
+    #    馬券的に一番使える指標なので、オッズが取れているときは必ず出す。
+    if "odds_win" in feat_df.columns:
+        feat_df["market_rank"] = feat_df.groupby("race_id")["odds_win"].rank(
+            ascending=True, method="min")
+        feat_df["rank_diff"] = (feat_df["market_rank"] - feat_df["pred_win_rank"])
+        feat_df.loc[feat_df["odds_win"].isna(), ["market_rank", "rank_diff"]] = np.nan
+    else:
+        feat_df["market_rank"] = np.nan
+        feat_df["rank_diff"] = np.nan
 
-    # 6) コース相性: そのコース(競馬場×芝ダ×距離)で、その馬の脚質・枠がどれだけ有利か。
-    #    build_course_stats.py が出力した実データ集計(course_stats.json)を参照する。
+    # 4) 枠順評価: そのコース(競馬場×芝ダ×距離)の実データで、その枠がどれだけ有利か。
+    #    build_course_stats.py が出力した94コース分の集計(course_stats.json)を参照。
+    #    1.00が平均、1.10なら平均より1割有利。脚質に依存しないので必ず算出できる。
     course_stats = {}
     if os.path.exists(COURSE_STATS_PATH):
         with open(COURSE_STATS_PATH, encoding="utf-8") as fp:
             course_stats = json.load(fp)
 
-    STYLE_KEY = {"逃げ": "nige_top3_pct", "先行": "senko_top3_pct",
-                 "差し": "sashi_top3_pct", "追込": "oikomi_top3_pct"}
-
-    def _course_fit(row):
+    def _waku_fit(row):
+        if pd.isna(row.get("distance")) or pd.isna(row.get("waku")):
+            return None
         code = str(row.get("track_code")).zfill(2)
-        key = f"{code}_{row.get('surface')}_{int(row['distance'])}" if pd.notna(row.get("distance")) else None
-        st = course_stats.get(key) if key else None
+        st = course_stats.get(f"{code}_{row.get('surface')}_{int(row['distance'])}")
         if not st:
             return None
-        scores = []
-        # 脚質の相性: そのコースでの当該脚質の複勝率 ÷ 全脚質平均
-        sk = STYLE_KEY.get(row.get("running_style"))
-        if sk and st.get(sk) is not None:
-            vals = [st[v] for v in STYLE_KEY.values() if st.get(v) is not None]
-            if vals:
-                scores.append(st[sk] / (sum(vals) / len(vals)))
-        # 枠の相性: そのコースでの当該ゾーンの複勝率 ÷ 全ゾーン平均
-        waku = row.get("waku")
-        if pd.notna(waku):
-            zone = "inner_top3_pct" if waku <= 2 else ("outer_top3_pct" if waku >= 7 else "mid_top3_pct")
-            zvals = [st[z] for z in ("inner_top3_pct", "mid_top3_pct", "outer_top3_pct") if st.get(z) is not None]
-            if st.get(zone) is not None and zvals:
-                scores.append(st[zone] / (sum(zvals) / len(zvals)))
-        if not scores:
+        waku = row["waku"]
+        zone = "inner_top3_pct" if waku <= 2 else ("outer_top3_pct" if waku >= 7 else "mid_top3_pct")
+        zvals = [st[z] for z in ("inner_top3_pct", "mid_top3_pct", "outer_top3_pct") if st.get(z) is not None]
+        if st.get(zone) is None or not zvals:
             return None
-        return round(sum(scores) / len(scores), 2)
-    feat_df["course_fit"] = feat_df.apply(_course_fit, axis=1)
+        return round(st[zone] / (sum(zvals) / len(zvals)), 2)
+    feat_df["waku_fit"] = feat_df.apply(_waku_fit, axis=1)
+
+    # 5) AI指数: 1着率と3連対率をまとめた0-100のスコア。
+    #    レース内で最も評価が高い馬を100として相対化するので、レース間でも読みやすい。
+    #    1着率を重め(7:3)に配分し、勝ち負けの評価を主軸にする。
+    feat_df["ai_score"] = feat_df["pred_win_norm"] * 0.7 + (feat_df["pred_top3_norm"] / 3) * 0.3
+    feat_df["ai_score"] = feat_df.groupby("race_id")["ai_score"].transform(
+        lambda s: s / s.max() * 100).round(0)
+
+    # 6) 印: 予想順位を競馬新聞でおなじみの印に変換(◎本命 ○対抗 ▲単穴 △連下)。
+    MARKS = {1: "◎", 2: "○", 3: "▲", 4: "△", 5: "△"}
+    feat_df["mark"] = feat_df["pred_win_rank"].map(MARKS).fillna("")
+
+    # 7) 妙味判定: 期待値をもとに「買える/妥当/過剰人気」を一言で示す。
+    #    オッズが取れていないレースでは空欄になる。
+    def _value_tag(ev):
+        if pd.isna(ev):
+            return ""
+        if ev >= 1.3:
+            return "妙味大"
+        if ev >= 1.0:
+            return "妙味あり"
+        if ev >= 0.75:
+            return "妥当"
+        return "過剰人気"
+    # expected_value はこの後で計算されるため、あとでまとめて付与する
 
     if "odds_win" in feat_df.columns:
         feat_df["expected_value"] = (feat_df["pred_win_norm"] * feat_df["odds_win"]).round(2)
+        feat_df["value_tag"] = feat_df["expected_value"].apply(_value_tag)
+    else:
+        feat_df["value_tag"] = ""
+
+    # 8) レース単位の情報: 混戦度と、そのコースにおける1番人気の信頼度。
+    #    上位人気で堅く収まりやすいレースか、荒れやすいレースかの目安になる。
+    #    混戦度 = 1着率1位と3位の差(pt)。差が小さいほど混戦。
+    def _competitiveness(s):
+        top = s.nlargest(3)
+        if len(top) < 3:
+            return np.nan
+        return round((top.iloc[0] - top.iloc[2]) * 100, 1)
+    comp = feat_df.groupby("race_id")["pred_win_norm"].transform(_competitiveness)
+    feat_df["race_competitiveness"] = comp
+
+    def _course_fav(row):
+        if pd.isna(row.get("distance")):
+            return None
+        code = str(row.get("track_code")).zfill(2)
+        st = course_stats.get(f"{code}_{row.get('surface')}_{int(row['distance'])}")
+        return st.get("fav_win_pct") if st else None
+    feat_df["course_fav_win_pct"] = feat_df.apply(_course_fav, axis=1)
 
     out_cols = ["race_id", "race_date", "track_code", "horse", "umaban", "waku", "jockey",
                 "pred_win_norm", "pred_top3_norm", "pred_win_rank", "pred_top3_rank",
-                "confidence", "stability", "running_style", "gap_from_top", "pace_edge", "course_fit"]
+                "mark", "ai_score", "stability", "gap_from_top",
+                "rank_diff", "market_rank", "waku_fit", "value_tag",
+                "race_competitiveness", "course_fav_win_pct"]
     for optional_col in ["track_name", "race_number", "race_name", "post_time"]:
         if optional_col in feat_df.columns:
             out_cols.append(optional_col)
