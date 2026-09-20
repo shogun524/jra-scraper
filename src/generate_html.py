@@ -84,25 +84,41 @@ def race_card(race_id, g):
         else:
             stab_html = "-"
 
-        # 信頼度: 予測の根拠となる過去データの量(0-100)
-        conf = r.get("confidence")
-        if pd.notnull(conf):
-            conf_cls = "conf-high" if conf >= 70 else ("conf-mid" if conf >= 35 else "conf-low")
-            conf_html = f'<span class="conf {conf_cls}">{int(conf)}</span>'
+        # 市場との乖離: 人気順位 - AI評価順位。プラスなら市場より高評価=妙味
+        rd = r.get("rank_diff")
+        if pd.notnull(rd):
+            rd = int(rd)
+            if rd >= 3:
+                rd_html = f'<span class="rd rd-good">+{rd}</span>'
+            elif rd <= -3:
+                rd_html = f'<span class="rd rd-bad">{rd}</span>'
+            else:
+                rd_html = f'<span class="rd">{rd:+d}</span>'
         else:
-            conf_html = "-"
+            rd_html = "-"
 
-        style = r.get("running_style") if pd.notnull(r.get("running_style")) else "-"
-        pace = r.get("pace_edge") if pd.notnull(r.get("pace_edge")) else "—"
-        pace_cls = {"◎": "pace-good", "○": "pace-mid", "△": "pace-bad"}.get(pace, "")
-        pace_html = f'<span class="pace {pace_cls}">{pace}</span>'
+        # AI指数(レース内トップを100とした相対スコア)
+        ai = r.get("ai_score")
+        ai_html = f'<span class="ai">{int(ai)}</span>' if pd.notnull(ai) else "-"
 
-        cf = r.get("course_fit")
-        if pd.notnull(cf):
-            cf_cls = "cf-good" if cf >= 1.08 else ("cf-bad" if cf <= 0.93 else "")
-            cf_html = f'<span class="cf {cf_cls}">{cf:.2f}</span>'
+        # 印(◎○▲△)
+        mk = r.get("mark")
+        mk = mk if isinstance(mk, str) else ""
+        mk_html = f'<span class="mark">{mk}</span>' if mk else ""
+
+        # 妙味判定
+        vt = r.get("value_tag")
+        vt = vt if isinstance(vt, str) else ""
+        VT_CLS = {"妙味大": "vt-big", "妙味あり": "vt-ok", "妥当": "vt-mid", "過剰人気": "vt-bad"}
+        vt_html = f'<span class="vt {VT_CLS.get(vt, "")}">{vt}</span>' if vt else "-"
+
+        # 枠順評価(コース実データ、平均=1.00)
+        wf = r.get("waku_fit")
+        if pd.notnull(wf):
+            wf_cls = "cf-good" if wf >= 1.08 else ("cf-bad" if wf <= 0.93 else "")
+            wf_html = f'<span class="cf {wf_cls}">{wf:.2f}</span>'
         else:
-            cf_html = "-"
+            wf_html = "-"
 
         gap = r.get("gap_from_top")
         gap_html = "—" if (pd.notnull(gap) and gap == 0) else (f"-{gap:.1f}pt" if pd.notnull(gap) else "-")
@@ -116,14 +132,15 @@ def race_card(race_id, g):
           <td>{r['jockey']}</td>
           <td class="pct">{r['pred_win_norm']*100:.1f}%</td>
           <td class="pct">{r['pred_top3_norm']*100:.1f}%</td>
+          <td>{mk_html}</td>
+          <td>{ai_html}</td>
           <td class="gap">{gap_html}</td>
           <td>{stab_html}</td>
-          <td class="style">{style}</td>
-          <td>{pace_html}</td>
-          <td>{cf_html}</td>
-          <td>{conf_html}</td>
+          <td>{wf_html}</td>
           <td>{odds}</td>
+          <td>{rd_html}</td>
           <td>{ev_badge}</td>
+          <td>{vt_html}</td>
         </tr>"""
 
     return f"""
@@ -139,8 +156,9 @@ def race_card(race_id, g):
       <table>
         <thead>
           <tr><th>予想</th><th>枠</th><th>馬番</th><th>馬名</th><th>騎手</th>
-              <th>1着率</th><th>3連対率</th><th>1位との差</th><th>安定度</th>
-              <th>脚質</th><th>展開</th><th>コース<br>相性</th><th>信頼度</th><th>単勝</th><th>期待値</th></tr>
+              <th>1着率</th><th>3連対率</th><th>印</th><th>AI<br>指数</th>
+              <th>1位との差</th><th>安定度</th><th>枠順<br>評価</th>
+              <th>単勝</th><th>人気との<br>乖離</th><th>期待値</th><th>妙味</th></tr>
         </thead>
         <tbody>{rows}</tbody>
       </table>
@@ -289,10 +307,18 @@ html = f"""<!DOCTYPE html>
   .conf-high {{ background: #E4F1E7; color: var(--good); }}
   .conf-mid {{ background: #F5EAD0; color: var(--mid); }}
   .conf-low {{ background: #EFEAE0; color: #948A7B; }}
-  .pace {{ font-weight: 700; font-size: .9rem; }}
-  .pace-good {{ color: var(--good); }}
-  .pace-mid {{ color: var(--ink-soft); }}
-  .pace-bad {{ color: #B0433A; }}
+  .mark {{ font-size: 1.05rem; font-weight: 700; color: var(--turf); }}
+  .ai {{ font-variant-numeric: tabular-nums; font-weight: 700; color: var(--turf); }}
+  .vt {{ padding: 2px 7px; border-radius: 4px; font-size: .72rem; font-weight: 700; white-space: nowrap; }}
+  .vt-big {{ background: #DCEFE2; color: #1F7A46; }}
+  .vt-ok {{ background: #E9F2E4; color: #4A7A2E; }}
+  .vt-mid {{ background: #F0EBDD; color: #6B5F4D; }}
+  .vt-bad {{ background: #F5DEDC; color: #B0433A; }}
+  .rd {{ font-variant-numeric: tabular-nums; font-weight: 700; }}
+  .rd-good {{ color: var(--good); }}
+  .rd-bad {{ color: #B0433A; }}
+  .muted {{ color: #A9A093; }}
+  .wd-warn {{ color: #B0433A; font-weight: 700; }}
   .cf {{ font-variant-numeric: tabular-nums; font-weight: 600; }}
   .cf-good {{ color: var(--good); }}
   .cf-bad {{ color: #B0433A; }}
@@ -324,12 +350,12 @@ html = f"""<!DOCTYPE html>
     <b>1位との差</b>: 1着率1位の馬との差(pt)。差が小さいレースほど混戦。<br>
     <b>安定度</b>: 3連対率÷1着率。数値が大きいほど「勝ち切れないが崩れにくい」(複勝・ワイド向き)、
     小さいほど「勝つか凡走かの一発型」(単勝向き)。<br>
-    <b>脚質</b>: 過去の4コーナー通過位置から推定した逃げ/先行/差し/追込。<br>
-    <b>展開</b>: そのレースの脚質構成から想定されるペースで恩恵を受けるか。◎=恩恵大、○=標準、△=不利。
-    逃げ・先行馬が多ければハイペース想定で差し・追込に◎、少なければスロー想定で前の馬に◎。<br>
-    <b>コース相性</b>: そのコース(競馬場×芝ダ×距離)の過去実データで、その馬の脚質・枠がどれだけ有利か。
-    1.00が平均、1.10なら平均より1割有利。<br>
-    <b>信頼度</b>: その馬の過去データがどれだけ揃っているか(0-100)。低い馬は予測の根拠が薄いので注意。<br>
+    <b>印</b>: AI評価順の◎本命 ○対抗 ▲単穴 △連下。<br>
+    <b>AI指数</b>: 1着率と3連対率をまとめた総合スコア。レース内トップを100として相対化。<br>
+    <b>枠順評価</b>: そのコース(競馬場×芝ダ×距離)の過去実データで、その枠がどれだけ有利か。1.00が平均。<br>
+    <b>人気との乖離</b>: 「人気順位 − AI評価順位」。プラスならAIが市場より高く買っている(妙味)、
+    マイナスなら過剰人気の疑い。<br>
+    <b>妙味</b>: 期待値をもとにした一言判定(妙味大 / 妙味あり / 妥当 / 過剰人気)。<br>
     <b>期待値</b>: 予測1着確率 × 単勝オッズ。オッズ未取得時は「オッズ待ち」と表示。
   </p>
   <p>期待値が1.0を上回るほど市場価格に対して割安と推定されますが、的中や回収率のプラスを保証するものでは
