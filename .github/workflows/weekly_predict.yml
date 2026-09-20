@@ -2,22 +2,9 @@ name: JRA週末AI予測 自動更新
 
 on:
   schedule:
-    # JST 土・日 の 朝7:00 / 9:30 / 11:00 / 12:30 / 14:00 / 15:30 に実行
-    # (UTC では前日の 22:00 と、当日の 0:30 / 2:00 / 3:30 / 5:00 / 6:30)
-    # 朝7時はオッズ未確定のことが多いため、レース当日の日中も繰り返し実行して
-    # 最新オッズ・馬体重を反映した予測に更新していく。
-    - cron: "0 22 * * 5,6"     # JST 土日 7:00
-    - cron: "30 0 * * 6,0"     # JST 土日 9:30
-    - cron: "0 2 * * 6,0"      # JST 土日 11:00
-    - cron: "30 3 * * 6,0"     # JST 土日 12:30
-    - cron: "0 5 * * 6,0"      # JST 土日 14:00
-    - cron: "30 6 * * 6,0"     # JST 土日 15:30
+    # JST土曜7:00 / 日曜7:00 に実行 (UTC 22:00 金/土)
+    - cron: "0 22 * * 5,6"
   workflow_dispatch: {}
-
-# 同じワークフローが重なった場合は、後から起動したほう(=より新しいオッズ)を優先する
-concurrency:
-  group: jra-predict
-  cancel-in-progress: true
 
 jobs:
   predict:
@@ -49,27 +36,14 @@ jobs:
         run: gh release download data-v1 --pattern "race_result_merged.csv" --dir data --clobber
 
       - name: 出馬表スクレイピング
-        run: python src/scrape_entries.py ${{ steps.today.outputs.date }} --out data/entries_this_week.csv
-
-      - name: 【デバッグ用】出馬表スクレイパーの診断(1レース分)
-        if: always()
         run: |
-          RACE_ID=$(python -c "import pandas as pd; df=pd.read_csv('data/entries_this_week.csv'); print(df['race_id'].iloc[0])" 2>/dev/null || echo "")
-          if [ -n "$RACE_ID" ]; then
-            python src/scrape_entries.py --diagnose "$RACE_ID" > data/diagnose_output.txt 2>&1 || true
-          fi
-
-      - name: 【デバッグ用】オッズ取得状況の診断
-        if: always()
-        run: python src/diagnose_odds.py data/entries_this_week.csv > data/diagnose_odds.txt 2>&1 || true
+          python src/scrape_entries.py ${{ steps.today.outputs.date }} --out data/entries_this_week.csv 2>&1 | tee data/scrape_log.txt
 
       - name: AI予測を実行
         run: python src/predict.py data/entries_this_week.csv
 
       - name: ダッシュボードHTML生成
-        run: |
-          python src/generate_html.py data/predictions.csv docs/index.html
-          python src/generate_course_guide.py
+        run: python src/generate_html.py data/predictions.csv docs/index.html
 
       - name: 中間ファイルをダウンロードできるように保存(デバッグ用)
         if: always()
@@ -79,9 +53,7 @@ jobs:
           path: |
             data/entries_this_week.csv
             data/predictions.csv
-            data/diagnose_output.txt
-            data/diagnose_odds.txt
-            data/diagnose_shutuba_screenshot.png
+            data/scrape_log.txt
           retention-days: 7
           if-no-files-found: ignore
 
