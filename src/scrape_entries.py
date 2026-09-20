@@ -23,6 +23,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(__file__))
 from scrape_race_result import _normalize_col, parse_race_conditions
 from scrape_race_ids import get_race_ids_for_date, UA
+from fetch_odds import fetch_odds
 
 SHUTUBA_URL = "https://race.netkeiba.com/race/shutuba.html?race_id={race_id}"
 TRACK_NAMES = {
@@ -172,10 +173,19 @@ def diagnose(race_id: str):
         page.wait_for_timeout(2000)
         html = page.content()
         page.screenshot(path="data/diagnose_shutuba_screenshot.png", full_page=True)
+        # オッズAPIの応答も確認する(オッズが取れない原因の切り分け用)
+        api_odds = fetch_odds(page, race_id)
         browser.close()
 
     print(f"HTML長: {len(html)} 文字")
     print("data/diagnose_shutuba_screenshot.png にスクリーンショットを保存しました")
+    print(f"\n=== オッズAPI ===")
+    if api_odds:
+        print(f"取得成功: {len(api_odds)}頭分")
+        for u in sorted(api_odds):
+            print(f"  馬番{u}: {api_odds[u]}倍")
+    else:
+        print("取得できず(上のログに理由が出ています)")
 
     import io
     tables = pd.read_html(io.StringIO(html))
@@ -214,6 +224,18 @@ def scrape_date(date_str: str, out_csv: str):
             try:
                 html = fetch_shutuba_page(page, race_id)
                 rows = parse_shutuba(html, race_id, date_str)
+
+                # オッズは出馬表HTMLには入っておらず("---.-"のまま)、
+                # JavaScriptが別APIから差し込む仕様。そのためAPIを直接叩いて補完する。
+                api_odds = fetch_odds(page, race_id)
+                if api_odds:
+                    for r in rows:
+                        u = r.get("umaban")
+                        if u is not None and not pd.isna(u):
+                            v = api_odds.get(int(u))
+                            if v is not None:
+                                r["odds_win"] = v
+
                 n_odds = sum(1 for r in rows if r.get("odds_win") is not None)
                 rno = int(race_id[-2:])
                 ptime = rows[0].get("post_time") if rows else None
