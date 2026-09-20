@@ -254,9 +254,24 @@ def scrape_date(date_str: str, out_csv: str):
 
     if all_rows:
         pd.DataFrame(all_rows).to_csv(out_csv, index=False)
-        print(f"\n合計 {len(all_rows)}頭分を {out_csv} へ出力しました")
-    else:
-        print("\n0頭でした。出馬表がまだ公開されていないか、パースに失敗しています。--diagnose で確認してください。")
+        n_odds_rows = sum(1 for r in all_rows if r.get("odds_win") is not None)
+        print(f"\n合計 {len(all_rows)}頭分を {out_csv} へ出力しました"
+              f"(うちオッズ取得済み {n_odds_rows}頭)")
+        return 0
+
+    # ここから先は「出馬表が1頭も取れなかった」ケース。
+    # 後続の予測ステップが FileNotFoundError で落ちると原因が分かりにくいので、
+    # ここで理由を明示して終了コードを分ける。
+    if not race_ids:
+        # その日はJRA開催がない(平日など)。異常ではないので正常終了扱いにし、
+        # 呼び出し側(ワークフロー)が後続処理をスキップできるようにする。
+        print(f"\n{date_str} はJRAの開催がありません。処理をスキップします。")
+        return 2
+
+    print(f"\n{len(race_ids)}レース見つかりましたが、出馬表を1頭も取得できませんでした。")
+    print("考えられる原因: 出馬表がまだ公開されていない / ページ構造の変更 / アクセス制限")
+    print(f"次のコマンドで詳しく確認できます: python src/scrape_entries.py --diagnose {race_ids[0]}")
+    return 1
 
 
 if __name__ == "__main__":
@@ -269,6 +284,7 @@ if __name__ == "__main__":
     if args.diagnose:
         diagnose(args.diagnose)
     elif args.date:
-        scrape_date(args.date, args.out)
+        # 終了コード: 0=成功 / 1=取得失敗(要調査) / 2=その日は開催なし(正常)
+        sys.exit(scrape_date(args.date, args.out))
     else:
         print(__doc__)
