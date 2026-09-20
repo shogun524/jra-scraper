@@ -2,9 +2,23 @@ name: JRA週末AI予測 自動更新
 
 on:
   schedule:
-    # JST土曜7:00 / 日曜7:00 に実行 (UTC 22:00 金/土)
-    - cron: "0 22 * * 5,6"
+    # JSTの土・日・月(祝日開催がある)の 朝7:00 / 9:30 / 11:00 / 12:30 / 14:00 / 15:30
+    # UTCでは前日の22:00と当日の0:30/2:00/3:30/5:00/6:30にあたる。
+    # 朝はオッズ未確定のことが多いため、当日の日中も繰り返し実行して
+    # 最新オッズを反映した予測に更新していく。
+    # 開催がない日に動いても、スクレイピングが終了コード2で正常スキップする。
+    - cron: "0 22 * * 5,6,0"    # JST 土日月 7:00
+    - cron: "30 0 * * 6,0,1"    # JST 土日月 9:30
+    - cron: "0 2 * * 6,0,1"     # JST 土日月 11:00
+    - cron: "30 3 * * 6,0,1"    # JST 土日月 12:30
+    - cron: "0 5 * * 6,0,1"     # JST 土日月 14:00
+    - cron: "30 6 * * 6,0,1"    # JST 土日月 15:30
   workflow_dispatch: {}
+
+# 実行が重なった場合は後から起動したほう(=より新しいオッズ)を優先する
+concurrency:
+  group: jra-predict
+  cancel-in-progress: true
 
 jobs:
   predict:
@@ -21,11 +35,6 @@ jobs:
           pip install duckdb lightgbm pandas numpy beautifulsoup4 lxml playwright
           playwright install chromium --with-deps
 
-      # ------------------------------------------------------------------
-      # 当週の出馬表(未来のレース情報)を取得
-      # data/race_result.csv 側の「直近成績」は最新化され続けている前提ではないため、
-      # predict.py側の安全装置(古すぎる馬の成績はNaN扱い)がここでも効く。
-      # ------------------------------------------------------------------
       - name: 今日の日付(JST)を取得
         id: today
         run: echo "date=$(TZ='Asia/Tokyo' date +%F)" >> "$GITHUB_OUTPUT"
@@ -35,15 +44,39 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release download data-v1 --pattern "race_result_merged.csv" --dir data --clobber
 
+      # 出馬表スクレイピング。
+      # 終了コード 0=成功 / 1=取得失敗(要調査) / 2=その日は開催なし(正常)
+      # teeでログを残すと終了コードが握りつぶされるため、PIPESTATUSで本来の値を取り出す。
       - name: 出馬表スクレイピング
+        id: scrape
         run: |
-          python src/scrape_entries.py ${{ steps.today.outputs.date }} --out data/entries_this_week.csv 2>&1 | tee data/scrape_log.txt
+          set +e
+          python src/scrape_entries.py "${{ steps.today.outputs.date }}" \
+            --out data/entries_this_week.csv 2>&1 | tee data/scrape_log.txt
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = "2" ]; then
+            echo "::notice::本日はJRAの開催がないため、以降の処理をスキップします"
+            echo "has_races=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$code" != "0" ]; then
+            echo "::error::出馬表を取得できませんでした。data/scrape_log.txt を確認してください"
+            echo "has_races=false" >> "$GITHUB_OUTPUT"
+            exit "$code"
+          fi
+          echo "has_races=true" >> "$GITHUB_OUTPUT"
 
       - name: AI予測を実行
+        if: steps.scrape.outputs.has_races == 'true'
         run: python src/predict.py data/entries_this_week.csv
 
       - name: ダッシュボードHTML生成
-        run: python src/generate_html.py data/predictions.csv docs/index.html
+        if: steps.scrape.outputs.has_races == 'true'
+        run: |
+          python src/generate_html.py data/predictions.csv docs/index.html
+          python src/generate_course_guide.py
 
       - name: 中間ファイルをダウンロードできるように保存(デバッグ用)
         if: always()
@@ -58,6 +91,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: GitHub Pagesへデプロイ
+        if: steps.scrape.outputs.has_races == 'true'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
