@@ -1,0 +1,74 @@
+name: JRAオッズ定期更新
+
+# 予測(モデル実行)はそのままに、オッズと期待値・人気との乖離・妙味だけを最新化するジョブ。
+# ブラウザを使わずAPIを叩くだけなので、1回あたり数十秒で終わる。
+on:
+  schedule:
+    # JST 土・日・月 の 9:00〜16:50 に10分おき(UTC 0:00〜7:50)。
+    # GitHubの定期実行は混雑時に数分〜十数分遅れたり間引かれたりすることがある。
+    - cron: "*/10 0-7 * * 6,0,1"
+  workflow_dispatch: {}
+
+# 予測ジョブと同じグループにして、同時にPagesへ書き込まないよう順番待ちさせる
+concurrency:
+  group: jra-pages
+  cancel-in-progress: false
+
+jobs:
+  update-odds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 現在公開中のページ(予測結果の predictions.csv を含む)を site/ に取り出す
+      - name: 公開中のページを取得
+        id: site
+        run: |
+          mkdir -p site
+          if git fetch --depth=1 origin gh-pages; then
+            # .git を含めずにファイルだけを site/ に展開する
+            git --work-tree=site checkout FETCH_HEAD -- .
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::gh-pages ブランチがまだありません。先に予測ジョブを実行してください"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.site.outputs.exists == 'true'
+        with:
+          python-version: "3.11"
+
+      - name: 依存関係インストール
+        if: steps.site.outputs.exists == 'true'
+        run: pip install pandas numpy
+
+      # 終了コード 0=更新した / 2=今日の予測がない等で更新対象なし(正常)
+      - name: オッズ更新
+        id: odds
+        if: steps.site.outputs.exists == 'true'
+        run: |
+          set +e
+          python src/update_odds.py site/predictions.csv --only-upcoming
+          code=$?
+          set -e
+          if [ "$code" = "0" ]; then
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+          elif [ "$code" = "2" ]; then
+            echo "::notice::今日の予測がないため、オッズ更新をスキップしました"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+          else
+            exit "$code"
+          fi
+
+      - name: ダッシュボードHTML再生成
+        if: steps.odds.outputs.updated == 'true'
+        run: python src/generate_html.py site/predictions.csv site/index.html
+
+      - name: GitHub Pagesへデプロイ
+        if: steps.odds.outputs.updated == 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          exclude_assets: ".git,.github"
