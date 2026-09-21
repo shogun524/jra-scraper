@@ -133,3 +133,53 @@ def fetch_odds(page, race_id: str, log=print) -> dict:
         # 構造が変わって取れなかった場合、直せるように生レスポンスを残す
         log(f"    オッズAPIの構造を解析できず [{race_id}] raw={raw[:500]}")
     return odds
+
+
+# ----------------------------------------------------------------------
+# ブラウザ(Playwright)を使わない版。定期オッズ更新ジョブ用。
+# オッズAPIは普通のHTTPリクエストでJSONを返すので、ブラウザを起動しなくてよい。
+# 起動コストがないぶん、10分おきの定期実行でも数十秒で終わる。
+# ----------------------------------------------------------------------
+def _parse_response(raw: str, race_id: str, log=print) -> dict:
+    """APIの応答文字列を {馬番: オッズ} に変換する(fetch_odds と共通の解析)。"""
+    if not raw:
+        return {}
+    try:
+        obj = json.loads(raw)
+    except Exception:
+        log(f"    オッズAPIがJSONでない [{race_id}]: {raw[:200]}")
+        return {}
+    data = obj.get("data") if isinstance(obj, dict) else None
+    if data in ("", None, {}, []):
+        reason = obj.get("reason") if isinstance(obj, dict) else ""
+        log(f"    オッズ未提供 [{race_id}] reason={reason}")
+        return {}
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except Exception:
+            pass
+    odds = _extract_odds(data if data is not None else obj)
+    if not odds:
+        log(f"    オッズAPIの構造を解析できず [{race_id}] raw={raw[:500]}")
+    return odds
+
+
+def fetch_odds_http(race_id: str, log=print, timeout: int = 15) -> dict:
+    """HTTPでオッズAPIを直接呼び、{馬番: 単勝オッズ} を返す。失敗時は空dict。"""
+    import urllib.request
+    url = ODDS_API.format(race_id=race_id)
+    req = urllib.request.Request(url, headers={
+        "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
+        "Referer": f"https://race.netkeiba.com/race/shutuba.html?race_id={race_id}",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "X-Requested-With": "XMLHttpRequest",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as res:
+            raw = res.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        log(f"    オッズAPI呼び出し失敗 [{race_id}]: {e}")
+        return {}
+    return _parse_response(raw, race_id, log)
