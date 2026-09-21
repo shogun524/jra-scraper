@@ -16,9 +16,11 @@ on:
   workflow_dispatch: {}
 
 # 実行が重なった場合は後から起動したほう(=より新しいオッズ)を優先する
+# オッズ定期更新(odds_update.yml)と同じグループにして、
+# 2つのジョブが同時にGitHub Pagesへ書き込んで結果を上書きし合わないよう順番待ちさせる。
 concurrency:
-  group: jra-predict
-  cancel-in-progress: true
+  group: jra-pages
+  cancel-in-progress: false
 
 jobs:
   predict:
@@ -77,6 +79,8 @@ jobs:
         run: |
           python src/generate_html.py data/predictions.csv docs/index.html
           python src/generate_course_guide.py
+          # オッズ定期更新ジョブが読み込めるよう、予測結果も公開ページに置く
+          cp data/predictions.csv docs/predictions.csv
 
       - name: 中間ファイルをダウンロードできるように保存(デバッグ用)
         if: always()
