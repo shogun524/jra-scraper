@@ -95,6 +95,11 @@ def main():
         race_ids = [r for r in race_ids if _is_upcoming(pt.get(r), now)]
 
     print(f"{now:%H:%M} オッズ更新: 対象 {len(race_ids)} レース")
+    if not race_ids:
+        # 全レースが発走済み(夕方以降など)。ページを作り直しても中身は変わらないので、
+        # 無駄なデプロイをしないよう「更新対象なし」で終わる。
+        print("発走前のレースがないため、更新するものはありません。")
+        return 2
     updated_races = 0
     for rid in race_ids:
         odds = fetch_odds_http(rid)
