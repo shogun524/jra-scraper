@@ -14,6 +14,9 @@ concurrency:
   group: jra-pages
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   update-odds:
     runs-on: ubuntu-latest
@@ -65,10 +68,20 @@ jobs:
         if: steps.odds.outputs.updated == 'true'
         run: python src/generate_html.py site/predictions.csv site/index.html
 
+      # デプロイ用アクション(peaceiris)は、このジョブの使い方では内部の作業フォルダを
+      # gitリポジトリとして扱えず失敗したため、gitコマンドで直接 gh-pages に書き込む。
+      # site/ の中身をそのまま1コミットにして gh-pages を置き換える。
       - name: GitHub Pagesへデプロイ
         if: steps.odds.outputs.updated == 'true'
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
-          exclude_assets: ".git,.github"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd site
+          git init -q
+          git checkout -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "オッズ更新 $(TZ='Asia/Tokyo' date '+%Y-%m-%d %H:%M')"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" gh-pages
+          echo "デプロイしました"
