@@ -32,7 +32,21 @@ if "track_code" in df.columns:
 else:
     df["track_name"] = "不明"
 df["race_number"] = df.get("race_number", df["race_id"].astype(str).str[-2:].astype(int))
-generated_at = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M")
+_now_jst = datetime.now(timezone(timedelta(hours=9)))
+generated_at = _now_jst.strftime("%Y-%m-%d %H:%M")
+
+# このページがどの日のレースを対象にしているかを見出しに出す。
+# 金曜夜に翌日(土曜)の予測を先に作れるようにしたため、
+# 「今見ているのが今日の予測か、翌日以降の予測か」が一目で分かるようにする。
+_dates = sorted(df["race_date"].astype(str).unique()) if "race_date" in df.columns else []
+if _dates:
+    _d = _dates[0]
+    _wd = "月火水木金土日"[datetime.strptime(_d, "%Y-%m-%d").weekday()]
+    date_label = f"{_d}({_wd})"
+    if _d > _now_jst.strftime("%Y-%m-%d"):
+        date_label += " ＝事前予測(オッズは前日のため参考値)"
+else:
+    date_label = "日付不明"
 # オッズが取れているレースの割合(直前実行で更新されるほど高くなる)
 if "odds_win" in df.columns:
     n_with_odds = df.groupby("race_id")["odds_win"].apply(lambda s: s.notna().any()).sum()
@@ -338,7 +352,7 @@ html = f"""<!DOCTYPE html>
 <header class="top">
   <div class="inner">
     <h1>JRA週末AI予想</h1>
-    <p>最終更新 {generated_at} (JST) ・ {odds_status} ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイドを見る →</a></p>
+    <p><b>{date_label}</b> のレース ・ 最終更新 {generated_at} (JST) ・ {odds_status} ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイド</a> ・ <a href="performance.html" style="color:#F0D896;">予測の成績</a></p>
   </div>
   <nav class="tabs">{tab_buttons}</nav>
 </header>
