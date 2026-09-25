@@ -13,7 +13,12 @@ on:
     - cron: "30 3 * * 6,0,1"    # JST 土日月 12:30
     - cron: "0 5 * * 6,0,1"     # JST 土日月 14:00
     - cron: "30 6 * * 6,0,1"    # JST 土日月 15:30
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "予測する日付。空欄=今日 / tomorrow=翌日 / YYYY-MM-DD で直接指定(例 2026-09-27)"
+        required: false
+        default: ""
 
 # 実行が重なった場合は後から起動したほう(=より新しいオッズ)を優先する
 # オッズ定期更新(odds_update.yml)と同じグループにして、
@@ -37,9 +42,29 @@ jobs:
           pip install duckdb lightgbm pandas numpy beautifulsoup4 lxml playwright
           playwright install chromium --with-deps
 
-      - name: 今日の日付(JST)を取得
+      # 対象日を決める。
+      # 定期実行(schedule)では入力が空になるので、これまで通り「今日(JST)」になる。
+      # 手動実行で tomorrow や YYYY-MM-DD を入れると、その日の予測を作る。
+      # 金曜夜に土曜、土曜夜に日曜の予測を先に見たい、という使い方を想定。
+      - name: 対象日(JST)を決定
         id: today
-        run: echo "date=$(TZ='Asia/Tokyo' date +%F)" >> "$GITHUB_OUTPUT"
+        env:
+          INPUT_DATE: ${{ github.event.inputs.date }}
+        run: |
+          d="${INPUT_DATE:-}"
+          case "$d" in
+            "")         d=$(TZ='Asia/Tokyo' date +%F) ;;
+            tomorrow)   d=$(TZ='Asia/Tokyo' date -d '+1 day' +%F) ;;
+            today)      d=$(TZ='Asia/Tokyo' date +%F) ;;
+            *)
+              if ! printf '%s' "$d" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+                echo "::error::日付は YYYY-MM-DD 形式か tomorrow で指定してください(入力: $d)"
+                exit 1
+              fi
+              ;;
+          esac
+          echo "対象日: $d (今日は $(TZ='Asia/Tokyo' date +%F))"
+          echo "date=$d" >> "$GITHUB_OUTPUT"
 
       - name: 大容量データ(race_result_merged.csv)をGitHub Releaseから取得
         env:
@@ -59,7 +84,7 @@ jobs:
           set -e
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           if [ "$code" = "2" ]; then
-            echo "::notice::本日はJRAの開催がないため、以降の処理をスキップします"
+            echo "::notice::${{ steps.today.outputs.date }} はJRAの開催がない(または出馬表が未発表)ため、以降の処理をスキップします"
             echo "has_races=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -81,6 +106,9 @@ jobs:
           python src/generate_course_guide.py
           # オッズ定期更新ジョブが読み込めるよう、予測結果も公開ページに置く
           cp data/predictions.csv docs/predictions.csv
+          # 成績検証用に日付ごとの予測を保存(結果記録ジョブが夕方に突き合わせる)
+          mkdir -p docs/history
+          cp data/predictions.csv "docs/history/predictions_${{ steps.today.outputs.date }}.csv"
 
       - name: 中間ファイルをダウンロードできるように保存(デバッグ用)
         if: always()
@@ -100,3 +128,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs
+          # 過去の予測・結果の記録(history/)や成績ページを消さないよう、既存ファイルを残す
+          keep_files: true
