@@ -1,0 +1,91 @@
+name: JRA結果取得と予測の成績更新
+
+# 予測ジョブが保存している予測履歴(history/predictions_*.csv)と確定結果を突き合わせ、
+# 「予測の成績」ページ(performance.html)を更新する。
+# まだ結果を取っていない日のレースだけを取りに行くので、過去分を後から一括で埋めるのにも使える。
+on:
+  schedule:
+    # JST 土・日・月の 17:23 と 20:23(最終レース確定後と、取りこぼしの再取得)
+    - cron: "23 8,11 * * 6,0,1"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "結果を取りに行く日付(YYYY-MM-DD)。空欄なら未取得の日すべて"
+        required: false
+        default: ""
+
+concurrency:
+  group: jra-pages
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  results:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 公開中のページを取得
+        id: site
+        run: |
+          mkdir -p site
+          if git fetch --depth=1 origin gh-pages; then
+            git --work-tree=site checkout FETCH_HEAD -- .
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::gh-pages ブランチがまだありません"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.site.outputs.exists == 'true'
+        with:
+          python-version: "3.11"
+
+      - name: 依存関係インストール
+        if: steps.site.outputs.exists == 'true'
+        run: |
+          pip install pandas numpy beautifulsoup4 lxml playwright
+          playwright install chromium --with-deps
+
+      # 終了コード 0=新しい結果を保存 / 2=取得対象なし(正常)
+      - name: 確定結果を取得
+        id: fetch
+        if: steps.site.outputs.exists == 'true'
+        run: |
+          set +e
+          python src/fetch_results.py site/history ${{ github.event.inputs.date }}
+          code=$?
+          set -e
+          if [ "$code" = "0" ]; then
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+          elif [ "$code" = "2" ]; then
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+          else
+            exit "$code"
+          fi
+
+      # 新しい結果があったとき、または手動実行のときにページを作り直す
+      - name: 予測の成績ページ生成
+        id: perf
+        if: steps.fetch.outputs.updated == 'true' || (github.event_name == 'workflow_dispatch' && steps.site.outputs.exists == 'true')
+        run: |
+          python src/generate_performance.py site/history site/performance.html
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+      - name: GitHub Pagesへデプロイ
+        if: steps.perf.outputs.built == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd site
+          git init -q
+          git checkout -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "結果取得・成績更新 $(TZ='Asia/Tokyo' date '+%Y-%m-%d %H:%M')"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" gh-pages
+          echo "デプロイしました"
