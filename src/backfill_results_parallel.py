@@ -173,6 +173,7 @@ async def run(start_date: str, end_date: str, concurrency: int, max_minutes: flo
 
             browser, list_page = await new_browser()
             worked_dates_since_restart = 0
+            weekend_zero_streak = 0  # 土日なのに0件が続いた回数(netkeiba側で一覧が返らなくなった目安)
             RESTART_EVERY = 15  # このダウンロード件数を処理するごとにブラウザを作り直し、長時間起動による劣化を防ぐ
 
             for i, date_str in enumerate(dates):
@@ -203,7 +204,14 @@ async def run(start_date: str, end_date: str, concurrency: int, max_minutes: flo
                     # 処理済みにせず次回の実行で再確認する
                     print(f"[{date_str}] 土日なのにレースが0件 -> 取得失敗の可能性があるため次回再確認")
                     finished = False
+                    weekend_zero_streak += 1
+                    if weekend_zero_streak >= 4:
+                        # 数千件取ると一覧ページが返らなくなる(実測で2,500〜5,000レース前後)。
+                        # 粘っても時間の無駄なので打ち切り、次の実行(別のランナー)で続きから再開する
+                        print("!! 土日の0件が4日続いたため、一覧が取れなくなったと判断して中断します")
+                        break
                     continue
+                weekend_zero_streak = 0
 
                 todo = [r for r in race_ids if r not in done]
                 if todo:
