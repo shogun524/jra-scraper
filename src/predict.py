@@ -22,6 +22,9 @@ import lightgbm as lgb
 import pandas as pd
 import numpy as np
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from scrape_race_result import JOCKEY_KEY_SQL, jockey_key, normalize_trainer, race_class_value  # noqa: E402
+
 
 def _normalize_capped(s: pd.Series, target_sum: float, cap: float = 1.0) -> pd.Series:
     """sの合計がtarget_sumになるよう比例配分するが、どの値も cap(=100%) を超えないようにする。
@@ -49,6 +52,9 @@ def _normalize_capped(s: pd.Series, target_sum: float, cap: float = 1.0) -> pd.S
 
 RACE_RESULT = "data/race_result_merged.csv"
 COURSE_STATS_PATH = "data/course_stats.json"
+# pace_ratio は2026-10の再学習で特徴量から外した(レース後にしか分からない値のため)。
+# 実際にモデルへ渡す列は、読み込んだモデルファイルに記録された特徴量名の順に合わせる
+# (古いモデルが pace_ratio を要求する場合は中立値1.0を入れる)。
 NUMERIC_FEATURES = [
     "age", "weight_carry", "waku", "umaban", "field_size", "distance", "pace_ratio",
     "recent5_avg_finish", "recent5_winrate", "recent5_top3rate", "recent5_starts",
@@ -95,7 +101,7 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
     con.execute(f"""
     CREATE TABLE hist AS
     SELECT
-        "馬名" AS horse, "騎手" AS jockey, "調教師" AS trainer,
+        "馬名" AS horse, {JOCKEY_KEY_SQL} AS jockey, "調教師" AS trainer,
         CAST("レース日付" AS DATE) AS race_date,
         "競馬場コード" AS track_code, "芝・ダート区分" AS surface,
         "距離(m)" AS distance, TRY_CAST("枠番" AS INTEGER) AS waku,
@@ -126,8 +132,8 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
         else:
             db_ = "sprint" if distance_val < 1400 else "mile" if distance_val < 1800 else "middle" if distance_val < 2200 else "long"
         horse_name = str(e["horse"]) if pd.notna(e.get("horse")) else None
-        jockey_name = str(e["jockey"]) if pd.notna(e.get("jockey")) else None
-        trainer_name = str(e["trainer"]) if pd.notna(e.get("trainer")) else None
+        jockey_name = jockey_key(e.get("jockey"))
+        trainer_name = normalize_trainer(e.get("trainer"))
         surface_val = str(e["surface"]) if pd.notna(e.get("surface")) else None
 
         h = con.execute("SELECT * FROM hist2 WHERE horse=? AND race_date<? ORDER BY race_date DESC LIMIT 5",
@@ -161,6 +167,7 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
 
         row = dict(e)
         row["dist_bucket"] = db_
+        # 頭数: 出馬表の同じレースの馬の数(以前は常に欠損になっていて、学習時と食い違っていた)
         row["field_size"] = e.get("field_size", np.nan)
         row["pace_ratio"] = 1.0  # 出馬表の時点ではペース未確定のため中立値
         row["recent5_avg_finish"] = h["finish"].mean() if len(h) else np.nan
@@ -230,8 +237,13 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
         row["trainer_starts"] = trainer["n"]
         row["waku_bias_winrate"] = waku_b["w"]
         row["waku_bias_n"] = waku_b["n"]
-        row.setdefault("weight_diff", 0)
-        row.setdefault("race_class", np.nan)  # 出馬表の時点ではクラス格付けを別途与えない限り不明
+        # 馬体重の増減: 出馬表に載っていればその値。無ければ欠損(以前は0固定で、学習時と食い違っていた)
+        row["weight_diff"] = e.get("weight_diff", np.nan)
+        # クラス: 出馬表の競争条件(race_class_text)から。無ければレース名から推定
+        cls = race_class_value(e.get("race_class_text"))
+        if cls is None:
+            cls = race_class_value(e.get("race_name"))
+        row["race_class"] = cls if cls is not None else np.nan
 
         # 騎手×調教師コンビの過去成績
         if jockey_name and trainer_name:
@@ -252,6 +264,8 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
 def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
     entries = pd.read_csv(entries_csv)
     entries["race_date"] = pd.to_datetime(entries["race_date"]).dt.date
+    if "field_size" not in entries.columns or entries["field_size"].isna().all():
+        entries["field_size"] = entries.groupby("race_id")["horse"].transform("count")
     feat_df = build_asof_features(entries)
 
     for c in CATEGORICAL_FEATURES:
@@ -262,8 +276,15 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
     model_win = lgb.Booster(model_file="data/model_win.txt")
     model_top3 = lgb.Booster(model_file="data/model_top3.txt")
 
-    feat_df["pred_win"] = model_win.predict(feat_df[FEATURES])
-    feat_df["pred_top3"] = model_top3.predict(feat_df[FEATURES])
+    def _model_input(model):
+        names = model.feature_name()
+        X = feat_df.reindex(columns=names)
+        if "pace_ratio" in names:
+            X["pace_ratio"] = 1.0  # 旧モデル互換(新モデルはこの特徴量を使わない)
+        return X
+
+    feat_df["pred_win"] = model_win.predict(_model_input(model_win))
+    feat_df["pred_top3"] = model_top3.predict(_model_input(model_top3))
     feat_df["pred_win_rank"] = feat_df.groupby("race_id")["pred_win"].rank(ascending=False, method="min").astype(int)
     feat_df["pred_top3_rank"] = feat_df.groupby("race_id")["pred_top3"].rank(ascending=False, method="min").astype(int)
     feat_df["pred_win_norm"] = feat_df.groupby("race_id")["pred_win"].transform(lambda s: s / s.sum())

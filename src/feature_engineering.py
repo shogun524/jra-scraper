@@ -6,6 +6,7 @@ race_result.csv / laptime.csv を元に、馬単位の予測用特徴量テー�
 出力: data/features.parquet
 """
 import duckdb
+import os
 import time
 
 RACE_RESULT = "data/race_result_merged.csv"
@@ -34,7 +35,8 @@ SELECT
     "性別"                AS sex,
     TRY_CAST("馬齢" AS INTEGER) AS age,
     TRY_CAST("斤量" AS DOUBLE) AS weight_carry,
-    "騎手"                AS jockey,
+    -- 騎手は照合用キー(記号除去+先頭3文字)。結果ページと出馬表で名前の長さが違うため
+    left(regexp_replace("騎手", '^[▲△☆★◇]+|[.．・ 　]', '', 'g'), 3) AS jockey,
     "調教師"              AS trainer,
     TRY_CAST("着順" AS INTEGER) AS finish,
     TRY_CAST("単勝" AS DOUBLE) AS odds_win,
@@ -46,15 +48,18 @@ SELECT
     TRY_CAST("1コーナー" AS INTEGER) AS corner1,
     -- 競争条件(例:"4歳以上500万下","3歳未勝利","4歳以上オープン")からクラスの序列を推定。
     -- 新スキーマ(2021年8月以降のスクレイピング分)にはこの列自体が無いためNULLになる(欠損として扱われる)。
+    -- 2026-10以降の取り直し分は scrape_race_result.parse_race_class_text が「3歳以上1勝クラス」形式で入れる。
+    -- 全角数字が混ざっていても拾えるよう、数字だけ半角に変換してから判定する。
     CASE
+        WHEN "競争条件" IS NULL THEN NULL
         WHEN "競争条件" LIKE '%新馬%' THEN 0
         WHEN "競争条件" LIKE '%未勝利%' OR "競争条件" LIKE '%未出走%' THEN 1
-        WHEN "競争条件" LIKE '%1勝クラス%' THEN 5
-        WHEN "競争条件" LIKE '%2勝クラス%' THEN 9
-        WHEN "競争条件" LIKE '%3勝クラス%' THEN 14
+        WHEN translate("競争条件", '０１２３４５６７８９', '0123456789') LIKE '%1勝クラス%' THEN 5
+        WHEN translate("競争条件", '０１２３４５６７８９', '0123456789') LIKE '%2勝クラス%' THEN 9
+        WHEN translate("競争条件", '０１２３４５６７８９', '0123456789') LIKE '%3勝クラス%' THEN 14
         WHEN "競争条件" LIKE '%オープン%' THEN 20
-        WHEN regexp_extract("競争条件", '(\\d+)万下', 1) != ''
-            THEN TRY_CAST(regexp_extract("競争条件", '(\\d+)万下', 1) AS DOUBLE) / 100
+        WHEN regexp_extract(translate("競争条件", '０１２３４５６７８９', '0123456789'), '(\\d+)万下', 1) != ''
+            THEN TRY_CAST(regexp_extract(translate("競争条件", '０１２３４５６７８９', '0123456789'), '(\\d+)万下', 1) AS DOUBLE) / 100
         ELSE NULL
     END AS race_class
 FROM read_csv_auto('{RACE_RESULT}', encoding='utf-8', union_by_name=true, types={{'着順': 'VARCHAR'}})
@@ -81,23 +86,34 @@ SELECT
 FROM base b
 """)
 
-print("[3/6] ラップ(前半ペース)の結合 -> ハイペース/スローペース判定...")
-con.execute(f"""
-CREATE TABLE lap AS
-SELECT
-    "レースID" AS race_id,
-    TRY_CAST("前半3ハロン" AS DOUBLE) AS early3f,
-    TRY_CAST("上がり3ハロン" AS DOUBLE) AS late3f
-FROM read_csv_auto('{LAPTIME}', encoding='utf-8')
-""")
-con.execute("""
-CREATE TABLE base3 AS
-SELECT b.*, l.early3f, l.late3f,
-    -- そのコース・距離帯における平均前半3F比で相対ペースを表現(1.0=平均的, <1.0=ハイペース)
-    l.early3f / NULLIF(AVG(l.early3f) OVER (PARTITION BY b.track_code, b.surface, b.dist_bucket), 0) AS pace_ratio
-FROM base2 b
-LEFT JOIN lap l USING (race_id)
-""")
+# 【2026-10 修正】pace_ratio は「そのレース自身の前半ペース」で、レースが終わるまで分からない値。
+# 学習時だけ実際の値を使い、予測時は1.0固定にしていたため、学習と予測で中身が食い違っていた
+# (答えを見ながら学習しているのと同じ)。モデルの特徴量からは外し、列だけ互換のため残す。
+# laptime.csv はリリースに含まれていないので、無ければ NULL にする。
+print("[3/6] ラップ(参考列のみ。モデルには使わない)...")
+if os.path.exists(LAPTIME):
+    con.execute(f"""
+    CREATE TABLE lap AS
+    SELECT
+        "レースID" AS race_id,
+        TRY_CAST("前半3ハロン" AS DOUBLE) AS early3f,
+        TRY_CAST("上がり3ハロン" AS DOUBLE) AS late3f
+    FROM read_csv_auto('{LAPTIME}', encoding='utf-8')
+    """)
+    con.execute("""
+    CREATE TABLE base3 AS
+    SELECT b.*, l.early3f, l.late3f,
+        l.early3f / NULLIF(AVG(l.early3f) OVER (PARTITION BY b.track_code, b.surface, b.dist_bucket), 0) AS pace_ratio
+    FROM base2 b
+    LEFT JOIN lap l USING (race_id)
+    """)
+else:
+    print(f"  -> {LAPTIME} が無いのでスキップ")
+    con.execute("""
+    CREATE TABLE base3 AS
+    SELECT b.*, NULL::DOUBLE AS early3f, NULL::DOUBLE AS late3f, NULL::DOUBLE AS pace_ratio
+    FROM base2 b
+    """)
 
 print("[4/6] 馬別の過去成績特徴量(直近5走・キャリア通算, リーク防止)...")
 con.execute("""

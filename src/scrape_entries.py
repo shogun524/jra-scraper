@@ -21,7 +21,8 @@ import json
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(__file__))
-from scrape_race_result import _normalize_col, parse_race_conditions
+from scrape_race_result import (_normalize_col, parse_race_conditions, parse_race_class_text,
+                                normalize_person, normalize_trainer)
 from scrape_race_ids import get_race_ids_for_date, UA
 from fetch_odds import fetch_odds
 
@@ -126,6 +127,7 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
     track_code = race_id[4:6]
     race_number = int(race_id[-2:])
     race_name = parse_race_name(html)
+    race_class_text = parse_race_class_text(html)  # 例: "3歳以上1勝クラス"(予測時のクラス特徴量に使う)
 
     rows = []
     for _, r in df.iterrows():
@@ -139,6 +141,7 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
             "track_name": TRACK_NAMES.get(track_code, ""),
             "race_number": race_number,
             "race_name": race_name,
+            "race_class_text": race_class_text,
             "post_time": cond.get("post_time"),
             "surface": cond.get("surface"),
             "distance": cond.get("distance"),
@@ -147,8 +150,8 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
             "waku": _scalar(r.get("枠番")),
             "umaban": _scalar(r.get("馬番")),
             "horse": str(horse_name).strip(),
-            "jockey": re.sub(r"^[▲△☆★◇]", "", str(_scalar(r.get("騎手"))).strip()) if pd.notna(_scalar(r.get("騎手"))) else None,
-            "trainer": str(_scalar(r.get("調教師"))).strip() if pd.notna(_scalar(r.get("調教師"))) else None,
+            "jockey": normalize_person(_scalar(r.get("騎手"))),
+            "trainer": normalize_trainer(_scalar(r.get("調教師"))),
             "weight_carry": _scalar(r.get("斤量")),
             "odds_win": _parse_odds(_scalar(r.get("単勝"))),
         }
@@ -159,6 +162,8 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
         bw = str(_scalar(r.get("馬体重増減", "")))
         m = re.match(r"(\d+)", bw)
         row["horse_weight"] = int(m.group(1)) if m else None
+        m = re.search(r"\(([+\-]?\d+)\)", bw)  # "480(+2)" の増減。発表前や前計不なら空欄
+        row["weight_diff"] = int(m.group(1)) if m else None
         rows.append(row)
     return rows
 

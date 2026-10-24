@@ -11,6 +11,11 @@ backfill_results.py と同じ処理を、複数レースを同時並行で取得
 
 使い方:
   python src/backfill_results_parallel.py 2021-08-01 2026-08-30 --concurrency 5
+  python src/backfill_results_parallel.py 2021-08-01 2026-10-25 --concurrency 3 --max-minutes 300
+
+--max-minutes を付けると、その時間を過ぎた時点で新しい日付に手を付けずに終了する
+(GitHub Actions の1ジョブ6時間制限の中で区切って、次の実行で続きから再開するため)。
+終了コード: 0=指定期間をすべて処理 / 3=時間切れで途中終了(進捗は保存済み、再実行で続きから)
 
 【注意】並列化により1レースあたりのアクセス間隔は短くなるため、逐次版よりも
 netkeiba側のBot対策(403エラー等)に引っかかるリスクは上がります。
@@ -24,6 +29,7 @@ import os
 import random
 import re
 import sys
+import time
 from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -60,6 +66,9 @@ async def fetch_one_race(browser, race_id, date_str, sem, writer_lock, writer, d
                 html = await asyncio.wait_for(_fetch(), timeout=45)
 
                 rows = parse_race_result(html, race_id)
+                if not rows:
+                    # 結果テーブルが無い = 未確定 or アクセス制限ページ。done扱いにせずリトライ・次回再取得に回す
+                    raise ValueError("結果テーブルが見つかりません")
                 track_code = race_id[4:6]
                 async with writer_lock:
                     for r in rows:
@@ -114,7 +123,10 @@ def save_dates_done(dates_done: set):
         json.dump(sorted(dates_done), f)
 
 
-async def run(start_date: str, end_date: str, concurrency: int):
+async def run(start_date: str, end_date: str, concurrency: int, max_minutes: float | None = None) -> bool:
+    """戻り値: 指定期間をすべて処理し終えたら True、時間切れで途中終了したら False"""
+    t_start = time.time()
+    finished = True
     done = load_progress()
     dates_done = load_dates_done()
     file_exists = os.path.exists(OUT_CSV)
@@ -145,6 +157,10 @@ async def run(start_date: str, end_date: str, concurrency: int):
             RESTART_EVERY = 15  # このダウンロード件数を処理するごとにブラウザを作り直し、長時間起動による劣化を防ぐ
 
             for i, date_str in enumerate(dates):
+                if max_minutes and (time.time() - t_start) / 60 > max_minutes and date_str not in dates_done:
+                    print(f"\n!! 制限時間({max_minutes:.0f}分)に達したため {date_str} の手前で中断します。再実行で続きから再開します。")
+                    finished = False
+                    break
                 if date_str in dates_done:
                     # 完全に処理済みの日付はレース一覧の問い合わせ自体を省略(再開を高速化)
                     if i % 50 == 0:
@@ -159,8 +175,16 @@ async def run(start_date: str, end_date: str, concurrency: int):
                     except Exception:
                         pass
                     list_page = await browser.new_page(user_agent=UA)  # ページが壊れている可能性があるので作り直す
+                    finished = False  # この日は未完了(dates_doneに入れない)ので、次回の実行で再挑戦する
                     continue
                 await asyncio.sleep(1.5)
+
+                if not race_ids and datetime.strptime(date_str, "%Y%m%d").weekday() >= 5:
+                    # JRAは土日にはほぼ必ず開催がある。0件なら一覧ページの取得失敗(制限など)を疑い、
+                    # 処理済みにせず次回の実行で再確認する
+                    print(f"[{date_str}] 土日なのにレースが0件 -> 取得失敗の可能性があるため次回再確認")
+                    finished = False
+                    continue
 
                 todo = [r for r in race_ids if r not in done]
                 if todo:
@@ -174,8 +198,11 @@ async def run(start_date: str, end_date: str, concurrency: int):
                     print(f"  -> 累計 成功={stats['ok']}  エラー={stats['err']}")
                     worked_dates_since_restart += 1
 
-                dates_done.add(date_str)
-                save_dates_done(dates_done)
+                if all(r in done for r in race_ids):
+                    dates_done.add(date_str)  # 全レース取れた日だけ「処理済み」にする
+                    save_dates_done(dates_done)
+                else:
+                    finished = False
 
                 if worked_dates_since_restart >= RESTART_EVERY:
                     print("  -> 長時間起動による劣化を防ぐため、ブラウザを再起動します...")
@@ -188,7 +215,12 @@ async def run(start_date: str, end_date: str, concurrency: int):
 
             await browser.close()
 
-    print(f"\n完了。成功={stats['ok']}レース, エラー={stats['err']}レース -> {OUT_CSV}")
+    save_progress(done)
+    label = "完了" if finished else "途中終了"
+    print(f"\n{label}。成功={stats['ok']}レース, エラー={stats['err']}レース -> {OUT_CSV}")
+    if stats["err"]:
+        finished = False  # 取りこぼしたレースは次回の実行で再取得する
+    return finished
 
 
 if __name__ == "__main__":
@@ -196,5 +228,7 @@ if __name__ == "__main__":
     parser.add_argument("start")
     parser.add_argument("end")
     parser.add_argument("--concurrency", type=int, default=5)
+    parser.add_argument("--max-minutes", type=float, default=None)
     args = parser.parse_args()
-    asyncio.run(run(args.start, args.end, args.concurrency))
+    ok = asyncio.run(run(args.start, args.end, args.concurrency, args.max_minutes))
+    sys.exit(0 if ok else 3)

@@ -9,6 +9,7 @@ print(df.columns) で確認してから、COLUMN_MAP を実データに合わせ
 (南関東スクレイパーでも "文字コード" "全角半角" 等のズレで同様の調整をしています)
 """
 import re
+import unicodedata
 import pandas as pd
 
 RESULT_URL = "https://race.netkeiba.com/race/result.html?race_id={race_id}"
@@ -55,6 +56,97 @@ def parse_race_conditions(html: str) -> dict:
     if m:
         cond["post_time"] = m.group(1)
     return cond
+
+
+def normalize_person(name):
+    """騎手名などの表記ゆれを揃える。
+    出馬表は「Ｍデムーロ」、結果ページは「Ｍ．デムーロ」のように全角・ドットの有無が違うため、
+    NFKCで半角化し、ドット・中黒・空白と見習い記号(▲△☆★◇)を取り除く。"""
+    if name is None or (isinstance(name, float) and pd.isna(name)):
+        return None
+    s = unicodedata.normalize("NFKC", str(name)).strip()
+    s = re.sub(r"^[▲△☆★◇]+", "", s)
+    s = re.sub(r"[.・\s]", "", s)
+    return s or None
+
+
+def jockey_key(name):
+    """騎手の照合用キー。netkeibaの結果ページは外国人騎手名を3文字で切る(ルメール→ルメー)一方、
+    出馬表は「北村友」「北村友一」が混在するため、記号を除いた先頭3文字で突き合わせる。
+    feature_engineering.py / predict.py の SQL 側(JOCKEY_KEY_SQL)と同じ規則。"""
+    s = normalize_person(name)
+    return s[:3] if s else None
+
+
+# SQL版(DuckDB)。全角英数は取り直し時に normalize_person で半角化済みの前提
+JOCKEY_KEY_SQL = """left(regexp_replace("騎手", '^[▲△☆★◇]+|[.．・ 　]', '', 'g'), 3)"""
+
+
+def normalize_trainer(name):
+    """調教師名の表記ゆれを揃える。「美浦堀」「[東] 堀」「(美)堀」「栗東・友道」などから所属表記を除いて姓だけにする。"""
+    if name is None or (isinstance(name, float) and pd.isna(name)):
+        return None
+    s = unicodedata.normalize("NFKC", str(name)).strip()
+    s = re.sub(r"[\[(（【][^\])）】]*[\])）】]", "", s)  # [東] (美) などの括弧書き
+    s = re.sub(r"^(美浦|栗東|地方|海外|外国)", "", s)
+    s = re.sub(r"[.・\s]", "", s)
+    return s or None
+
+
+# クラスの序列(feature_engineering.py の race_class と同じ値)
+CLASS_ORDER = [("新馬", 0), ("未出走", 1), ("未勝利", 1), ("1勝クラス", 5), ("2勝クラス", 9),
+               ("3勝クラス", 14), ("オープン", 20)]
+
+
+def parse_race_class_text(html: str):
+    """レース見出し(RaceData02)から競争条件を「3歳以上1勝クラス」の形で取り出す。
+    結果ページ・出馬表ページの両方で使える。取れなければ None。"""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    el = soup.find(class_=re.compile("RaceData02"))
+    text = el.get_text(" ", strip=True) if el else ""
+    name_el = soup.find(class_=re.compile("RaceName"))
+    text += " " + (name_el.get_text(" ", strip=True) if name_el else "")
+    text = unicodedata.normalize("NFKC", text)
+    cls = None
+    for key in ("新馬", "未出走", "未勝利", "1勝クラス", "2勝クラス", "3勝クラス", "オープン"):
+        if key in text:
+            cls = key
+            break
+    if cls is None:
+        m = re.search(r"(\d+)万下", text)
+        if m:
+            cls = f"{m.group(1)}万下"
+        elif re.search(r"G(?:[1-3]|I{1,3})|\(L\)|\(OP\)", text):
+            cls = "オープン"
+    if cls is None:
+        return None
+    m = re.search(r"(\d歳(?:以上)?)", text)
+    return f"{m.group(1) if m else ''}{cls}"
+
+
+def race_class_value(text):
+    """競争条件の文字列 -> 数値の序列(新馬0 / 未勝利1 / 1勝5 / 2勝9 / 3勝14 / オープン20)。
+    旧表記「500万下」は 500/100=5 のように換算する(1勝クラス相当)。"""
+    if text is None or (isinstance(text, float) and pd.isna(text)):
+        return None
+    t = unicodedata.normalize("NFKC", str(text))
+    for key, val in CLASS_ORDER:
+        if key in t:
+            return val
+    m = re.search(r"(\d+)万下", t)
+    if m:
+        return int(m.group(1)) / 100
+    if re.search(r"G(?:[1-3]|I{1,3})|\(L\)|OP|ステークス", t):
+        return 20
+    return None
+
+
+def parse_race_name_text(html: str):
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    el = soup.find(class_=re.compile("RaceName"))
+    return unicodedata.normalize("NFKC", el.get_text(" ", strip=True)) if el else None
 
 
 def _normalize_col(c) -> str:
@@ -104,7 +196,10 @@ def parse_corner_section(html: str) -> dict:
 def parse_race_result(html: str, race_id: str) -> list[dict]:
     """結果テーブルをDataFrame化 -> dictのリストへ"""
     import io
-    tables = pd.read_html(io.StringIO(html))
+    try:
+        tables = pd.read_html(io.StringIO(html), flavor="lxml")
+    except (ValueError, ImportError):
+        return []  # 表が1つも無い(未確定・アクセス制限ページなど)
     # 「着順」列を持つ一番大きいテーブルを結果テーブルとみなす(空白ズレを吸収して比較)
     result_table = None
     for t in tables:
@@ -117,6 +212,8 @@ def parse_race_result(html: str, race_id: str) -> list[dict]:
     df = result_table.rename(columns={c: COLUMN_MAP.get(_normalize_col(c), _normalize_col(c)) for c in result_table.columns})
     cond = parse_race_conditions(html)
     corner_section = parse_corner_section(html)
+    class_text = parse_race_class_text(html)
+    race_name = parse_race_name_text(html)
 
     rows = []
     for _, r in df.iterrows():
@@ -127,18 +224,20 @@ def parse_race_result(html: str, race_id: str) -> list[dict]:
             "馬番": r.get("馬番"),
             "馬名": r.get("馬名"),
             "斤量": r.get("斤量"),
-            "騎手": r.get("騎手"),
+            "騎手": normalize_person(r.get("騎手")),
             "タイム": r.get("タイム"),
             "着差": r.get("着差"),
             "人気": r.get("人気"),
             "単勝": r.get("単勝"),
             "上り": r.get("上り"),
-            "調教師": r.get("調教師"),
+            "調教師": normalize_trainer(r.get("調教師")),
             "馬体重": None, "場体重増減": None,
             "芝・ダート区分": cond.get("surface"),
             "距離(m)": cond.get("distance"),
             "馬場状態1": cond.get("baba"),
             "天候": cond.get("weather"),
+            "競争条件": class_text,
+            "レース名": race_name,
         }
         # 性齢(例:"牡3")を性別/馬齢に分割
         sexage = str(r.get("性齢", ""))
@@ -153,9 +252,14 @@ def parse_race_result(html: str, race_id: str) -> list[dict]:
         # 通過順(例:"5-5-6-4")から各コーナー通過順位を分割(値が無い場合はNoneのまま)
         passage = r.get("通過")
         if pd.notna(passage):
-            parts = str(passage).split("-")
-            for i, key in enumerate(["1コーナー", "2コーナー", "3コーナー", "4コーナー"]):
-                row[key] = parts[i] if i < len(parts) else None
+            # 通過順は「通過したコーナーの順」で、最後の値が常に4コーナー(最終コーナー)。
+            # コーナーが2つのコース("3-3")で前から詰めると4コーナーが空欄になり脚質が取れなくなるため、後ろ詰めにする。
+            parts = [x for x in str(passage).split("-") if x.strip()]
+            keys = ["1コーナー", "2コーナー", "3コーナー", "4コーナー"]
+            for key in keys:
+                row[key] = None
+            for key, val in zip(keys[4 - len(parts):] if len(parts) <= 4 else keys, parts[-4:]):
+                row[key] = val
         else:
             # 結果テーブルに通過列が無い/空のレースは、ページ下部の
             # 「コーナー通過順位」セクションから復元する(これが無いと脚質が算出できない)

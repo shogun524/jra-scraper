@@ -1,0 +1,177 @@
+name: JRA過去結果のバックフィル(データの穴埋め)
+
+# race_result_merged.csv(リリース data-v1)に抜けている期間のレース結果を netkeiba から取り直し、
+# 統合してリリースを更新する。終わったらモデル再学習(retrain.yml)を自動で起動する。
+#
+# 【初回(穴埋め)】Actions → このワークフロー → Run workflow で
+#     start: 2021-08-01   (2021-08〜2022年の旧取得分は芝ダ・クラス欠損が多いので取り直す)
+#     end:   空欄(=昨日)
+#   1回の実行は max_minutes で区切り、終わらなければ自分自身を再実行して続きから進める。
+#   途中の取得分はリリース backfill-work に保存されるので、失敗しても続きから再開できる。
+#
+# 【毎週】火曜早朝に、データの最終日の翌日〜昨日の分だけを自動で取り足す(=データを古くしない)。
+on:
+  schedule:
+    # JST 火曜 03:17(UTC 月曜 18:17)
+    - cron: "17 18 * * 1"
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "取得開始日(YYYY-MM-DD)。空欄=続きから再開、または前回の最終日の翌日から"
+        required: false
+        default: ""
+      end:
+        description: "取得終了日(YYYY-MM-DD)。空欄=昨日"
+        required: false
+        default: ""
+      concurrency:
+        description: "同時取得数(アクセス制限が出たら2に下げる)"
+        required: false
+        default: "3"
+      max_minutes:
+        description: "1回の実行で取得に使う最大時間(分)"
+        required: false
+        default: "300"
+      round:
+        description: "自動再実行の回数(内部用。通常は触らない)"
+        required: false
+        default: "1"
+
+concurrency:
+  group: jra-backfill
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  MAX_ROUNDS: "10"
+  WORK_FILES: "data/race_result_new.csv data/backfill_progress.json data/backfill_dates_done.json data/backfill_range.txt"
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 依存関係インストール
+        run: |
+          pip install duckdb pandas numpy beautifulsoup4 lxml playwright
+          playwright install chromium --with-deps
+
+      - name: 既存データと途中経過を取得
+        run: |
+          mkdir -p data
+          gh release download data-v1 --pattern "race_result_merged.csv" --dir data --clobber
+          # 前回の続き(あれば)
+          if gh release view backfill-work >/dev/null 2>&1; then
+            for f in race_result_new.csv backfill_progress.json backfill_dates_done.json backfill_range.txt; do
+              gh release download backfill-work --pattern "$f" --dir data --clobber || true
+            done
+          fi
+          ls -la data
+
+      - name: 取得期間を決定
+        id: range
+        env:
+          IN_START: ${{ github.event.inputs.start }}
+          IN_END: ${{ github.event.inputs.end }}
+        run: |
+          yesterday=$(TZ='Asia/Tokyo' date -d '-1 day' +%F)
+          saved=""
+          [ -f data/backfill_range.txt ] && saved=$(cat data/backfill_range.txt)
+          if [ -n "$IN_START" ]; then
+            start="$IN_START"; end="${IN_END:-$yesterday}"
+            if [ "$saved" != "$start $end" ] && [ -n "$saved" ]; then
+              echo "::notice::指定された期間が前回の途中経過($saved)と違うので、最初から取り直します"
+              rm -f $WORK_FILES
+            fi
+          elif [ -n "$saved" ]; then
+            read start end <<< "$saved"
+            echo "::notice::前回の続きから再開: $start 〜 $end"
+          else
+            last=$(python - <<'PY'
+          import duckdb
+          q = """SELECT max("レース日付") FROM read_csv_auto('data/race_result_merged.csv', all_varchar=true)"""
+          print(duckdb.connect().execute(q).fetchone()[0])
+          PY
+          )
+            if [ -z "$last" ] || [ "$last" = "None" ]; then echo "既存データの最終日が読めません"; exit 1; fi
+            start=$(date -d "$last +1 day" +%F); end="${IN_END:-$yesterday}"
+          fi
+          if [[ "$start" > "$end" ]]; then
+            echo "取得する期間がありません($start > $end)"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$start $end" > data/backfill_range.txt
+          echo "start=$start" >> "$GITHUB_OUTPUT"
+          echo "end=$end" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "### 取得期間: $start 〜 $end" >> "$GITHUB_STEP_SUMMARY"
+
+      # 終了コード 0=期間をすべて取得 / 3=時間切れ・取りこぼしあり(続きは次の実行で)
+      - name: 結果を取得
+        id: fetch
+        if: steps.range.outputs.skip == 'false'
+        env:
+          C: ${{ github.event.inputs.concurrency || '3' }}
+          M: ${{ github.event.inputs.max_minutes || '300' }}
+        run: |
+          set +e
+          python src/backfill_results_parallel.py "${{ steps.range.outputs.start }}" "${{ steps.range.outputs.end }}" \
+            --concurrency "$C" --max-minutes "$M"
+          code=$?
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          [ -f data/race_result_new.csv ] && echo "取得済み行数: $(($(wc -l < data/race_result_new.csv) - 1))" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" != "0" ] && [ "$code" != "3" ]; then exit "$code"; fi
+
+      - name: 途中経過を保存
+        if: always() && steps.range.outputs.skip == 'false'
+        run: |
+          gh release view backfill-work >/dev/null 2>&1 || \
+            gh release create backfill-work --prerelease --title "バックフィル作業用(自動)" \
+              --notes "backfill_history.yml の途中経過。完了すると自動で空になります。"
+          for f in $WORK_FILES; do
+            [ -f "$f" ] && gh release upload backfill-work "$f" --clobber
+          done
+
+      - name: 続きを自動で再実行
+        if: steps.fetch.outputs.code == '3'
+        env:
+          ROUND: ${{ github.event.inputs.round || '1' }}
+          C: ${{ github.event.inputs.concurrency || '3' }}
+          M: ${{ github.event.inputs.max_minutes || '300' }}
+        run: |
+          if [ "$ROUND" -ge "$MAX_ROUNDS" ]; then
+            echo "::warning::自動再実行が${MAX_ROUNDS}回に達したので止めます。ログを確認し、必要なら手動で再実行してください(start空欄で続きから)。"
+            exit 0
+          fi
+          next=$((ROUND + 1))
+          gh workflow run backfill_history.yml --ref "${GITHUB_REF_NAME}" -f round="$next" -f concurrency="$C" -f max_minutes="$M"
+          echo "続きを第${next}回として起動しました" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 統合してリリースを更新
+        if: steps.fetch.outputs.code == '0'
+        run: |
+          python src/merge_backfill.py data/race_result_merged.csv data/race_result_new.csv data/race_result_merged.csv | tee merge_log.txt
+          { echo '```'; cat merge_log.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          gh release upload data-v1 data/race_result_merged.csv --clobber
+          # 作業用の途中経過を片付ける(次回は「最終日の翌日から」になる)
+          for f in $WORK_FILES; do
+            gh release delete-asset backfill-work "$(basename "$f")" -y 2>/dev/null || true
+          done
+
+      - name: モデル再学習を起動
+        if: steps.fetch.outputs.code == '0'
+        run: |
+          gh workflow run retrain.yml --ref "${GITHUB_REF_NAME}"
+          echo "モデル再学習(retrain.yml)を起動しました" >> "$GITHUB_STEP_SUMMARY"

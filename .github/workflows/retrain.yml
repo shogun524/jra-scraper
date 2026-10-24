@@ -1,0 +1,81 @@
+name: JRAモデル再学習
+
+# リリース data-v1 の race_result_merged.csv から特徴量を作り直し、モデルを再学習して main に保存する。
+# backfill_history.yml がデータを更新し終えたときに自動で起動される(手動実行も可)。
+# 次の予測ジョブ(weekly_predict.yml)から新しいモデルが使われる。
+on:
+  workflow_dispatch:
+    inputs:
+      train_end:
+        description: "学習期間の終わり(この日より前で学習)"
+        required: false
+        default: "2024-01-01"
+      valid_end:
+        description: "検証期間の終わり(この日以降がバックテスト)"
+        required: false
+        default: "2025-01-01"
+
+concurrency:
+  group: jra-retrain
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 依存関係インストール
+        run: pip install duckdb lightgbm pandas numpy beautifulsoup4 lxml
+
+      - name: データ取得
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download data-v1 --pattern "race_result_merged.csv" --dir data --clobber
+
+      - name: 特徴量作成
+        run: python src/feature_engineering.py
+
+      - name: コース別集計の更新
+        run: python src/build_course_stats.py
+
+      - name: 学習とバックテスト
+        env:
+          TRAIN_END: ${{ github.event.inputs.train_end || '2024-01-01' }}
+          VALID_END: ${{ github.event.inputs.valid_end || '2025-01-01' }}
+        run: |
+          python src/train_model.py | tee train_log.txt
+          {
+            echo "### 再学習の結果"
+            echo '```'
+            sed -n '/\[6\]/,/\[8\]/p' train_log.txt
+            echo '```'
+            echo '```json'
+            cat data/backtest_summary.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: モデルを main に保存
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/model_win.txt data/model_top3.txt data/backtest_win.json data/backtest_summary.json \
+                  data/feature_importance.json data/course_stats.json
+          if git diff --cached --quiet; then
+            echo "変更なし"
+            exit 0
+          fi
+          git commit -m "モデル再学習 $(TZ='Asia/Tokyo' date '+%Y-%m-%d %H:%M')(データ最終日 $(python -c "import json;print(json.load(open('data/backtest_summary.json'))['data_last_date'])"))"
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep 10
+          done
+          exit 1
