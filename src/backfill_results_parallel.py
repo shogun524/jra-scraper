@@ -128,6 +128,22 @@ async def fetch_one_race(browser, race_id, date_str, sem, writer_lock, writer, d
 
 
 DATES_DONE_FILE = "data/backfill_dates_done.json"
+# 土日なのに0件だった日の「別々の実行で0件だった回数」。本当に開催が無い土日(年末など)もあるので、
+# 3回の実行で毎回0件なら開催なしとみなして処理済みにする(取得失敗なら次の実行で取れるはず)。
+ZERO_TRIES_FILE = "data/backfill_zero_tries.json"
+ZERO_TRIES_LIMIT = 3
+
+
+def load_zero_tries() -> dict:
+    if os.path.exists(ZERO_TRIES_FILE):
+        with open(ZERO_TRIES_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def save_zero_tries(z: dict):
+    with open(ZERO_TRIES_FILE, "w", encoding="utf-8") as f:
+        json.dump(z, f)
 
 
 def load_dates_done() -> set:
@@ -148,6 +164,7 @@ async def run(start_date: str, end_date: str, concurrency: int, max_minutes: flo
     finished = True
     done = load_progress()
     dates_done = load_dates_done()
+    zero_tries = load_zero_tries()
     file_exists = os.path.exists(OUT_CSV)
     dates = []
     d = datetime.strptime(start_date, "%Y-%m-%d")
@@ -202,7 +219,14 @@ async def run(start_date: str, end_date: str, concurrency: int, max_minutes: flo
                 if not race_ids and datetime.strptime(date_str, "%Y%m%d").weekday() >= 5:
                     # JRAは土日にはほぼ必ず開催がある。0件なら一覧ページの取得失敗(制限など)を疑い、
                     # 処理済みにせず次回の実行で再確認する
-                    print(f"[{date_str}] 土日なのにレースが0件 -> 取得失敗の可能性があるため次回再確認")
+                    zero_tries[date_str] = zero_tries.get(date_str, 0) + 1
+                    save_zero_tries(zero_tries)
+                    if zero_tries[date_str] >= ZERO_TRIES_LIMIT:
+                        print(f"[{date_str}] 土日0件が{ZERO_TRIES_LIMIT}回の実行で続いたので開催なしとみなします")
+                        dates_done.add(date_str)
+                        save_dates_done(dates_done)
+                        continue
+                    print(f"[{date_str}] 土日なのにレースが0件({zero_tries[date_str]}回目) -> 取得失敗の可能性があるため次回再確認")
                     finished = False
                     weekend_zero_streak += 1
                     if weekend_zero_streak >= 4:

@@ -52,7 +52,7 @@ permissions:
 env:
   GH_TOKEN: ${{ github.token }}
   MAX_ROUNDS: "10"
-  WORK_FILES: "data/race_result_new.csv data/backfill_progress.json data/backfill_dates_done.json data/backfill_range.txt"
+  WORK_FILES: "data/race_result_new.csv data/backfill_progress.json data/backfill_dates_done.json data/backfill_range.txt data/backfill_zero_tries.json"
 
 jobs:
   backfill:
@@ -76,7 +76,7 @@ jobs:
           gh release download data-v1 --pattern "race_result_merged.csv" --dir data --clobber
           # 前回の続き(あれば)
           if gh release view backfill-work >/dev/null 2>&1; then
-            for f in race_result_new.csv backfill_progress.json backfill_dates_done.json backfill_range.txt; do
+            for f in race_result_new.csv backfill_progress.json backfill_dates_done.json backfill_range.txt backfill_zero_tries.json; do
               gh release download backfill-work --pattern "$f" --dir data --clobber || true
             done
           fi
