@@ -32,6 +32,10 @@ on:
         description: "1回の実行で取得に使う最大時間(分)"
         required: false
         default: "300"
+      recheck_from:
+        description: "この日(YYYYMMDD)以降の日付を「未処理」に戻して一覧を取り直す(取りこぼし対策。通常は空欄)"
+        required: false
+        default: ""
       round:
         description: "自動再実行の回数(内部用。通常は触らない)"
         required: false
@@ -116,6 +120,21 @@ jobs:
           echo "end=$end" >> "$GITHUB_OUTPUT"
           echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "### 取得期間: $start 〜 $end" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 指定日以降を未処理に戻す
+        if: steps.range.outputs.skip == 'false' && github.event.inputs.recheck_from != ''
+        env:
+          RECHECK_FROM: ${{ github.event.inputs.recheck_from }}
+        run: |
+          python - <<'PY'
+          import json, os
+          path = "data/backfill_dates_done.json"
+          if os.path.exists(path):
+              d = json.load(open(path))
+              keep = sorted(x for x in d if x < os.environ["RECHECK_FROM"])
+              json.dump(keep, open(path, "w"))
+              print(f"処理済みの日付 {len(d)} -> {len(keep)}({os.environ['RECHECK_FROM']}以降を取り直し)")
+          PY
 
       # 終了コード 0=期間をすべて取得 / 3=時間切れ・取りこぼしあり(続きは次の実行で)
       - name: 結果を取得

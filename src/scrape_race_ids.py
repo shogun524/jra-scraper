@@ -11,19 +11,28 @@ import re
 import time
 
 RACE_LIST_URL = "https://race.netkeiba.com/top/race_list.html?kaisai_date={date}"
+# race_list.html は中身を JavaScript で後から差し込むので、まず中身そのもの(race_list_sub.html)を見る
+RACE_LIST_SUB_URL = "https://race.netkeiba.com/top/race_list_sub.html?kaisai_date={date}"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 
 
 def get_race_ids_for_date(page, date_str: str) -> list[str]:
     """date_str: 'YYYYMMDD'. 戻り値: race_id(12桁文字列)のリスト"""
-    url = RACE_LIST_URL.format(date=date_str)
-    page.goto(url, timeout=30000, wait_until="domcontentloaded")
-    page.wait_for_timeout(1500)  # レンダリング待ち。開催がない日はレース一覧が空のまま
-    html = page.content()
-    ids = sorted(set(re.findall(r"race_id=(\d{12})", html)))
-    # 中央競馬(JRA)のみに絞る: 場コード 01〜10 のみ(11以降は地方競馬)
-    jra_ids = [i for i in ids if 1 <= int(i[4:6]) <= 10]
-    return jra_ids
+    def jra(html):
+        ids = sorted(set(re.findall(r"race_id=(\d{12})", html)))
+        # 中央競馬(JRA)のみに絞る: 場コード 01〜10 のみ(11以降は地方競馬)
+        return [i for i in ids if 1 <= int(i[4:6]) <= 10]
+
+    page.goto(RACE_LIST_SUB_URL.format(date=date_str), timeout=30000, wait_until="load")
+    ids = jra(page.content())
+    if ids:
+        return ids
+    page.goto(RACE_LIST_URL.format(date=date_str), timeout=30000, wait_until="load")
+    try:
+        page.wait_for_selector('a[href*="race_id="]', timeout=10000)  # 開催がない日は時間切れで0件
+    except Exception:
+        pass
+    return jra(page.content())
 
 
 def get_race_ids_for_range(start_date: str, end_date: str, delay_sec: float = 2.0) -> dict:

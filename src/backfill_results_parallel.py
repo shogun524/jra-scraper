@@ -38,15 +38,34 @@ from backfill_results import TRACK_NAMES, OUT_COLUMNS, OUT_CSV, PROGRESS_FILE, l
 from playwright.async_api import async_playwright
 
 RACE_LIST_URL = "https://race.netkeiba.com/top/race_list.html?kaisai_date={date}"
+# race_list.html は中身(レース一覧)を JavaScript で後から差し込むため、読み込みが遅いと0件になる。
+# 差し込まれる中身そのものを返す race_list_sub.html を優先して使う(JSなしでレースIDが入っている)。
+RACE_LIST_SUB_URL = "https://race.netkeiba.com/top/race_list_sub.html?kaisai_date={date}"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 
 
-async def get_race_ids_for_date(page, date_str: str) -> list[str]:
-    await page.goto(RACE_LIST_URL.format(date=date_str), timeout=30000, wait_until="domcontentloaded")
-    await page.wait_for_timeout(1500)
-    html = await page.content()
+def _jra_ids(html: str) -> list[str]:
     ids = sorted(set(re.findall(r"race_id=(\d{12})", html)))
     return [i for i in ids if 1 <= int(i[4:6]) <= 10]
+
+
+async def get_race_ids_for_date(page, date_str: str) -> list[str]:
+    # 1) 中身だけのページ(JS不要)
+    await page.goto(RACE_LIST_SUB_URL.format(date=date_str), timeout=30000, wait_until="load")
+    ids = _jra_ids(await page.content())
+    if ids:
+        return ids
+    # 2) 通常ページ。レースへのリンクが現れるまで最大10秒待つ(開催が無い日は時間切れで0件)
+    await page.goto(RACE_LIST_URL.format(date=date_str), timeout=30000, wait_until="load")
+    try:
+        await page.wait_for_selector('a[href*="race_id="]', timeout=10000)
+    except Exception:
+        pass
+    html = await page.content()
+    ids = _jra_ids(html)
+    if not ids and datetime.strptime(date_str, "%Y%m%d").weekday() >= 5:
+        print(f"  [{date_str}] 一覧0件: title={await page.title()!r} len={len(html)}")
+    return ids
 
 
 async def fetch_one_race(browser, race_id, date_str, sem, writer_lock, writer, done, csv_file, stats):
