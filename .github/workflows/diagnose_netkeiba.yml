@@ -1,0 +1,45 @@
+name: netkeiba取得の診断
+
+# バックフィルで取れない期間がある時に、レース一覧ページ・結果ページの実際の中身を記録する。
+# 結果はリリース diagnostics に diag.zip として保存される。
+on:
+  workflow_dispatch:
+    inputs:
+      dates:
+        description: "レース一覧を調べる日付(YYYYMMDD、空白区切り)"
+        required: false
+        default: "20230211 20230212 20240107 20251026"
+      races:
+        description: "結果ページを調べるレースID(空白区切り)"
+        required: false
+        default: "202305010101 202306010101 202405010101 202505010101"
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 依存関係インストール
+        run: |
+          pip install pandas beautifulsoup4 lxml playwright
+          playwright install chromium --with-deps
+      - name: 診断
+        run: |
+          python src/diagnose_netkeiba.py --dates ${{ github.event.inputs.dates }} --races ${{ github.event.inputs.races }} --out diag
+          { echo '```'; cat diag/summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: 結果を保存
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zip -qr diag.zip diag || true
+          gh release view diagnostics >/dev/null 2>&1 || \
+            gh release create diagnostics --prerelease --title "診断結果(自動)" --notes "diagnose_netkeiba.yml の出力"
+          gh release upload diagnostics diag.zip --clobber
