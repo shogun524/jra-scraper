@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>予測の成績</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --turf: #1F4D3A; --paper: #F6F1E4; --paper-line: #E4DAC0;
+    --ink: #2A2118; --ink-soft: #6B5F4D; --gold: #B8862B; --gold-soft: #F0D896;
+    --good: #2E7D46; --mid: #B8862B; --low: #B0433A;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Noto Sans JP", system-ui, sans-serif; font-size: 15px; line-height: 1.6; }
+  header.top { background: var(--turf); color: #fff; padding: 20px; }
+  header .inner { max-width: 900px; margin: 0 auto; }
+  h1 { font-family: "Shippori Mincho", serif; font-weight: 800; margin: 0 0 4px; font-size: 1.6rem; }
+  header p { margin: 0; font-size: .82rem; opacity: .9; }
+  header a { color: var(--gold-soft); }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  .card { background: #fff; border: 1px solid var(--paper-line); border-radius: 6px; padding: 16px; margin-bottom: 16px; }
+  h2 { font-family: "Shippori Mincho", serif; color: var(--turf); font-size: 1.15rem; margin: 0 0 6px; }
+  .lead { margin: 0 0 10px; font-size: .82rem; color: var(--ink-soft); }
+  .verdict { margin: 12px 0 0; padding: 10px 12px; background: #FBF6E8; border-left: 3px solid var(--gold); font-size: .88rem; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .kpi { background: #fff; border: 1px solid var(--paper-line); border-top: 3px solid var(--turf); border-radius: 6px; padding: 12px 14px; }
+  .kpi-label { font-size: .76rem; color: var(--ink-soft); }
+  .kpi-val { font-size: 1.7rem; font-weight: 700; color: var(--turf); font-variant-numeric: tabular-nums; line-height: 1.3; }
+  .kpi-sub { font-size: .74rem; color: var(--ink-soft); }
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+  th { text-align: left; font-weight: 500; font-size: .72rem; color: var(--ink-soft);
+    padding: 6px 8px; border-bottom: 1px solid var(--paper-line); white-space: nowrap; }
+  td { padding: 6px 8px; border-bottom: 1px solid var(--paper-line); white-space: nowrap; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.note { color: var(--ink-soft); font-size: .74rem; white-space: normal; }
+  .sep { border-left: 1px solid var(--paper-line); }
+  .roi-good { color: var(--good); font-weight: 700; }
+  .roi-mid { color: var(--mid); font-weight: 700; }
+  .roi-low { color: var(--low); font-weight: 700; }
+  .barcell { width: 120px; min-width: 90px; }
+  .cal { position: relative; height: 12px; background: #F3EEDF; border-radius: 2px; }
+  .cal-act { position: absolute; left: 0; top: 0; bottom: 0; background: var(--turf); opacity: .75; border-radius: 2px; }
+  .cal-pred { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--gold); }
+  .lg-act { display: inline-block; padding: 0 4px; background: var(--turf); color: #fff; border-radius: 2px; opacity: .8; }
+  .lg-pred { display: inline-block; padding: 0 4px; border-left: 2px solid var(--gold); }
+  footer { max-width: 900px; margin: 0 auto 24px; padding: 0 20px; color: var(--ink-soft); font-size: .74rem; line-height: 1.7; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="inner">
+    <h1>予測の成績</h1>
+    <p>2026-09-26 〜 2026-10-24(開催10日・276レース) ・ 最終更新 2026-10-24 17:42 (JST) ・ <a href="index.html">今週の予想へ戻る</a></p>
+  </div>
+</header>
+<main>
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-label">◎ 勝率</div><div class="kpi-val">17.0%</div>
+        <div class="kpi-sub">1番人気 32.2%</div></div>
+      <div class="kpi"><div class="kpi-label">◎ 3着内率</div><div class="kpi-val">43.8%</div>
+        <div class="kpi-sub">1番人気 70.3%</div></div>
+      <div class="kpi"><div class="kpi-label">◎ 単勝回収率</div><div class="kpi-val">51.4%</div>
+        <div class="kpi-sub">1番人気 72.6% ・ 全馬 70.0%</div></div>
+      <div class="kpi"><div class="kpi-label">◎が1番人気だった割合</div><div class="kpi-val">27.9%</div>
+        <div class="kpi-sub">◎の平均人気 3.6番</div></div>
+    </div>
+    <section class="card">
+      <h2>AI と 市場、どちらの確率が当たっているか</h2>
+      <p class="lead">勝ち馬にどれだけ高い確率を付けていたか(対数損失)と、全馬の確率の誤差(ブライアスコア)。どちらも<b>小さいほど良い</b>。</p>
+      <div class="tbl-wrap"><table class=""><thead><tr><th>確率の出し方</th><th>対数損失</th><th>ブライア</th><th></th></tr></thead><tbody><tr><td>AI(1着率)</td><td class='num'>2.431</td><td class='num'>0.8970</td><td class='note'></td></tr><tr><td>市場(確定単勝オッズ)</td><td class='num'>1.937</td><td class='num'>0.7972</td><td class='note'></td></tr><tr><td>最適ブレンド(AI^0.00×市場^1.00)</td><td class='num'>1.937</td><td class='num'>0.7972</td><td class='note'>同じデータで重みを決めているので、やや甘めの値</td></tr><tr><td>でたらめ(全馬同確率)</td><td class='num'>2.562</td><td class='num'>-</td><td class='note'>平均13.4頭立て</td></tr></tbody></table></div>
+      <p class="verdict">AIの重みがほぼ0。現状のAIは<b>市場オッズに上乗せできる情報をほとんど持っていない</b>状態です。</p>
+    </section>
+    <section class="card">
+      <h2>キャリブレーション(確率の正直さ)</h2>
+      <p class="lead">「1着率10%と出た馬は、本当に10回に1回勝っているか」。棒の<span class="lg-act">塗り</span>が実際の勝率、<span class="lg-pred">縦線</span>が予測。
+      塗りが縦線より短い帯は<b>過大評価</b>、長い帯は<b>過小評価</b>。</p>
+      <div class="tbl-wrap"><table class="cal-table"><thead><tr><th>確率帯</th><th>AI 頭数</th><th>予測</th><th>実際</th><th></th><th>市場 頭数</th><th>予測</th><th>実際</th><th></th></tr></thead><tbody><tr><td>〜3%</td><td class='num'>309</td><td class='num'>2.4%</td><td class='num'><b>3.9%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:9.4%"></span><span class="cal-pred" style="left:5.9%"></span></div></td><td class='num sep'>1724</td><td class='num'>1.2%</td><td class='num'><b>1.3%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:3.1%"></span><span class="cal-pred" style="left:2.9%"></span></div></td></tr><tr><td>3〜6%</td><td class='num'>1436</td><td class='num'>4.5%</td><td class='num'><b>3.8%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:9.1%"></span><span class="cal-pred" style="left:10.8%"></span></div></td><td class='num sep'>633</td><td class='num'>4.3%</td><td class='num'><b>4.1%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:10.0%"></span><span class="cal-pred" style="left:10.5%"></span></div></td></tr><tr><td>6〜10%</td><td class='num'>1149</td><td class='num'>7.8%</td><td class='num'><b>8.0%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:19.4%"></span><span class="cal-pred" style="left:18.9%"></span></div></td><td class='num sep'>422</td><td class='num'>7.8%</td><td class='num'><b>8.5%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:20.7%"></span><span class="cal-pred" style="left:19.0%"></span></div></td></tr><tr><td>10〜15%</td><td class='num'>550</td><td class='num'>12.0%</td><td class='num'><b>13.1%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:31.7%"></span><span class="cal-pred" style="left:29.1%"></span></div></td><td class='num sep'>343</td><td class='num'>12.3%</td><td class='num'><b>11.1%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:26.9%"></span><span class="cal-pred" style="left:29.8%"></span></div></td></tr><tr><td>15〜20%</td><td class='num'>161</td><td class='num'>17.0%</td><td class='num'><b>17.4%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:42.2%"></span><span class="cal-pred" style="left:41.1%"></span></div></td><td class='num sep'>188</td><td class='num'>17.2%</td><td class='num'><b>19.1%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:46.4%"></span><span class="cal-pred" style="left:41.8%"></span></div></td></tr><tr><td>20〜30%</td><td class='num'>80</td><td class='num'>23.6%</td><td class='num'><b>20.0%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:48.5%"></span><span class="cal-pred" style="left:57.3%"></span></div></td><td class='num sep'>206</td><td class='num'>23.9%</td><td class='num'><b>21.8%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:53.0%"></span><span class="cal-pred" style="left:57.9%"></span></div></td></tr><tr><td>30%〜</td><td class='num'>8</td><td class='num'>34.1%</td><td class='num'><b>25.0%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:60.6%"></span><span class="cal-pred" style="left:82.7%"></span></div></td><td class='num sep'>177</td><td class='num'>40.3%</td><td class='num'><b>41.2%</b></td><td class='barcell'><div class="cal"><span class="cal-act" style="width:100.0%"></span><span class="cal-pred" style="left:97.6%"></span></div></td></tr></tbody></table></div>
+    </section>
+    <section class="card">
+      <h2>人気帯別 — AIと市場が食い違ったとき</h2>
+      <p class="lead">左: ◎が実際には何番人気だったか別の成績。◎が人気薄のときは「AIだけが推している」状態。<br>
+      右: その人気帯の全馬について、AIと市場が付けた平均1着率と実際の勝率。実際に近い方が正確。</p>
+      <div class="tbl-wrap"><table class=""><thead><tr><th>◎の人気</th><th>◎数</th><th>1着</th><th>勝率</th><th>3着内</th><th>単勝回収</th><th>AI平均</th><th>市場平均</th><th>実際</th></tr></thead><tbody><tr><td>1番人気</td><td class='num'>77</td><td class='num'>32</td><td class='num'>41.6%</td><td class='num'>77.9%</td><td class="num roi-mid">89.2%</td><td class='num sep'>11.8%</td><td class='num'>33.9%</td><td class='num'><b>32.2%</b></td></tr><tr><td>2〜3番人気</td><td class='num'>97</td><td class='num'>13</td><td class='num'>13.4%</td><td class='num'>49.5%</td><td class="num roi-low">54.1%</td><td class='num sep'>10.6%</td><td class='num'>16.3%</td><td class='num'><b>15.4%</b></td></tr><tr><td>4〜6番人気</td><td class='num'>62</td><td class='num'>2</td><td class='num'>3.2%</td><td class='num'>21.0%</td><td class="num roi-low">33.2%</td><td class='num sep'>8.6%</td><td class='num'>7.0%</td><td class='num'><b>8.1%</b></td></tr><tr><td>7〜9番人気</td><td class='num'>21</td><td class='num'>0</td><td class='num'>0.0%</td><td class='num'>0.0%</td><td class="num roi-low">0.0%</td><td class='num sep'>6.6%</td><td class='num'>2.8%</td><td class='num'><b>3.0%</b></td></tr><tr><td>10番人気〜</td><td class='num'>19</td><td class='num'>0</td><td class='num'>0.0%</td><td class='num'>0.0%</td><td class="num roi-low">0.0%</td><td class='num sep'>5.0%</td><td class='num'>1.0%</td><td class='num'><b>0.9%</b></td></tr></tbody></table></div>
+    </section>
+    <section class="card">
+      <h2>回収率シミュレーション(単勝100円ずつ)</h2>
+      <p class="lead">払戻は確定オッズで計算。「掲載時オッズ」はページに表示されていた期待値、「確定オッズ」は締切後のオッズで計算し直した期待値で判定。</p>
+      <div class="tbl-wrap"><table class=""><thead><tr><th>買い方</th><th>点数</th><th>的中</th><th>的中率</th><th>平均オッズ</th><th>回収率</th></tr></thead><tbody><tr><td>全馬に単勝(ベースライン)</td><td class='num'>3693</td><td class='num'>276</td><td class='num'>7.5%</td><td class='num'>59.6</td><td class="num roi-low">70.0%</td></tr><tr><td>◎に単勝</td><td class='num'>276</td><td class='num'>47</td><td class='num'>17.0%</td><td class='num'>10.3</td><td class="num roi-low">51.4%</td></tr><tr><td>1番人気に単勝</td><td class='num'>276</td><td class='num'>89</td><td class='num'>32.2%</td><td class='num'>2.6</td><td class="num roi-low">72.6%</td></tr><tr><td>EV≧1.0(掲載時オッズで判定)</td><td class='num'>2300</td><td class='num'>44</td><td class='num'>1.9%</td><td class='num'>90.7</td><td class="num roi-low">56.8%</td></tr><tr><td>EV≧1.2(掲載時オッズで判定)</td><td class='num'>2091</td><td class='num'>34</td><td class='num'>1.6%</td><td class='num'>97.8</td><td class="num roi-low">53.5%</td></tr><tr><td>EV≧1.5(掲載時オッズで判定)</td><td class='num'>1843</td><td class='num'>23</td><td class='num'>1.2%</td><td class='num'>107.7</td><td class="num roi-low">49.4%</td></tr><tr><td>EV≧2.0(掲載時オッズで判定)</td><td class='num'>1520</td><td class='num'>15</td><td class='num'>1.0%</td><td class='num'>124.0</td><td class="num roi-low">48.4%</td></tr><tr><td>EV≧1.0(確定オッズで判定)</td><td class='num'>2293</td><td class='num'>44</td><td class='num'>1.9%</td><td class='num'>90.9</td><td class="num roi-low">57.0%</td></tr><tr><td>EV≧1.2(確定オッズで判定)</td><td class='num'>2088</td><td class='num'>34</td><td class='num'>1.6%</td><td class='num'>97.9</td><td class="num roi-low">53.6%</td></tr><tr><td>EV≧1.5(確定オッズで判定)</td><td class='num'>1842</td><td class='num'>23</td><td class='num'>1.2%</td><td class='num'>107.8</td><td class="num roi-low">49.4%</td></tr><tr><td>EV≧2.0(確定オッズで判定)</td><td class='num'>1518</td><td class='num'>15</td><td class='num'>1.0%</td><td class='num'>124.1</td><td class="num roi-low">48.4%</td></tr></tbody></table></div>
+    </section>
+    <section class="card">
+      <h2>開催日別</h2>
+      <div class="tbl-wrap"><table class=""><thead><tr><th>日付</th><th>R数</th><th>◎1着</th><th>◎勝率</th><th>◎3着内</th><th>◎単回収</th><th>1人気勝率</th><th>AI損失</th><th>市場損失</th></tr></thead><tbody><tr><td>2026-09-26</td><td class='num'>24</td><td class='num'>3</td><td class='num'>12.5%</td><td class='num'>41.7%</td><td class="num roi-low">21.2%</td><td class='num sep'>37.5%</td><td class='num'>2.28</td><td class='num'>1.78</td></tr><tr><td>2026-09-27</td><td class='num'>24</td><td class='num'>3</td><td class='num'>12.5%</td><td class='num'>41.7%</td><td class="num roi-low">72.5%</td><td class='num sep'>29.2%</td><td class='num'>2.36</td><td class='num'>2.05</td></tr><tr><td>2026-10-03</td><td class='num'>24</td><td class='num'>7</td><td class='num'>29.2%</td><td class='num'>58.3%</td><td class="num roi-mid">90.0%</td><td class='num sep'>29.2%</td><td class='num'>2.39</td><td class='num'>1.77</td></tr><tr><td>2026-10-04</td><td class='num'>24</td><td class='num'>5</td><td class='num'>20.8%</td><td class='num'>37.5%</td><td class="num roi-low">37.5%</td><td class='num sep'>37.5%</td><td class='num'>2.52</td><td class='num'>1.90</td></tr><tr><td>2026-10-10</td><td class='num'>24</td><td class='num'>5</td><td class='num'>20.8%</td><td class='num'>41.7%</td><td class="num roi-low">58.3%</td><td class='num sep'>29.2%</td><td class='num'>2.45</td><td class='num'>1.99</td></tr><tr><td>2026-10-11</td><td class='num'>24</td><td class='num'>3</td><td class='num'>12.5%</td><td class='num'>33.3%</td><td class="num roi-low">58.3%</td><td class='num sep'>33.3%</td><td class='num'>2.53</td><td class='num'>2.07</td></tr><tr><td>2026-10-12</td><td class='num'>24</td><td class='num'>7</td><td class='num'>29.2%</td><td class='num'>45.8%</td><td class="num roi-low">66.2%</td><td class='num sep'>37.5%</td><td class='num'>2.30</td><td class='num'>1.64</td></tr><tr><td>2026-10-17</td><td class='num'>36</td><td class='num'>4</td><td class='num'>11.1%</td><td class='num'>44.4%</td><td class="num roi-low">44.2%</td><td class='num sep'>22.2%</td><td class='num'>2.51</td><td class='num'>2.21</td></tr><tr><td>2026-10-18</td><td class='num'>36</td><td class='num'>6</td><td class='num'>16.7%</td><td class='num'>50.0%</td><td class="num roi-low">43.6%</td><td class='num sep'>36.1%</td><td class='num'>2.43</td><td class='num'>1.92</td></tr><tr><td>2026-10-24</td><td class='num'>36</td><td class='num'>4</td><td class='num'>11.1%</td><td class='num'>41.7%</td><td class="num roi-low">36.7%</td><td class='num sep'>33.3%</td><td class='num'>2.47</td><td class='num'>1.91</td></tr></tbody></table></div>
+      <h2 style="margin-top:22px">競馬場別</h2>
+      <div class="tbl-wrap"><table class=""><thead><tr><th>競馬場</th><th>R数</th><th>◎1着</th><th>◎勝率</th><th>◎3着内</th><th>◎単回収</th><th>1人気勝率</th><th>AI損失</th><th>市場損失</th></tr></thead><tbody><tr><td>中山</td><td class='num'>24</td><td class='num'>2</td><td class='num'>8.3%</td><td class='num'>33.3%</td><td class="num roi-low">61.2%</td><td class='num sep'>25.0%</td><td class='num'>2.41</td><td class='num'>2.02</td></tr><tr><td>京都</td><td class='num'>96</td><td class='num'>12</td><td class='num'>12.5%</td><td class='num'>41.7%</td><td class="num roi-low">35.1%</td><td class='num sep'>31.2%</td><td class='num'>2.44</td><td class='num'>1.89</td></tr><tr><td>新潟</td><td class='num'>36</td><td class='num'>3</td><td class='num'>8.3%</td><td class='num'>25.0%</td><td class="num roi-low">31.7%</td><td class='num sep'>22.2%</td><td class='num'>2.76</td><td class='num'>2.40</td></tr><tr><td>東京</td><td class='num'>96</td><td class='num'>26</td><td class='num'>27.1%</td><td class='num'>54.2%</td><td class="num roi-low">77.3%</td><td class='num sep'>36.5%</td><td class='num'>2.36</td><td class='num'>1.82</td></tr><tr><td>阪神</td><td class='num'>24</td><td class='num'>4</td><td class='num'>16.7%</td><td class='num'>50.0%</td><td class="num roi-low">32.5%</td><td class='num sep'>41.7%</td><td class='num'>2.23</td><td class='num'>1.81</td></tr></tbody></table></div>
+    </section></main>
+<footer>
+  <p>◎はAIの1着率1位の馬(ページ掲載時点)。人気・払戻は確定オッズ。取消・除外馬は集計から除いています。
+  件数が少ないうちは数字のブレが大きいので、回収率は数百レース貯まるまで参考程度に見てください。</p>
+</footer>
+</body>
+</html>
