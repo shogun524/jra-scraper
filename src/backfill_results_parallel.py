@@ -211,7 +211,8 @@ async def run(start_date: str, end_date: str, concurrency: int, max_minutes: flo
                         print("!! 土日の0件が4日続いたため、一覧が取れなくなったと判断して中断します")
                         break
                     continue
-                weekend_zero_streak = 0
+                if race_ids:
+                    weekend_zero_streak = 0  # 平日の0件(開催なし)ではリセットしない
 
                 todo = [r for r in race_ids if r not in done]
                 if todo:
