@@ -284,3 +284,45 @@ if __name__ == "__main__":
     rows = parse_race_result(html, race_id)
     print(json.dumps(rows[:3], ensure_ascii=False, indent=2))
     print(f"{len(rows)}頭分パースしました")
+
+
+# ---------------------------------------------------------------------------
+# 払戻(配当)
+# ---------------------------------------------------------------------------
+# 結果ページの払戻表(table.Payout_Detail_Table)の行クラス -> (券種名, 1組あたりの頭数/枠数)
+PAYOUT_TYPES = {
+    "Tansho": ("単勝", 1), "Fukusho": ("複勝", 1), "Wakuren": ("枠連", 2), "Umaren": ("馬連", 2),
+    "Wide": ("ワイド", 2), "Umatan": ("馬単", 2), "Fuku3": ("3連複", 3), "Tan3": ("3連単", 3),
+}
+PAYOUT_COLUMNS = ["race_id", "bet_type", "combo", "payout", "popularity"]
+
+
+def parse_payouts(html: str, race_id: str) -> list[dict]:
+    """払戻表を1組1行に展開する。
+    combo は馬番(枠連は枠番)を "-" でつないだ文字列。順序が関係ない券種(馬連・ワイド・3連複・枠連)は
+    小さい順に並べ替えて正規化する。payout は100円あたりの払戻金(円)。同着で複数組ある場合もすべて出す。"""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    rows = []
+    for tr in soup.select("table.Payout_Detail_Table tr"):
+        cls = next((c for c in (tr.get("class") or []) if c in PAYOUT_TYPES), None)
+        if cls is None:
+            continue
+        name, k = PAYOUT_TYPES[cls]
+        res_td, pay_td, nin_td = tr.select_one("td.Result"), tr.select_one("td.Payout"), tr.select_one("td.Ninki")
+        if res_td is None or pay_td is None:
+            continue
+        nums = [int(x) for x in re.findall(r"\d+", " ".join(sp.get_text(strip=True) for sp in res_td.select("span")))]
+        pays = [int(x.replace(",", "")) for x in re.findall(r"([\d,]+)円", pay_td.get_text(" ", strip=True))]
+        ninki = [int(x) for x in re.findall(r"(\d+)人気", nin_td.get_text(" ", strip=True))] if nin_td else []
+        if not pays or len(nums) != len(pays) * k:
+            continue  # 想定外の形(発売なし・特払いなど)は飛ばす
+        for i, pay in enumerate(pays):
+            combo = nums[i * k:(i + 1) * k]
+            if name in ("馬連", "ワイド", "3連複", "枠連"):
+                combo = sorted(combo)
+            rows.append({
+                "race_id": race_id, "bet_type": name, "combo": "-".join(map(str, combo)),
+                "payout": pay, "popularity": ninki[i] if i < len(ninki) else None,
+            })
+    return rows

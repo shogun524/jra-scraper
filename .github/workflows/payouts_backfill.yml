@@ -1,0 +1,94 @@
+name: JRA払戻(配当)の取得
+
+# race_result_merged.csv にあるレースの払戻表(単勝〜3連単)を取得し、リリース payouts の payouts.csv に貯める。
+# 馬連・ワイド・3連複などの買い方を、過去の実際の配当で回収率まで検証するためのデータ。
+# 取得済みのレースは飛ばすので、何度実行しても続きからになる。終わらなければ自分を再実行する。
+on:
+  schedule:
+    # JST 火曜 06:17(データのバックフィル(火曜03:17)のあと、新しいレースの分だけ取り足す)
+    - cron: "17 21 * * 1"
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "この日以降のレースが対象(YYYY-MM-DD)"
+        required: false
+        default: "2024-01-01"
+      concurrency:
+        description: "同時取得数"
+        required: false
+        default: "3"
+      max_minutes:
+        description: "1回の実行で取得に使う最大時間(分)"
+        required: false
+        default: "300"
+      round:
+        description: "自動再実行の回数(内部用)"
+        required: false
+        default: "1"
+
+concurrency:
+  group: jra-payouts
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  MAX_ROUNDS: "8"
+
+jobs:
+  payouts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 依存関係インストール
+        run: |
+          pip install duckdb pandas beautifulsoup4 lxml playwright
+          playwright install chromium --with-deps
+      - name: データ取得
+        run: |
+          mkdir -p data
+          gh release download data-v1 --pattern "race_result_merged.csv" --dir data --clobber
+          if gh release view payouts >/dev/null 2>&1; then
+            gh release download payouts --pattern "payouts.csv" --dir data --clobber || true
+          fi
+          ls -la data
+      - name: 払戻を取得
+        id: fetch
+        env:
+          SINCE: ${{ github.event.inputs.since || '2024-01-01' }}
+          C: ${{ github.event.inputs.concurrency || '3' }}
+          M: ${{ github.event.inputs.max_minutes || '300' }}
+        run: |
+          set +e
+          python src/fetch_payouts.py data/race_result_merged.csv data/payouts.csv --since "$SINCE" --concurrency "$C" --max-minutes "$M"
+          code=$?
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          [ -f data/payouts.csv ] && echo "払戻の行数: $(($(wc -l < data/payouts.csv) - 1))" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" != "0" ] && [ "$code" != "3" ]; then exit "$code"; fi
+      - name: 保存
+        if: always()
+        run: |
+          [ -f data/payouts.csv ] || exit 0
+          gh release view payouts >/dev/null 2>&1 || \
+            gh release create payouts --prerelease --title "払戻データ(自動)" --notes "payouts_backfill.yml が集めた払戻表(1組1行)"
+          gh release upload payouts data/payouts.csv --clobber
+      - name: 続きを自動で再実行
+        if: steps.fetch.outputs.code == '3'
+        env:
+          ROUND: ${{ github.event.inputs.round || '1' }}
+          SINCE: ${{ github.event.inputs.since || '2024-01-01' }}
+          C: ${{ github.event.inputs.concurrency || '3' }}
+          M: ${{ github.event.inputs.max_minutes || '300' }}
+        run: |
+          if [ "$ROUND" -ge "$MAX_ROUNDS" ]; then
+            echo "::warning::自動再実行が${MAX_ROUNDS}回に達したので止めます"; exit 0
+          fi
+          gh workflow run payouts_backfill.yml --ref "${GITHUB_REF_NAME}" -f round=$((ROUND + 1)) -f since="$SINCE" -f concurrency="$C" -f max_minutes="$M"
