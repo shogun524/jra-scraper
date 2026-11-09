@@ -4,31 +4,31 @@
   "test_period": "2025-01-01〜",
   "train_rows": 685028,
   "valid_rows": 46563,
-  "test_rows": 82928,
-  "win_auc": 0.7849753216729616,
-  "top3_auc": 0.7751118010634597,
-  "win_best_iteration": 250,
-  "top3_best_iteration": 499,
-  "test_races_with_odds": 5712,
-  "logloss_ai": 2.141925382969745,
-  "logloss_market": 1.9287257477025435,
-  "logloss_uniform": 2.5963978094843645,
+  "test_rows": 85484,
+  "win_auc": 0.7858067214715314,
+  "top3_auc": 0.7744928616658996,
+  "win_best_iteration": 403,
+  "top3_best_iteration": 545,
+  "test_races_with_odds": 5897,
+  "logloss_ai": 2.1367863053696357,
+  "logloss_market": 1.9266448975977748,
+  "logloss_uniform": 2.595302016696632,
   "blend_weight_ai": 0.0,
   "blend_weight_market": 1.0,
-  "logloss_blend": 1.9287257477025435,
-  "baseline_flat_roi_pct": 72.85824932531374,
+  "logloss_blend": 1.9266448975977748,
+  "baseline_flat_roi_pct": 72.91535571730454,
   "honmei_roi": {
-    "n_bets": 5988,
-    "hit_rate": 0.2695390781563126,
-    "roi_pct": 77.22110888443554,
-    "avg_odds": 4.111690046760187
+    "n_bets": 6179,
+    "hit_rate": 0.2715649781518045,
+    "roi_pct": 79.72163780547015,
+    "avg_odds": 4.168490046933161
   },
   "favorite_roi": {
-    "n_bets": 6005,
-    "hit_rate": 0.3332223147377186,
-    "roi_pct": 78.64779350541215,
-    "avg_odds": 2.6195836802664445
+    "n_bets": 6197,
+    "hit_rate": 0.3351621752460868,
+    "roi_pct": 78.99467484266582,
+    "avg_odds": 2.618767145392932
   },
-  "production_model": "全期間(2010-01-01〜2026-10-18)で再学習",
-  "data_last_date": "2026-10-18"
+  "production_model": "全期間(2010-01-01〜2026-11-08)で再学習",
+  "data_last_date": "2026-11-08"
 }
