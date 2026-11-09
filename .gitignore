@@ -1,0 +1,9 @@
+# リリースからダウンロードする大きなデータ・作業ファイル(コミットしない)
+data/race_result_merged.csv
+data/race_result_new.csv
+data/features.parquet
+data/payouts.csv
+data/wf_preds.parquet
+data/backfill_*.json
+data/backfill_range.txt
+__pycache__/
