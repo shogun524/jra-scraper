@@ -401,7 +401,7 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
                 "mark", "ai_score", "stability", "gap_from_top",
                 "rank_diff", "market_rank", "waku_fit", "value_tag",
                 "race_competitiveness", "course_fav_win_pct"]
-    for optional_col in ["track_name", "race_number", "race_name", "post_time"]:
+    for optional_col in ["track_name", "race_number", "race_name", "post_time", "race_class"]:
         if optional_col in feat_df.columns:
             out_cols.append(optional_col)
     if "odds_win" in feat_df.columns:

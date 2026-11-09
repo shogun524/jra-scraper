@@ -26,6 +26,9 @@ from datetime import datetime, timedelta, timezone
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ai_bets import RULE_NAME, evaluate_race, settle  # noqa: E402
+
 HISTORY_DIR = sys.argv[1] if len(sys.argv) > 1 else "docs/history"
 OUT_HTML = sys.argv[2] if len(sys.argv) > 2 else "docs/performance.html"
 
@@ -167,10 +170,52 @@ def table(head, rows, cls=""):
     return f'<div class="tbl-wrap"><table class="{cls}"><thead><tr>{th}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
 
 
+def ai_bet_section(history_dir: str) -> str:
+    """AI買い目(ai_bets.py のルール)の実際の成績。race_class 入りの予測履歴と、払戻ファイルがある日だけ集計する。"""
+    rows, total_n, total_ret, n_races, n_hit = [], 0, 0, 0, 0
+    for f in sorted(glob.glob(os.path.join(history_dir, "predictions_*.csv"))):
+        d = os.path.basename(f)[len("predictions_"):-len(".csv")]
+        pf = os.path.join(history_dir, f"payouts_{d}.csv")
+        pred = pd.read_csv(f, dtype={"race_id": str})
+        if "race_class" not in pred.columns or not os.path.exists(pf):
+            continue
+        pay = pd.read_csv(pf, dtype={"race_id": str, "combo": str})
+        for rid, g in pred.groupby("race_id"):
+            e = evaluate_race(g)
+            if e["status"] != "対象":
+                continue
+            pr = pay[pay.race_id == rid]
+            if pr.empty:
+                continue  # 結果待ち
+            ret = settle(e["tickets"], pr)
+            n_races += 1
+            total_n += len(e["tickets"])
+            total_ret += ret
+            n_hit += int(ret > 0)
+            f0 = g.iloc[0]
+            rows.append(f"<tr><td>{d}</td><td>{_html.escape(str(f0.get('track_name', '')))}{int(f0['race_number'])}R "
+                        f"{_html.escape(str(f0.get('race_name', '') or ''))}</td><td class='num'>◎{e['honmei']}</td>"
+                        f"<td>{'・'.join(map(str, e['partners']))}</td><td class='num'>{'的中' if ret else '-'}</td>"
+                        f"<td class='num'>{ret:,}円</td></tr>")
+    note = (f"ルール: {RULE_NAME}。2019〜2026年の検証では555レースで回収率160%・的中率11%"
+            "(ただし大きな当たり数回に支えられ、最大32連敗)。ここではページに載せた予想(掲載時点のオッズで判定)を、"
+            "実際の払戻で採点しています。")
+    if n_races == 0:
+        return (f'<section class="card"><h2>AI買い目の実績</h2><p class="lead">{note}</p>'
+                '<p>まだ対象レースの結果がありません。対象レースが終わると、ここに成績が貯まっていきます。</p></section>')
+    roi = total_ret / (total_n * 100)
+    head = (f'<div class="kpis"><div class="kpi"><div class="kpi-label">対象レース</div><div class="kpi-val">{n_races}</div>'
+            f'<div class="kpi-sub">的中 {n_hit}回</div></div>'
+            f'<div class="kpi"><div class="kpi-label">回収率</div><div class="kpi-val">{roi * 100:.1f}%</div>'
+            f'<div class="kpi-sub">投資 {total_n * 100:,}円 / 払戻 {total_ret:,}円</div></div></div>')
+    tbl = table(["日付", "レース", "軸", "相手", "結果", "払戻"], rows[::-1])
+    return f'<section class="card"><h2>AI買い目の実績</h2><p class="lead">{note}</p>{head}{tbl}</section>'
+
+
 def build_html(df: pd.DataFrame) -> str:
     now = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M")
     if df.empty:
-        body = '<section class="card"><p>まだ結果と照合できたレースがありません。開催日の夕方に結果を取得すると、ここに成績が表示されます。</p></section>'
+        body = ai_bet_section(HISTORY_DIR) + '<section class="card"><p>まだ結果と照合できたレースがありません。開催日の夕方に結果を取得すると、ここに成績が表示されます。</p></section>'
         return page(body, now, "")
 
     n_races = df["race_id"].nunique()
@@ -304,7 +349,7 @@ def build_html(df: pd.DataFrame) -> str:
       {grouped("track_name", "競馬場")}
     </section>"""
 
-    body = kpis + vs_market + calib + pop_tbl + ev_tbl + by_group
+    body = kpis + ai_bet_section(HISTORY_DIR) + vs_market + calib + pop_tbl + ev_tbl + by_group
     return page(body, now, period)
 
 

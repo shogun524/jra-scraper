@@ -21,7 +21,7 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from scrape_race_result import fetch_race_page, parse_race_result  # noqa: E402
+from scrape_race_result import PAYOUT_COLUMNS, fetch_race_page, parse_payouts, parse_race_result  # noqa: E402
 
 RESULT_COLUMNS = ["race_id", "umaban", "finish", "popularity", "odds_final", "horse"]
 
@@ -110,6 +110,7 @@ def main():
         page = browser.new_page()
         for d, (ids, have) in jobs.items():
             new_frames = []
+            pay_rows = []  # 払戻(AI買い目の成績計算用)
             for rid in ids:
                 try:
                     html = fetch_race_page(page, rid)
@@ -119,6 +120,7 @@ def main():
                     continue
                 if is_complete(res):
                     new_frames.append(res)
+                    pay_rows += parse_payouts(html, rid)
                     print(f"  {rid}: {len(res)}頭 1着={res.loc[res.finish == 1, 'umaban'].tolist()}")
                 else:
                     print(f"  {rid}: まだ確定していません")
@@ -130,6 +132,14 @@ def main():
             out = os.path.join(history_dir, f"results_{d}.csv")
             merged.to_csv(out, index=False)
             print(f"{out} に保存 ({merged['race_id'].nunique()}レース)")
+            if pay_rows:
+                pout = os.path.join(history_dir, f"payouts_{d}.csv")
+                newp = pd.DataFrame(pay_rows, columns=PAYOUT_COLUMNS)
+                if os.path.exists(pout):
+                    oldp = pd.read_csv(pout, dtype={"race_id": str, "combo": str})
+                    newp = pd.concat([oldp[~oldp.race_id.isin(newp.race_id)], newp], ignore_index=True)
+                newp.to_csv(pout, index=False)
+                print(f"{pout} に払戻を保存 ({newp['race_id'].nunique()}レース)")
             saved_any = True
         browser.close()
 

@@ -7,9 +7,14 @@ data/predictions.csv を読み込み、競馬場ごとのタブ形式で docs/in
 - 枠番の色は実際のJRA公式配色(白/黒/赤/青/黄/緑/橙/桃)をそのまま使う
 - レースIDではなく、競馬場名・R番号・レース名・発走時刻を主役にする
 """
-import pandas as pd
+import os
 import sys
 from datetime import datetime, timezone, timedelta
+
+import pandas as pd
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ai_bets import RULE_NAME, evaluate_race  # noqa: E402
 
 IN_CSV = sys.argv[1] if len(sys.argv) > 1 else "data/predictions.csv"
 OUT_HTML = sys.argv[2] if len(sys.argv) > 2 else "docs/index.html"
@@ -65,9 +70,34 @@ def waku_badge(waku):
     return f'<span class="waku" style="background:{bg};color:{fg};{border}">{w}</span>'
 
 
+def ai_bet_status(g):
+    """AI買い目の判定(race_class列がない古い予測では判定しない)"""
+    if "race_class" not in g.columns:
+        return None
+    return evaluate_race(g)
+
+
+def ai_bet_box(e):
+    if e is None or e["status"] not in ("対象", "オッズ待ち"):
+        return ""
+    tickets = " / ".join(e["tickets"])
+    partners = "・".join(map(str, e["partners"]))
+    if e["status"] == "対象":
+        head = '<span class="aibet-tag">AI買い目 対象</span>'
+    else:
+        head = '<span class="aibet-tag aibet-wait">AI買い目 オッズ待ち</span>'
+    return f"""
+      <div class="aibet">
+        {head} <span class="aibet-reason">{e["reason"]}</span>
+        <div class="aibet-body"><b>3連複</b> ◎{e["honmei"]} 軸 → {partners}(6点)</div>
+        <div class="aibet-combos">{tickets}</div>
+      </div>"""
+
+
 def race_card(race_id, g):
     g = g.sort_values("pred_win_rank")
     first = g.iloc[0]
+    aibet_html = ai_bet_box(ai_bet_status(g))
     race_name = first.get("race_name")
     race_name = race_name if isinstance(race_name, str) and race_name.strip() else ""
     post_time = first.get("post_time")
@@ -166,6 +196,7 @@ def race_card(race_id, g):
           <p class="race-sub">{first.get('track_name','')} {post_time_html}</p>
         </div>
       </header>
+      {aibet_html}
       <div class="table-scroll">
       <table>
         <thead>
@@ -196,13 +227,39 @@ for i, track in enumerate(tracks):
     for j, (rid, g) in enumerate(race_groups):
         r_active = "active" if j == 0 else ""
         race_num = int(g["race_number"].iloc[0])
-        race_tab_buttons += f'<button class="race-tab-btn {r_active}" data-race="race-{i}-{j}">{race_num}R</button>'
+        st = ai_bet_status(g.sort_values("pred_win_rank"))
+        star = "★" if st and st["status"] == "対象" else ""
+        race_tab_buttons += f'<button class="race-tab-btn {r_active}" data-race="race-{i}-{j}">{star}{race_num}R</button>'
         race_panels += f'<div class="race-panel {r_active}" id="race-{i}-{j}">{race_card(rid, g)}</div>'
 
     tab_panels += f"""<section class="tab-panel {active}" id="tab-{i}">
       <nav class="race-tabs">{race_tab_buttons}</nav>
       {race_panels}
     </section>"""
+
+# 今日のAI買い目の一覧(ページ上部)
+_targets = []
+for rid, g in df.groupby("race_id"):
+    st = ai_bet_status(g.sort_values("pred_win_rank"))
+    if st and st["status"] in ("対象", "オッズ待ち"):
+        f0 = g.iloc[0]
+        _targets.append((str(f0.get("post_time", "")), f0.get("track_name", ""), int(f0["race_number"]),
+                         f0.get("race_name", ""), st))
+_targets.sort()
+if _targets:
+    _items = "".join(
+        f'<li><span class="aibet-tag{"" if st["status"] == "対象" else " aibet-wait"}">{st["status"]}</span> '
+        f'{tn}{rn}R {nm if isinstance(nm, str) else ""} {pt}  ― 3連複 ◎{st["honmei"]}軸→{"・".join(map(str, st["partners"]))}'
+        f'<small>({st["reason"]})</small></li>'
+        for pt, tn, rn, nm, st in _targets)
+    aibet_summary = f"""<section class="aibet-summary"><h2>今日のAI買い目</h2>
+      <p class="aibet-note">{RULE_NAME}。2019〜2026年の検証で回収率160%(年約70レース・的中率11%)。
+      当たりは10回に1回ほどで、30連敗以上もあり得る買い方です。オッズは発走直前で変わるので、買う前に◎の単勝が6倍を超えているか確認してください。</p>
+      <ul>{_items}</ul></section>"""
+elif "race_class" in df.columns:
+    aibet_summary = '<section class="aibet-summary"><h2>今日のAI買い目</h2><p class="aibet-note">今日は対象レースがありません(OP以上のレースで◎の単勝が6倍以上のときだけ出ます)。</p></section>'
+else:
+    aibet_summary = ""
 
 html = f"""<!DOCTYPE html>
 <html lang="ja">
@@ -337,6 +394,21 @@ html = f"""<!DOCTYPE html>
   .cf-good {{ color: var(--good); }}
   .cf-bad {{ color: #B0433A; }}
 
+  .aibet {{ margin: 0 0 12px; padding: 10px 12px; background: #FBF6E8; border: 1px solid var(--gold-soft);
+    border-left: 4px solid var(--gold); border-radius: 6px; font-size: .86rem; }}
+  .aibet-tag {{ display: inline-block; background: var(--gold); color: #fff; font-weight: 700; font-size: .72rem;
+    padding: 2px 8px; border-radius: 999px; }}
+  .aibet-wait {{ background: #A9A093; }}
+  .aibet-reason {{ color: var(--ink-soft); font-size: .76rem; margin-left: 4px; }}
+  .aibet-body {{ margin-top: 6px; font-size: .95rem; }}
+  .aibet-combos {{ margin-top: 2px; color: var(--ink-soft); font-size: .78rem; font-variant-numeric: tabular-nums; }}
+  .aibet-summary {{ background: #fff; border: 1px solid var(--paper-line); border-top: 3px solid var(--gold);
+    border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; }}
+  .aibet-summary h2 {{ margin: 0 0 4px; font-size: 1.05rem; color: var(--turf); }}
+  .aibet-summary ul {{ margin: 8px 0 0; padding-left: 0; list-style: none; font-size: .86rem; line-height: 1.9; }}
+  .aibet-summary small {{ color: var(--ink-soft); margin-left: 4px; }}
+  .aibet-note {{ margin: 0; font-size: .76rem; color: var(--ink-soft); line-height: 1.6; }}
+
   footer {{
     max-width: 900px; margin: 16px auto 0; padding: 0 20px;
     color: var(--ink-soft); font-size: .74rem; line-height: 1.7;
@@ -356,7 +428,7 @@ html = f"""<!DOCTYPE html>
   </div>
   <nav class="tabs">{tab_buttons}</nav>
 </header>
-<main>{tab_panels}</main>
+<main>{aibet_summary}{tab_panels}</main>
 <footer>
   <p><strong>各項目の見方</strong></p>
   <p>
