@@ -17,7 +17,10 @@ from itertools import combinations
 import numpy as np
 import pandas as pd
 
-DEFAULT_CAL = {"a": 0.0, "b": 1.0, "c_move": 0.0}
+# g2, g3: 2着・3着の確率を「1着率^γ」で作る補正(Henery/Lo-Bacon-Shone型)。
+# そのままのHarville法は人気薄が2・3着に来る確率を高く見積もりすぎ、人気薄絡みの馬連・ワイドのEVが過大になる。
+# JRA 2019〜2026年(26,387レース)の着順から推定: γ2=0.838, γ3=0.713(Harvilleは γ=1)
+DEFAULT_CAL = {"a": 0.0, "b": 1.0, "c_move": 0.0, "g2": 0.838, "g3": 0.713}
 CAL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "ev_calibration.json")
 
 
@@ -29,21 +32,26 @@ def load_calibration(path: str = CAL_PATH) -> dict:
         return dict(DEFAULT_CAL)
 
 
-def harville_pair_tables(p):
-    """p(合計1)から 馬連Q[i,j] と ワイドW[i,j](ともに3着内)を返す"""
+def harville_pair_tables(p, g2: float = 1.0, g3: float = 1.0):
+    """p(合計1)から 馬連Q[i,j] と ワイドW[i,j](ともに3着内)を返す。
+    2着は q = p^g2、3着は r = p^g3 を正規化した確率で条件付けする(g=1 なら通常のHarville)"""
     n = len(p)
     p = np.clip(np.asarray(p, dtype=float), 1e-6, None)
     p = p / p.sum()
+    q = p ** g2
+    q = q / q.sum()
+    r = p ** g3
+    r = r / r.sum()
     a = p[:, None, None]
-    b = p[None, :, None] / np.clip(1 - p[:, None, None], 1e-9, None)
-    c = p[None, None, :] / np.clip(1 - p[:, None, None] - p[None, :, None], 1e-9, None)
+    b = q[None, :, None] / np.clip(1 - q[:, None, None], 1e-9, None)
+    c = r[None, None, :] / np.clip(1 - r[:, None, None] - r[None, :, None], 1e-9, None)
     T = a * b * c
     idx = np.arange(n)
     T[idx, idx, :] = 0
     T[idx, :, idx] = 0
     T[:, idx, idx] = 0
     S = T + T.transpose(0, 2, 1) + T.transpose(1, 0, 2) + T.transpose(1, 2, 0) + T.transpose(2, 0, 1) + T.transpose(2, 1, 0)
-    P12 = p[:, None] * p[None, :] / np.clip(1 - p[:, None], 1e-9, None)
+    P12 = p[:, None] * q[None, :] / np.clip(1 - q[:, None], 1e-9, None)
     np.fill_diagonal(P12, 0)
     return P12 + P12.T, S.sum(axis=2)
 
@@ -94,7 +102,7 @@ def race_ev(g: pd.DataFrame, combos: pd.DataFrame | None, history: pd.DataFrame 
                          move=mv[2] if mv else np.nan, odds_first=mv[0] if mv else np.nan,
                          weight_diff=wd.get(um, np.nan)))
     if combos is not None and not combos.empty:
-        Q, W = harville_pair_tables(p)
+        Q, W = harville_pair_tables(p, cal.get("g2", 1.0), cal.get("g3", 1.0))
         pos = {um: i for i, um in enumerate(u)}
         c = combos[combos["race_id"] == rid]
         for _, r in c.iterrows():
