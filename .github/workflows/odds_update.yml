@@ -44,7 +44,7 @@ jobs:
 
       - name: 依存関係インストール
         if: steps.site.outputs.exists == 'true'
-        run: pip install pandas numpy
+        run: pip install pandas numpy beautifulsoup4 lxml
 
       # 終了コード 0=更新した / 2=今日の予測がない等で更新対象なし(正常)
       - name: オッズ更新
@@ -63,6 +63,13 @@ jobs:
           else
             exit "$code"
           fi
+
+      # 馬連・ワイドのオッズと単勝オッズを時系列で記録し、馬体重を更新し、その時点のEVを記録する
+      # (失敗してもオッズ更新・ページ生成は続ける)
+      - name: オッズの記録・馬体重・EV
+        if: steps.odds.outputs.updated == 'true'
+        continue-on-error: true
+        run: python src/odds_snapshot.py site/predictions.csv site || [ $? -eq 2 ]
 
       - name: ダッシュボードHTML再生成
         if: steps.odds.outputs.updated == 'true'

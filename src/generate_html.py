@@ -14,7 +14,8 @@ from datetime import datetime, timezone, timedelta
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ai_bets import RULE_NAME, evaluate_race  # noqa: E402
+from ai_bets import RULES, evaluate_all  # noqa: E402
+from ev_board import board, load_calibration, load_odds_files  # noqa: E402
 
 IN_CSV = sys.argv[1] if len(sys.argv) > 1 else "data/predictions.csv"
 OUT_HTML = sys.argv[2] if len(sys.argv) > 2 else "docs/index.html"
@@ -71,33 +72,80 @@ def waku_badge(waku):
 
 
 def ai_bet_status(g):
-    """AI買い目の判定(race_class列がない古い予測では判定しない)"""
+    """AI買い目(本命・準)の判定リスト。race_class列がない古い予測では判定しない"""
     if "race_class" not in g.columns:
-        return None
-    return evaluate_race(g)
+        return []
+    return evaluate_all(g)
 
 
-def ai_bet_box(e):
-    if e is None or e["status"] not in ("対象", "オッズ待ち"):
-        return ""
-    tickets = " / ".join(e["tickets"])
-    partners = "・".join(map(str, e["partners"]))
-    if e["status"] == "対象":
-        head = '<span class="aibet-tag">AI買い目 対象</span>'
-    else:
-        head = '<span class="aibet-tag aibet-wait">AI買い目 オッズ待ち</span>'
-    return f"""
-      <div class="aibet">
-        {head} <span class="aibet-reason">{e["reason"]}</span>
-        <div class="aibet-body"><b>3連複</b> ◎{e["honmei"]} 軸 → {partners}(6点)</div>
-        <div class="aibet-combos">{tickets}</div>
+def ai_bet_box(results):
+    html = ""
+    for e in results:
+        if e["status"] not in ("対象", "オッズ待ち"):
+            continue
+        sub = " aibet-sub" if e["rule"].key == "sub" else ""
+        wait = " aibet-wait" if e["status"] != "対象" else ""
+        html += f"""
+      <div class="aibet{sub}">
+        <span class="aibet-tag{wait}">{e["rule"].label} {e["status"]}</span> <span class="aibet-reason">{e["reason"]}</span>
+        <div class="aibet-body">{e["desc"]}</div>
+        <div class="aibet-combos">{" / ".join(e["tickets"])}</div>
       </div>"""
+    return html
+
+
+# ---- EVボード(単勝・馬連・ワイド) ----
+_site_dir = os.path.dirname(os.path.abspath(IN_CSV))
+_race_date = str(df["race_date"].iloc[0]) if "race_date" in df.columns and len(df) else ""
+_latest, _hist = load_odds_files(_site_dir, _race_date) if _race_date else (None, None)
+_cal = load_calibration()
+try:
+    EV = board(df.assign(race_id=df["race_id"].astype(str)),
+               _latest[_latest["bet"] != "単勝"] if _latest is not None else None, _hist, _cal)
+except Exception as _e:  # EVが計算できなくてもページは出す
+    print(f"EVの計算に失敗: {_e}")
+    EV = pd.DataFrame()
+
+
+def fmt_odds(r):
+    if r["bet"] == "ワイド" and pd.notna(r.get("odds_high")):
+        return f'{r["odds"]:.1f}〜{r["odds_high"]:.1f}'
+    return f'{r["odds"]:.1f}'
+
+
+def ev_box(race_id):
+    if EV.empty:
+        return ""
+    e = EV[EV["race_id"] == str(race_id)]
+    if e.empty:
+        return ""
+    parts = []
+    for bet, k in (("単勝", 3), ("馬連", 3), ("ワイド", 3)):
+        t = e[e["bet"] == bet].sort_values("ev", ascending=False).head(k)
+        if t.empty:
+            continue
+        cells = ""
+        for _, r in t.iterrows():
+            cls = "ev-good" if r["ev"] >= 1.0 else ("ev-mid" if r["ev"] >= 0.9 else "ev-low")
+            extra = ""
+            if bet == "単勝":
+                if pd.notna(r.get("move")) and abs(r["move"]) >= 0.1:
+                    arrow = "↓買われ" if r["move"] > 0 else "↑売られ"
+                    extra += f' <span class="mv {"mv-in" if r["move"] > 0 else "mv-out"}">{r["odds_first"]:.1f}→{r["odds"]:.1f} {arrow}</span>'
+                if pd.notna(r.get("weight_diff")):
+                    extra += f' <span class="wd">体重{int(r["weight_diff"]):+d}</span>'
+            cells += (f'<li><b>{r["combo"]}</b> {fmt_odds(r)}倍 ・ 確率{r["p"] * 100:.1f}% ・ '
+                      f'<span class="badge {cls}">EV {r["ev"]:.2f}</span>{extra}</li>')
+        parts.append(f'<div class="evcol"><h4>{bet}</h4><ul>{cells}</ul></div>')
+    if not parts:
+        return ""
+    return f'<div class="evbox"><div class="evhead">EVボード(AI×オッズの歪み×オッズの動き)</div><div class="evcols">{"".join(parts)}</div></div>'
 
 
 def race_card(race_id, g):
     g = g.sort_values("pred_win_rank")
     first = g.iloc[0]
-    aibet_html = ai_bet_box(ai_bet_status(g))
+    aibet_html = ai_bet_box(ai_bet_status(g)) + ev_box(race_id)
     race_name = first.get("race_name")
     race_name = race_name if isinstance(race_name, str) and race_name.strip() else ""
     post_time = first.get("post_time")
@@ -113,6 +161,13 @@ def race_card(race_id, g):
         else:
             ev_badge = '<span class="na">オッズ待ち</span>'
         odds = f'{r["odds_win"]:.1f}倍' if pd.notnull(r.get("odds_win")) else "-"
+        if not EV.empty and pd.notnull(r.get("umaban")):
+            _m = EV[(EV["race_id"] == str(race_id)) & (EV["bet"] == "単勝") & (EV["combo"] == str(int(r["umaban"])))]
+            if not _m.empty and pd.notna(_m["move"].iloc[0]) and abs(_m["move"].iloc[0]) >= 0.1:
+                odds += ' <span class="mv mv-in">↓</span>' if _m["move"].iloc[0] > 0 else ' <span class="mv mv-out">↑</span>'
+        hw, wdiff = r.get("horse_weight"), r.get("weight_diff")
+        weight_html = (f'{int(hw)}<small>({int(wdiff):+d})</small>' if pd.notnull(hw) and pd.notnull(wdiff)
+                       else (f"{int(hw)}" if pd.notnull(hw) else "-"))
         umaban = int(r["umaban"]) if pd.notnull(r.get("umaban")) else "-"
         rank_cls = "top-pick" if r["pred_win_rank"] == 1 else ""
 
@@ -181,6 +236,7 @@ def race_card(race_id, g):
           <td class="gap">{gap_html}</td>
           <td>{stab_html}</td>
           <td>{wf_html}</td>
+          <td>{weight_html}</td>
           <td>{odds}</td>
           <td>{rd_html}</td>
           <td>{ev_badge}</td>
@@ -203,7 +259,7 @@ def race_card(race_id, g):
           <tr><th>予想</th><th>枠</th><th>馬番</th><th>馬名</th><th>騎手</th>
               <th>1着率</th><th>3連対率</th><th>印</th><th>AI<br>指数</th>
               <th>1位との差</th><th>安定度</th><th>枠順<br>評価</th>
-              <th>単勝</th><th>人気との<br>乖離</th><th>期待値</th><th>妙味</th></tr>
+              <th>馬体重</th><th>単勝</th><th>人気との<br>乖離</th><th>期待値</th><th>妙味</th></tr>
         </thead>
         <tbody>{rows}</tbody>
       </table>
@@ -228,7 +284,8 @@ for i, track in enumerate(tracks):
         r_active = "active" if j == 0 else ""
         race_num = int(g["race_number"].iloc[0])
         st = ai_bet_status(g.sort_values("pred_win_rank"))
-        star = "★" if st and st["status"] == "対象" else ""
+        star = "★" if any(e["status"] == "対象" and e["rule"].key == "main" for e in st) else (
+            "☆" if any(e["status"] == "対象" for e in st) else "")
         race_tab_buttons += f'<button class="race-tab-btn {r_active}" data-race="race-{i}-{j}">{star}{race_num}R</button>'
         race_panels += f'<div class="race-panel {r_active}" id="race-{i}-{j}">{race_card(rid, g)}</div>'
 
@@ -238,28 +295,49 @@ for i, track in enumerate(tracks):
     </section>"""
 
 # 今日のAI買い目の一覧(ページ上部)
-_targets = []
+_targets = {r.key: [] for r in RULES}
 for rid, g in df.groupby("race_id"):
-    st = ai_bet_status(g.sort_values("pred_win_rank"))
-    if st and st["status"] in ("対象", "オッズ待ち"):
-        f0 = g.iloc[0]
-        _targets.append((str(f0.get("post_time", "")), f0.get("track_name", ""), int(f0["race_number"]),
-                         f0.get("race_name", ""), st))
-_targets.sort()
-if _targets:
-    _items = "".join(
-        f'<li><span class="aibet-tag{"" if st["status"] == "対象" else " aibet-wait"}">{st["status"]}</span> '
-        f'{tn}{rn}R {nm if isinstance(nm, str) else ""} {pt}  ― 3連複 ◎{st["honmei"]}軸→{"・".join(map(str, st["partners"]))}'
-        f'<small>({st["reason"]})</small></li>'
-        for pt, tn, rn, nm, st in _targets)
-    aibet_summary = f"""<section class="aibet-summary"><h2>今日のAI買い目</h2>
-      <p class="aibet-note">{RULE_NAME}。2019〜2026年の検証で回収率160%(年約70レース・的中率11%)。
-      当たりは10回に1回ほどで、30連敗以上もあり得る買い方です。オッズは発走直前で変わるので、買う前に◎の単勝が6倍を超えているか確認してください。</p>
-      <ul>{_items}</ul></section>"""
-elif "race_class" in df.columns:
-    aibet_summary = '<section class="aibet-summary"><h2>今日のAI買い目</h2><p class="aibet-note">今日は対象レースがありません(OP以上のレースで◎の単勝が6倍以上のときだけ出ます)。</p></section>'
-else:
-    aibet_summary = ""
+    for e in ai_bet_status(g.sort_values("pred_win_rank")):
+        if e["status"] in ("対象", "オッズ待ち"):
+            f0 = g.iloc[0]
+            _targets[e["rule"].key].append((str(f0.get("post_time", "")), f0.get("track_name", ""),
+                                            int(f0["race_number"]), f0.get("race_name", ""), e))
+aibet_summary = ""
+if "race_class" in df.columns:
+    blocks = ""
+    for rule in RULES:
+        items = sorted(_targets[rule.key], key=lambda x: x[0])
+        lis = "".join(
+            f'<li><span class="aibet-tag{"" if e["status"] == "対象" else " aibet-wait"}">{e["status"]}</span> '
+            f'{tn}{rn}R {nm if isinstance(nm, str) else ""} {pt} ― {e["desc"]}<small>({e["reason"]})</small></li>'
+            for pt, tn, rn, nm, e in items) or "<li>今日は対象レースなし</li>"
+        blocks += f"""<h3 class="aibet-h3{' aibet-h3-sub' if rule.key == 'sub' else ''}">{rule.label}</h3>
+      <p class="aibet-note">{rule.name}。{rule.backtest}。</p><ul>{lis}</ul>"""
+    aibet_summary = f"""<section class="aibet-summary"><h2>今日のAI買い目</h2>{blocks}
+      <p class="aibet-note">オッズ・人気は発走直前で変わります。条件の境目にいる馬は、買う前に確認してください。</p></section>"""
+
+# EV上位(全レース)
+ev_summary = ""
+if not EV.empty:
+    _meta = df.assign(race_id=df["race_id"].astype(str)).groupby("race_id").agg(
+        tn=("track_name", "first"), rn=("race_number", "first"), pt=("post_time", "first"))
+    top = EV[EV["ev"] >= 1.0].sort_values("ev", ascending=False).head(15)
+    title_note = "EV 1.0以上の買い目"
+    if top.empty:
+        top = EV.sort_values("ev", ascending=False).head(10)
+        title_note = "EV 1.0以上はなし。EVが高い順"
+    lis = ""
+    for _, r in top.iterrows():
+        m = _meta.loc[r["race_id"]]
+        mv = ""
+        if r["bet"] == "単勝" and pd.notna(r.get("move")) and abs(r["move"]) >= 0.1:
+            mv = f' <span class="mv {"mv-in" if r["move"] > 0 else "mv-out"}">{r["odds_first"]:.1f}→{r["odds"]:.1f}</span>'
+        lis += (f'<li>{m.tn}{int(m.rn)}R {m.pt} ・ <b>{r["bet"]} {r["combo"]}</b> {fmt_odds(r)}倍 ・ '
+                f'確率{r["p"] * 100:.1f}% ・ <span class="badge {"ev-good" if r["ev"] >= 1 else "ev-mid"}">EV {r["ev"]:.2f}</span>{mv}</li>')
+    ev_summary = f"""<section class="aibet-summary ev-summary"><h2>EVボード <small>({title_note})</small></h2>
+      <p class="aibet-note">確率 = AIの1着率^{_cal["a"]:.2f} × 市場の確率^{_cal["b"]:.2f} × オッズの動き(係数{_cal["c_move"]:.2f})を正規化。
+      係数は過去の結果から毎週推定(今のところAIの重みはほぼ0、人気馬が市場の見立てより少し勝ちやすい補正)。
+      オッズの動きの係数は、記録がたまり次第推定します。EVの実績は成績ページで採点しています。</p><ul>{lis}</ul></section>"""
 
 html = f"""<!DOCTYPE html>
 <html lang="ja">
@@ -407,6 +485,19 @@ html = f"""<!DOCTYPE html>
   .aibet-summary h2 {{ margin: 0 0 4px; font-size: 1.05rem; color: var(--turf); }}
   .aibet-summary ul {{ margin: 8px 0 0; padding-left: 0; list-style: none; font-size: .86rem; line-height: 1.9; }}
   .aibet-summary small {{ color: var(--ink-soft); margin-left: 4px; }}
+  .aibet-sub {{ border-left-color: #7A8B9A; background: #F3F5F7; }}
+  .aibet-h3 {{ margin: 10px 0 2px; font-size: .9rem; color: var(--gold); }}
+  .aibet-h3-sub {{ color: #5E6E7D; }}
+  .evbox {{ margin: 0 0 12px; padding: 10px 12px; background: #fff; border: 1px solid var(--paper-line); border-radius: 6px; }}
+  .evhead {{ font-size: .78rem; font-weight: 700; color: var(--turf); margin-bottom: 4px; }}
+  .evcols {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }}
+  .evcol h4 {{ margin: 0 0 2px; font-size: .78rem; color: var(--ink-soft); }}
+  .evcol ul, .ev-summary ul {{ margin: 0; padding-left: 0; list-style: none; font-size: .8rem; line-height: 1.8; }}
+  .ev-summary h2 small {{ font-size: .72rem; color: var(--ink-soft); font-weight: 500; }}
+  .mv {{ font-size: .72rem; font-weight: 700; }}
+  .mv-in {{ color: #B0433A; }}
+  .mv-out {{ color: #1E5FA8; }}
+  .wd {{ font-size: .72rem; color: var(--ink-soft); }}
   .aibet-note {{ margin: 0; font-size: .76rem; color: var(--ink-soft); line-height: 1.6; }}
 
   footer {{
@@ -428,7 +519,7 @@ html = f"""<!DOCTYPE html>
   </div>
   <nav class="tabs">{tab_buttons}</nav>
 </header>
-<main>{aibet_summary}{tab_panels}</main>
+<main>{aibet_summary}{ev_summary}{tab_panels}</main>
 <footer>
   <p><strong>各項目の見方</strong></p>
   <p>
