@@ -99,6 +99,9 @@ jobs:
             fi
           elif [ -n "$saved" ]; then
             read start end <<< "$saved"
+            # 前回の期間が古いまま止まっていた場合は、終了日を昨日(または指定日)まで延ばす
+            new_end="${IN_END:-$yesterday}"
+            if [[ "$new_end" > "$end" ]]; then end="$new_end"; fi
             echo "::notice::前回の続きから再開: $start 〜 $end"
           else
             last=$(python - <<'PY'
@@ -159,8 +162,9 @@ jobs:
           gh release view backfill-work >/dev/null 2>&1 || \
             gh release create backfill-work --prerelease --title "バックフィル作業用(自動)" \
               --notes "backfill_history.yml の途中経過。完了すると自動で空になります。"
+          # 無いファイルがあっても失敗扱いにしない(以前は最後のファイルが無いとステップ全体が失敗していた)
           for f in $WORK_FILES; do
-            [ -f "$f" ] && gh release upload backfill-work "$f" --clobber
+            if [ -f "$f" ]; then gh release upload backfill-work "$f" --clobber; fi
           done
 
       - name: 続きを自動で再実行
