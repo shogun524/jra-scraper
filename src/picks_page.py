@@ -8,8 +8,10 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from ai_bets import RULES, evaluate_all
+from manbaken import load_params as load_manbaken, market_view
 
 JST = timezone(timedelta(hours=9))
+MB = load_manbaken()
 
 
 def _passed(post_time, now):
@@ -28,8 +30,11 @@ def build_picks(df: pd.DataFrame, date_label: str, generated_at: str) -> str:
             g = g.sort_values("pred_win_rank")
             names = dict(zip(g["umaban"].astype(int), g["horse"]))
             f0 = g.iloc[0]
+            o = pd.to_numeric(g["odds_win"], errors="coerce") if "odds_win" in g.columns else pd.Series(dtype=float)
+            o = o[o > 0]
+            mv = market_view(o.tolist(), MB) if len(o) >= 5 and len(o) >= 0.8 * len(g) else None
             for e in evaluate_all(g):
-                rec = (str(f0.get("post_time", "")), f0, e, names)
+                rec = (str(f0.get("post_time", "")), f0, e, names, mv)
                 if e["status"] == "対象":
                     items.append(rec)
                 elif e["status"] == "オッズ待ち":
@@ -37,7 +42,7 @@ def build_picks(df: pd.DataFrame, date_label: str, generated_at: str) -> str:
     items.sort(key=lambda x: x[0])
     waiting.sort(key=lambda x: x[0])
 
-    def card(pt, f0, e, names):
+    def card(pt, f0, e, names, mv=None):
         rule = e["rule"]
         passed = _passed(pt, now)
         hon = e["honmei"]
@@ -57,6 +62,7 @@ def build_picks(df: pd.DataFrame, date_label: str, generated_at: str) -> str:
           <div class="horses">◎ {hon} {_html.escape(str(names.get(hon, '')))}{f'(単勝{odds:.1f}倍)' if pd.notna(odds) else ''} ／ 相手 {partners}</div>
           <div class="combos">{combos}</div>
           <div class="why">条件: {_html.escape(e['reason'])}</div>
+          {f'<div class="why">万馬券率 {mv["man"]:.0%} ・ 3連単の配当の目安 {mv["q50"]:,.0f}円({mv["q25"]:,.0f}〜{mv["q75"]:,.0f}円)</div>' if mv else ''}
         </article>"""
 
     body = "".join(card(*x) for x in items) or '<p class="none">今日は買うべきレースはありません。</p>'
@@ -64,7 +70,7 @@ def build_picks(df: pd.DataFrame, date_label: str, generated_at: str) -> str:
     if waiting:
         wait = '<h2>オッズ待ち(条件を満たすか未確定)</h2>' + "".join(
             f'<p class="wait">{_html.escape(pt)} {_html.escape(str(f0.get("track_name", "")))}{int(f0["race_number"])}R '
-            f'{e["rule"].label}: {_html.escape(e["reason"])}</p>' for pt, f0, e, _ in waiting)
+            f'{e["rule"].label}: {_html.escape(e["reason"])}</p>' for pt, f0, e, _, _ in waiting)
     notes = "".join(f"<li><b>{r.label}</b>: {_html.escape(r.name)}。{_html.escape(r.backtest)}。</li>" for r in RULES)
     return f"""<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">

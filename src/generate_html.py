@@ -16,6 +16,25 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ai_bets import RULES, evaluate_all  # noqa: E402
 from ev_board import board, load_calibration, load_odds_files  # noqa: E402
+from manbaken import load_params as load_manbaken, market_view  # noqa: E402
+
+MANBAKEN = load_manbaken()
+
+
+def manbaken_html(g):
+    """万馬券率(3連単1万円以上の確率)と3連単の配当の目安。単勝オッズが全頭そろっていなければ出さない"""
+    if "odds_win" not in g.columns:
+        return ""
+    o = pd.to_numeric(g["odds_win"], errors="coerce")
+    o = o[o > 0]
+    # 取消馬はオッズが無いので除く。発売前(ほとんど無い)はオッズ待ち
+    v = market_view(o.tolist(), MANBAKEN) if len(o) >= 5 and len(o) >= 0.8 * len(g) else None
+    if not v:
+        return '<p class="manbaken muted">万馬券率: オッズ待ち</p>'
+    lvl = "hi" if v["man"] >= 0.8 else ("lo" if v["man"] < 0.5 else "")
+    return (f'<p class="manbaken">万馬券率 <b class="{lvl}">{v["man"]:.0%}</b>'
+            f'<span class="sep">・</span>3連単の配当の目安 <b>{v["q50"]:,.0f}円</b>'
+            f'<small>(半分くらいのレースは {v["q25"]:,.0f}〜{v["q75"]:,.0f}円)</small></p>')
 
 IN_CSV = sys.argv[1] if len(sys.argv) > 1 else "data/predictions.csv"
 OUT_HTML = sys.argv[2] if len(sys.argv) > 2 else "docs/index.html"
@@ -250,6 +269,7 @@ def race_card(race_id, g):
         <div class="race-title">
           <h2>{race_name}</h2>
           <p class="race-sub">{first.get('track_name','')} {post_time_html}</p>
+          {manbaken_html(g)}
         </div>
       </header>
       {aibet_html}
@@ -415,6 +435,11 @@ html = f"""<!DOCTYPE html>
   .race-title h2 {{ margin: 0; font-size: 1.05rem; font-weight: 800; }}
   .race-sub {{ margin: 3px 0 0; font-size: .78rem; color: var(--ink-soft); }}
   .post-time {{ margin-left: 8px; color: var(--gold); font-weight: 700; }}
+  .manbaken {{ margin: 2px 0 0; font-size: .82rem; }}
+  .manbaken b {{ font-variant-numeric: tabular-nums; }}
+  .manbaken b.hi {{ color: #B3261E; }} .manbaken b.lo {{ color: #2F6B4F; }}
+  .manbaken small {{ margin-left: 4px; opacity: .75; }} .manbaken .sep {{ margin: 0 4px; opacity: .5; }}
+  .manbaken.muted {{ opacity: .6; }}
 
   table {{ border-collapse: collapse; width: 100%; font-size: .82rem; }}
   .table-scroll {{ overflow-x: auto; -webkit-overflow-scrolling: touch; position: relative; }}
