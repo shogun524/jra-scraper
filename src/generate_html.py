@@ -140,7 +140,7 @@ def ev_box(race_id):
         return ""
     parts = []
     for bet, k in (("単勝", 3), ("馬連", 3), ("ワイド", 3)):
-        t = e[e["bet"] == bet].sort_values("ev", ascending=False).head(k)
+        t = e[(e["bet"] == bet) & (e["ev"] >= 1.0)].sort_values("ev", ascending=False).head(k)
         if t.empty:
             continue
         cells = ""
@@ -354,10 +354,15 @@ if not EV.empty:
             mv = f' <span class="mv {"mv-in" if r["move"] > 0 else "mv-out"}">{r["odds_first"]:.1f}→{r["odds"]:.1f}</span>'
         lis += (f'<li>{m.tn}{int(m.rn)}R {m.pt} ・ <b>{r["bet"]} {r["combo"]}</b> {fmt_odds(r)}倍 ・ '
                 f'確率{r["p"] * 100:.1f}% ・ <span class="badge {"ev-good" if r["ev"] >= 1 else "ev-mid"}">EV {r["ev"]:.2f}</span>{mv}</li>')
-    ev_summary = f"""<section class="aibet-summary ev-summary"><h2>EVボード <small>({title_note})</small></h2>
-      <p class="aibet-note">確率 = AIの1着率^{_cal["a"]:.2f} × 市場の確率^{_cal["b"]:.2f} × オッズの動き(係数{_cal["c_move"]:.2f})を正規化。
-      係数は過去の結果から毎週推定(今のところAIの重みはほぼ0、人気馬が市場の見立てより少し勝ちやすい補正)。
-      オッズの動きの係数は、記録がたまり次第推定します。EVの実績は成績ページで採点しています。</p><ul>{lis}</ul></section>"""
+    _how = (f'<details class="ev-how"><summary>EVの出し方</summary><p class="aibet-note">確率 = AIの1着率^{_cal["a"]:.2f} × '
+            f'市場の確率^{_cal["b"]:.2f} × オッズの動き(係数{_cal["c_move"]:.2f})を正規化。係数は過去の結果から毎週推定'
+            f'(今のところAIの重みはほぼ0)。EVの実績は成績ページで採点しています。</p></details>')
+    if title_note.startswith("EV 1.0以上の"):
+        ev_summary = f"""<section class="aibet-summary ev-summary"><h2>EVボード <small>({title_note})</small></h2>
+      <ul>{lis}</ul>{_how}</section>"""
+    else:
+        ev_summary = f"""<details class="aibet-summary ev-summary"><summary><b>EVボード</b> <small>今日はEV1.0以上の買い目なし(上位を見る)</small></summary>
+      <ul>{lis}</ul>{_how}</details>"""
 
 html = f"""<!DOCTYPE html>
 <html lang="ja">
@@ -436,6 +441,8 @@ html = f"""<!DOCTYPE html>
   .race-sub {{ margin: 3px 0 0; font-size: .78rem; color: var(--ink-soft); }}
   .post-time {{ margin-left: 8px; color: var(--gold); font-weight: 700; }}
   .manbaken {{ margin: 2px 0 0; font-size: .82rem; }}
+  details.ev-summary > summary, details.ev-how > summary {{ cursor: pointer; }}
+  details.ev-how {{ margin-top: 6px; font-size: .8rem; }}
   .manbaken b {{ font-variant-numeric: tabular-nums; }}
   .manbaken b.hi {{ color: #B3261E; }} .manbaken b.lo {{ color: #2F6B4F; }}
   .manbaken small {{ margin-left: 4px; opacity: .75; }} .manbaken .sep {{ margin: 0 4px; opacity: .5; }}
