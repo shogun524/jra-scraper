@@ -3,6 +3,8 @@
 
 update_odds.py が predictions.csv の単勝オッズを最新化したあとに実行する。
 発走前のレースについて、
+  0. 発走60分前からのレースは3連単(type=8)の全組も取り、odds_history/trifecta_latest_<日付>.json にレースごとの最新値を残す
+     (万馬券率・配当の目安を3連単オッズから直接計算するため)
   1. 単勝(predictions.csv の最新値)・馬連・ワイド(netkeiba オッズAPI type=4/5)のオッズを
      site/odds_history/odds_<日付>.csv に追記し、最新値を latest_<日付>.csv に保存する
      → オッズの動き(直前に買われた馬)を分析・EVに反映するためのデータ
@@ -31,6 +33,8 @@ from ev_board import board, load_calibration  # noqa: E402
 
 JST = timezone(timedelta(hours=9))
 ODDS_API = "https://race.netkeiba.com/api/api_get_jra_odds.html?race_id={race_id}&type={type}"
+TRI_TYPE = 8          # 3連単
+TRI_WINDOW_MIN = 60   # 発走60分前から取る
 SHUTUBA_URL = "https://race.netkeiba.com/race/shutuba.html?race_id={race_id}"
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
       "Chrome/124.0 Safari/537.36")
@@ -85,6 +89,56 @@ def _values(v):
     else:
         nums = [_num(v)]
     return [x for x in nums if x is not None]
+
+
+def _trio_key(k):
+    """'010203' / '1-2-3' -> (1, 2, 3)(3連単なので順番どおり)。組でなければ None"""
+    if not isinstance(k, str):
+        return None
+    m = re.fullmatch(r"(\d{2})(\d{2})(\d{2})", k) or re.fullmatch(r"(\d{1,2})\D(\d{1,2})\D(\d{1,2})", k)
+    if not m:
+        return None
+    t = tuple(int(x) for x in m.groups())
+    if not all(1 <= x <= 18 for x in t) or len(set(t)) != 3:
+        return None
+    return t
+
+
+def parse_trifecta_odds(raw: str) -> dict:
+    """3連単のオッズAPI(type=8)の応答 -> {(1着, 2着, 3着): オッズ}。構造は決め打ちせず、3頭の組のキーを持つ一番大きい辞書を探す"""
+    try:
+        obj = json.loads(raw)
+    except Exception:
+        return {}
+    data = obj.get("data") if isinstance(obj, dict) else obj
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except Exception:
+            return {}
+    best = {}
+
+    def walk(node):
+        nonlocal best
+        if isinstance(node, dict):
+            cand = {}
+            for k, v in node.items():
+                t = _trio_key(k)
+                if t is None:
+                    continue
+                vals = _values(v)
+                if vals and 1.0 <= vals[0] <= 1_000_000:
+                    cand[t] = vals[0]
+            if len(cand) > len(best):
+                best = cand
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(data)
+    return best
 
 
 def parse_pair_odds(raw: str, bet: str) -> dict:
@@ -196,6 +250,14 @@ def main():
     rows = []
     raw_saved = {t: os.path.exists(os.path.join(odir, f"raw_{today}_type{t}.txt")) for t in PAIR_TYPES}
     weights_updated = 0
+    # 3連単(type=8)は組が多い(最大4,896組)ので、発走60分前からのレースだけ取り、レースごとに最新の値だけを残す
+    tri_path = os.path.join(odir, f"trifecta_latest_{today}.json")
+    try:
+        with open(tri_path, encoding="utf-8") as f:
+            tri_latest = json.load(f)
+    except (OSError, ValueError):
+        tri_latest = {}
+    tri_raw_saved = os.path.exists(os.path.join(odir, f"raw_{today}_type{TRI_TYPE}.txt"))
     for rid in races:
         g = df[df["race_id"] == rid]
         for _, r in g.iterrows():
@@ -218,11 +280,29 @@ def main():
                 rows.append((ts, rid, bet, f"{a}-{b}", lo, hi, pop))
             time.sleep(0.4)
         mtp = minutes_to_post(pt.get(rid), now)
+        if mtp is not None and mtp <= TRI_WINDOW_MIN:
+            try:
+                raw = http_get(ODDS_API.format(race_id=rid, type=TRI_TYPE),
+                               referer=f"https://race.netkeiba.com/odds/index.html?type=b{TRI_TYPE}&race_id={rid}")
+                tri = parse_trifecta_odds(raw)
+                if not tri_raw_saved or not tri:
+                    with open(os.path.join(odir, f"raw_{today}_type{TRI_TYPE}.txt"), "a", encoding="utf-8") as f:
+                        f.write(f"--- {ts} {rid} 解析{len(tri)}組\n{raw[:6000]}\n")
+                    tri_raw_saved = True
+                if tri:
+                    tri_latest[rid] = {"ts": ts, "odds": {f"{a}-{b}-{c}": o for (a, b, c), o in tri.items()}}
+                    log(f"  [{rid}] 3連単 {len(tri)}組")
+            except Exception as e:
+                log(f"  [{rid}] 3連単オッズ取得失敗: {e}")
+            time.sleep(0.4)
         if mtp is not None and mtp <= 80 and g["horse_weight"].isna().all():
             weights_updated += refresh_weights(df, rid, today, log)
             time.sleep(0.4)
         log(f"  [{rid}] {int(rid[-2:])}R 記録 {sum(1 for x in rows if x[1] == rid)}件")
 
+    if tri_latest:
+        with open(tri_path, "w", encoding="utf-8") as f:
+            json.dump(tri_latest, f)
     new = pd.DataFrame(rows, columns=HIST_COLS)
     hist_path = os.path.join(odir, f"odds_{today}.csv")
     hist = pd.concat([pd.read_csv(hist_path, dtype={"race_id": str, "combo": str}), new], ignore_index=True) \

@@ -98,6 +98,24 @@ def market_view(odds_win, prm=None):
     return dict(man=man, q25=lo, q50=q50, q75=hi, raw=raw)
 
 
+TRI_BETA = 1.05  # 3連単オッズの「人気薄ほど買われすぎ」の補正(競輪で推定した値。JRAの3連単オッズがたまったら推定し直す)
+
+
+def market_view_trifecta(odds3, beta=TRI_BETA, mass=0.5):
+    """3連単の全組のオッズ {組: オッズ} から直接 万馬券率・配当の目安 を出す(単勝からの推定より範囲が狭い)。
+    競輪では 範囲に入る割合50%・幅の中央値 約4倍。組が足りなければ None"""
+    o = np.array([v for v in (odds3.values() if isinstance(odds3, dict) else odds3) if v and v > 0], dtype=float)
+    if len(o) < 60:
+        return None
+    q = (1 / o) ** beta
+    q /= q.sum()
+    idx = np.argsort(o)
+    c = np.cumsum(q[idx])
+    q50 = float(o[idx][min(int(np.searchsorted(c, 0.5)), len(c) - 1)] * 100)
+    lo, hi = shortest_interval(o * 100, q, mass)
+    return dict(man=float(q[o >= 100].sum()), q25=lo, q50=q50, q75=hi, src="3連単")
+
+
 def main():
     import pandas as pd
     from sklearn.linear_model import LogisticRegression

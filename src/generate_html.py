@@ -7,6 +7,7 @@ data/predictions.csv を読み込み、競馬場ごとのタブ形式で docs/in
 - 枠番の色は実際のJRA公式配色(白/黒/赤/青/黄/緑/橙/桃)をそのまま使う
 - レースIDではなく、競馬場名・R番号・レース名・発走時刻を主役にする
 """
+import json
 import os
 import sys
 from datetime import datetime, timezone, timedelta
@@ -16,9 +17,19 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ai_bets import RULES, evaluate_all  # noqa: E402
 from ev_board import board, load_calibration, load_odds_files  # noqa: E402
-from manbaken import load_params as load_manbaken, market_view  # noqa: E402
+from manbaken import load_params as load_manbaken, market_view, market_view_trifecta  # noqa: E402
 
 MANBAKEN = load_manbaken()
+
+
+def _load_trifecta(out_path, race_date):
+    """odds_snapshot.py が残した3連単オッズ(レースごとの最新値)"""
+    p = os.path.join(os.path.dirname(os.path.abspath(out_path)), "odds_history", f"trifecta_latest_{race_date}.json")
+    try:
+        with open(p, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
 
 
 def manbaken_html(g):
@@ -27,14 +38,18 @@ def manbaken_html(g):
         return ""
     o = pd.to_numeric(g["odds_win"], errors="coerce")
     o = o[o > 0]
-    # 取消馬はオッズが無いので除く。発売前(ほとんど無い)はオッズ待ち
-    v = market_view(o.tolist(), MANBAKEN) if len(o) >= 5 and len(o) >= 0.8 * len(g) else None
+    rid = str(g["race_id"].iloc[0])
+    v = market_view_trifecta(TRIFECTA[rid]["odds"]) if rid in TRIFECTA else None   # 3連単オッズがあれば直接(範囲が狭い)
+    # 無ければ単勝オッズから推定。取消馬はオッズが無いので除く。発売前(ほとんど無い)はオッズ待ち
+    if v is None:
+        v = market_view(o.tolist(), MANBAKEN) if len(o) >= 5 and len(o) >= 0.8 * len(g) else None
     if not v:
         return '<p class="manbaken muted">万馬券率: オッズ待ち</p>'
     lvl = "hi" if v["man"] >= 0.8 else ("lo" if v["man"] < 0.5 else "")
     return (f'<p class="manbaken">万馬券率 <b class="{lvl}">{v["man"]:.0%}</b>'
             f'<span class="sep">・</span>3連単の配当の目安 <b>{v["q50"]:,.0f}円</b>'
-            f'<small>(半分くらいのレースは {v["q25"]:,.0f}〜{v["q75"]:,.0f}円)</small></p>')
+            f'<small>(半分くらいのレースは {v["q25"]:,.0f}〜{v["q75"]:,.0f}円'
+            f'{"・3連単オッズから" if v.get("src") == "3連単" else "・単勝オッズから推定"})</small></p>')
 
 IN_CSV = sys.argv[1] if len(sys.argv) > 1 else "data/predictions.csv"
 OUT_HTML = sys.argv[2] if len(sys.argv) > 2 else "docs/index.html"
@@ -72,6 +87,7 @@ if _dates:
         date_label += " ＝事前予測(オッズは前日のため参考値)"
 else:
     date_label = "日付不明"
+TRIFECTA = _load_trifecta(OUT_HTML, _dates[0]) if _dates else {}
 # オッズが取れているレースの割合(直前実行で更新されるほど高くなる)
 if "odds_win" in df.columns:
     n_with_odds = df.groupby("race_id")["odds_win"].apply(lambda s: s.notna().any()).sum()
@@ -598,7 +614,9 @@ with open(OUT_HTML, "w", encoding="utf-8") as f:
 print(f"{OUT_HTML} を生成しました({len(tracks)}競馬場 / {df['race_id'].nunique()}レース分)")
 
 # 「買うべきレース」ページ(AI買い目の対象だけ)も同じ場所に作る
+import picks_page  # noqa: E402
 from picks_page import build_picks  # noqa: E402
+picks_page.TRIFECTA = TRIFECTA
 
 _picks = os.path.join(os.path.dirname(os.path.abspath(OUT_HTML)), "picks.html")
 with open(_picks, "w", encoding="utf-8") as f:

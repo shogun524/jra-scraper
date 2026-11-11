@@ -8,10 +8,11 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from ai_bets import RULES, evaluate_all
-from manbaken import load_params as load_manbaken, market_view
+from manbaken import load_params as load_manbaken, market_view, market_view_trifecta
 
 JST = timezone(timedelta(hours=9))
 MB = load_manbaken()
+TRIFECTA = {}  # generate_html.py が3連単オッズ(レースごとの最新値)を入れる
 
 
 def _passed(post_time, now):
@@ -32,7 +33,9 @@ def build_picks(df: pd.DataFrame, date_label: str, generated_at: str) -> str:
             f0 = g.iloc[0]
             o = pd.to_numeric(g["odds_win"], errors="coerce") if "odds_win" in g.columns else pd.Series(dtype=float)
             o = o[o > 0]
-            mv = market_view(o.tolist(), MB) if len(o) >= 5 and len(o) >= 0.8 * len(g) else None
+            mv = market_view_trifecta(TRIFECTA[str(rid)]["odds"]) if str(rid) in TRIFECTA else None
+            if mv is None:
+                mv = market_view(o.tolist(), MB) if len(o) >= 5 and len(o) >= 0.8 * len(g) else None
             for e in evaluate_all(g):
                 rec = (str(f0.get("post_time", "")), f0, e, names, mv)
                 if e["status"] == "対象":
