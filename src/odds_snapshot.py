@@ -3,8 +3,8 @@
 
 update_odds.py が predictions.csv の単勝オッズを最新化したあとに実行する。
 発走前のレースについて、
-  0. 発走60分前からのレースは3連単(type=8)の全組も取り、odds_history/trifecta_latest_<日付>.json にレースごとの最新値を残す
-     (万馬券率・配当の目安を3連単オッズから直接計算するため)
+  0. 発走60分前からのレースは3連複(type=7)の全組も取り、odds_history/trio_latest_<日付>.json にレースごとの最新値を残す
+     (3連複の万馬券率・配当の目安をオッズから直接計算するため)
   1. 単勝(predictions.csv の最新値)・馬連・ワイド(netkeiba オッズAPI type=4/5)のオッズを
      site/odds_history/odds_<日付>.csv に追記し、最新値を latest_<日付>.csv に保存する
      → オッズの動き(直前に買われた馬)を分析・EVに反映するためのデータ
@@ -33,7 +33,7 @@ from ev_board import board, load_calibration  # noqa: E402
 
 JST = timezone(timedelta(hours=9))
 ODDS_API = "https://race.netkeiba.com/api/api_get_jra_odds.html?race_id={race_id}&type={type}"
-TRI_TYPE = 8          # 3連単
+TRI_TYPE = 7          # 3連複(万馬券率は3連複で出す。3連単はほぼ万馬券になるので見分けがつかない)
 TRI_WINDOW_MIN = 60   # 発走60分前から取る
 SHUTUBA_URL = "https://race.netkeiba.com/race/shutuba.html?race_id={race_id}"
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -105,7 +105,7 @@ def _trio_key(k):
 
 
 def parse_trifecta_odds(raw: str) -> dict:
-    """3連単のオッズAPI(type=8)の応答 -> {(1着, 2着, 3着): オッズ}。構造は決め打ちせず、3頭の組のキーを持つ一番大きい辞書を探す"""
+    """3連単・3連複のオッズAPI(type=8/7)の応答 -> {(馬番, 馬番, 馬番): オッズ}。構造は決め打ちせず、3頭の組のキーを持つ一番大きい辞書を探す"""
     try:
         obj = json.loads(raw)
     except Exception:
@@ -250,8 +250,8 @@ def main():
     rows = []
     raw_saved = {t: os.path.exists(os.path.join(odir, f"raw_{today}_type{t}.txt")) for t in PAIR_TYPES}
     weights_updated = 0
-    # 3連単(type=8)は組が多い(最大4,896組)ので、発走60分前からのレースだけ取り、レースごとに最新の値だけを残す
-    tri_path = os.path.join(odir, f"trifecta_latest_{today}.json")
+    # 3連複(type=7、最大816組)を発走60分前から取り、レースごとに最新の値だけを残す
+    tri_path = os.path.join(odir, f"trio_latest_{today}.json")
     try:
         with open(tri_path, encoding="utf-8") as f:
             tri_latest = json.load(f)
@@ -291,9 +291,9 @@ def main():
                     tri_raw_saved = True
                 if tri:
                     tri_latest[rid] = {"ts": ts, "odds": {f"{a}-{b}-{c}": o for (a, b, c), o in tri.items()}}
-                    log(f"  [{rid}] 3連単 {len(tri)}組")
+                    log(f"  [{rid}] 3連複 {len(tri)}組")
             except Exception as e:
-                log(f"  [{rid}] 3連単オッズ取得失敗: {e}")
+                log(f"  [{rid}] 3連複オッズ取得失敗: {e}")
             time.sleep(0.4)
         if mtp is not None and mtp <= 80 and g["horse_weight"].isna().all():
             weights_updated += refresh_weights(df, rid, today, log)

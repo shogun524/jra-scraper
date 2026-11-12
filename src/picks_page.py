@@ -12,7 +12,7 @@ from manbaken import load_params as load_manbaken, market_view, market_view_trif
 
 JST = timezone(timedelta(hours=9))
 MB = load_manbaken()
-TRIFECTA = {}  # generate_html.py が3連単オッズ(レースごとの最新値)を入れる
+TRIFECTA = {}  # generate_html.py が3連複オッズ(レースごとの最新値)を入れる
 
 
 def _passed(post_time, now):
@@ -65,7 +65,7 @@ def build_picks(df: pd.DataFrame, date_label: str, generated_at: str) -> str:
           <div class="horses">◎ {hon} {_html.escape(str(names.get(hon, '')))}{f'(単勝{odds:.1f}倍)' if pd.notna(odds) else ''} ／ 相手 {partners}</div>
           <div class="combos">{combos}</div>
           <div class="why">条件: {_html.escape(e['reason'])}</div>
-          {f'<div class="why">万馬券率 {mv["man"]:.0%} ・ 3連単の配当の目安 {mv["q50"]:,.0f}円({mv["q25"]:,.0f}〜{mv["q75"]:,.0f}円)</div>' if mv else ''}
+          {f'<div class="why">3連複の万馬券率 {mv["man"]:.0%} ・ 3連複の配当の目安 {mv["q50"]:,.0f}円({mv["q25"]:,.0f}〜{mv["q75"]:,.0f}円)</div>' if mv else ''}
         </article>"""
 
     body = "".join(card(*x) for x in items) or '<p class="none">今日は買うべきレースはありません。</p>'

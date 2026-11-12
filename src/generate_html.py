@@ -23,8 +23,8 @@ MANBAKEN = load_manbaken()
 
 
 def _load_trifecta(out_path, race_date):
-    """odds_snapshot.py が残した3連単オッズ(レースごとの最新値)"""
-    p = os.path.join(os.path.dirname(os.path.abspath(out_path)), "odds_history", f"trifecta_latest_{race_date}.json")
+    """odds_snapshot.py が残した3連複オッズ(レースごとの最新値)"""
+    p = os.path.join(os.path.dirname(os.path.abspath(out_path)), "odds_history", f"trio_latest_{race_date}.json")
     try:
         with open(p, encoding="utf-8") as f:
             return json.load(f)
@@ -33,23 +33,23 @@ def _load_trifecta(out_path, race_date):
 
 
 def manbaken_html(g):
-    """万馬券率(3連単1万円以上の確率)と3連単の配当の目安。単勝オッズが全頭そろっていなければ出さない"""
+    """3連複の万馬券率(1万円以上の確率)と配当の目安。3連複オッズが無く単勝オッズも全頭そろっていなければ出さない"""
     if "odds_win" not in g.columns:
         return ""
     o = pd.to_numeric(g["odds_win"], errors="coerce")
     o = o[o > 0]
     rid = str(g["race_id"].iloc[0])
-    v = market_view_trifecta(TRIFECTA[rid]["odds"]) if rid in TRIFECTA else None   # 3連単オッズがあれば直接(範囲が狭い)
+    v = market_view_trifecta(TRIFECTA[rid]["odds"]) if rid in TRIFECTA else None   # 3連複オッズがあれば直接(範囲が狭い)
     # 無ければ単勝オッズから推定。取消馬はオッズが無いので除く。発売前(ほとんど無い)はオッズ待ち
     if v is None:
         v = market_view(o.tolist(), MANBAKEN) if len(o) >= 5 and len(o) >= 0.8 * len(g) else None
     if not v:
-        return '<p class="manbaken muted">万馬券率: オッズ待ち</p>'
-    lvl = "hi" if v["man"] >= 0.8 else ("lo" if v["man"] < 0.5 else "")
-    return (f'<p class="manbaken">万馬券率 <b class="{lvl}">{v["man"]:.0%}</b>'
-            f'<span class="sep">・</span>3連単の配当の目安 <b>{v["q50"]:,.0f}円</b>'
+        return '<p class="manbaken muted">3連複の万馬券率: オッズ待ち</p>'
+    lvl = "hi" if v["man"] >= 0.5 else ("lo" if v["man"] < 0.2 else "")
+    return (f'<p class="manbaken">3連複の万馬券率 <b class="{lvl}">{v["man"]:.0%}</b>'
+            f'<span class="sep">・</span>3連複の配当の目安 <b>{v["q50"]:,.0f}円</b>'
             f'<small>(半分くらいのレースは {v["q25"]:,.0f}〜{v["q75"]:,.0f}円'
-            f'{"・3連単オッズから" if v.get("src") == "3連単" else "・単勝オッズから推定"})</small></p>')
+            f'{"・3連複オッズから" if v.get("src") == "3連複" else "・単勝オッズから推定"})</small></p>')
 
 IN_CSV = sys.argv[1] if len(sys.argv) > 1 else "data/predictions.csv"
 OUT_HTML = sys.argv[2] if len(sys.argv) > 2 else "docs/index.html"

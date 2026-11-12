@@ -1,5 +1,7 @@
 """
-JRA: レースごとの「万馬券率(3連単が1万円以上になる確率)」と「3連単の配当の目安(中央値・25〜75%の範囲)」。
+JRA: レースごとの「万馬券率」と「配当の目安」。既定は3連複(3連単はJRAだと7割が万馬券で見分けがつかないため)。
+  検証(2025〜2026年 5,720レース): 3連複の万馬券率は平均32%、予測と実際がほぼ一致(AUC 0.73)、
+  配当の範囲(mass=0.57)に入る割合 49.7%・幅の中央値 5.3倍。
 
 JRAは3連単オッズの過去データが無いので、単勝オッズから作る:
   1) 単勝オッズ → 各馬の1着率 p ∝ (1/オッズ)^β
@@ -55,6 +57,23 @@ def trifecta_probs(odds_win, beta, g2, g3):
     return P, pr / pr.sum()
 
 
+def combo_probs(odds_win, beta, g2, g3, bet="3連単"):
+    """単勝オッズ -> (組の添字[k,3], 確率[k])。3連複は3連単の確率を同じ3頭でまとめる(添字は小さい順)"""
+    P, pr = trifecta_probs(odds_win, beta, g2, g3)
+    if bet == "3連単":
+        return P, pr
+    S = np.sort(P.astype(np.int32), axis=1)
+    key = S[:, 0] * 400 + S[:, 1] * 20 + S[:, 2]
+    uniq, inv = np.unique(key, return_inverse=True)
+    prob = np.bincount(inv, weights=pr)
+    return np.stack([uniq // 400, (uniq // 20) % 20, uniq % 20], axis=1), prob
+
+
+def win_index(P, win, bet):
+    w = sorted(win) if bet != "3連単" else list(win)
+    return int(np.where((P[:, 0] == w[0]) & (P[:, 1] == w[1]) & (P[:, 2] == w[2]))[0][0])
+
+
 try:
     from scipy.special import ndtr as _phi
 except ImportError:  # scipy が無い環境では math.erf で代用(遅いが同じ値)
@@ -85,7 +104,7 @@ def market_view(odds_win, prm=None):
     o = np.asarray([x for x in odds_win if x and x > 0], dtype=float)
     if len(o) < 5 or len(o) != len(odds_win):
         return None
-    _, pr = trifecta_probs(o, prm["beta"], prm["g2"], prm["g3"])
+    _, pr = combo_probs(o, prm["beta"], prm["g2"], prm["g3"], prm.get("bet", "3連単"))
     est = prm["a"] + prm["b"] * np.log(1 / pr)              # log(払戻の見込み)
     raw = float((pr * _phi((est - math.log(10000)) / prm["sigma"])).sum())
     lg = math.log(max(raw, 1e-6) / max(1 - raw, 1e-6))
@@ -98,14 +117,14 @@ def market_view(odds_win, prm=None):
     return dict(man=man, q25=lo, q50=q50, q75=hi, raw=raw)
 
 
-TRI_BETA = 1.05  # 3連単オッズの「人気薄ほど買われすぎ」の補正(競輪で推定した値。JRAの3連単オッズがたまったら推定し直す)
+TRI_BETA = 1.05  # オッズの「人気薄ほど買われすぎ」の補正(競輪の3連単で推定した値。JRAのオッズがたまったら推定し直す)
 
 
-def market_view_trifecta(odds3, beta=TRI_BETA, mass=0.5):
-    """3連単の全組のオッズ {組: オッズ} から直接 万馬券率・配当の目安 を出す(単勝からの推定より範囲が狭い)。
-    競輪では 範囲に入る割合50%・幅の中央値 約4倍。組が足りなければ None"""
+def market_view_trifecta(odds3, beta=TRI_BETA, mass=0.5, label="3連複"):
+    """3連複(または3連単)の全組のオッズ {組: オッズ} から直接 万馬券率・配当の目安 を出す(単勝からの推定より範囲が狭い)。
+    組が足りなければ None"""
     o = np.array([v for v in (odds3.values() if isinstance(odds3, dict) else odds3) if v and v > 0], dtype=float)
-    if len(o) < 60:
+    if len(o) < 20:
         return None
     q = (1 / o) ** beta
     q /= q.sum()
@@ -113,7 +132,7 @@ def market_view_trifecta(odds3, beta=TRI_BETA, mass=0.5):
     c = np.cumsum(q[idx])
     q50 = float(o[idx][min(int(np.searchsorted(c, 0.5)), len(c) - 1)] * 100)
     lo, hi = shortest_interval(o * 100, q, mass)
-    return dict(man=float(q[o >= 100].sum()), q25=lo, q50=q50, q75=hi, src="3連単")
+    return dict(man=float(q[o >= 100].sum()), q25=lo, q50=q50, q75=hi, src=label)
 
 
 def main():
@@ -125,15 +144,17 @@ def main():
     ap.add_argument("payouts")
     ap.add_argument("--fit-until", default="2025-01-01")
     ap.add_argument("--out", default=os.path.join(HERE, "..", "data", "manbaken.json"))
+    ap.add_argument("--bet", default="3連複", choices=["3連単", "3連複"])
+    ap.add_argument("--mass", type=float, default=0.5)
     a = ap.parse_args()
     F = pd.read_parquet(a.features, columns=["race_id", "race_date", "umaban", "odds_win", "finish"])
     F["race_id"] = F.race_id.astype(str)
     pay = pd.read_csv(a.payouts, dtype={"race_id": str, "combo": str})
-    pay = pay[pay.bet_type == "3連単"].copy()
+    pay = pay[pay.bet_type == a.bet].copy()
     pay["payout"] = pd.to_numeric(pay.payout.astype(str).str.replace(",", ""), errors="coerce")
     pay = pay.sort_values("payout").drop_duplicates("race_id", keep="last").set_index("race_id")
     F = F[F.race_id.isin(pay.index)]
-    prm = dict(DEFAULT)
+    prm = dict(DEFAULT, bet=a.bet, mass=a.mass)
     rows = []
     for rid, g in F.groupby("race_id"):
         g = g.sort_values("umaban")
@@ -153,9 +174,8 @@ def main():
         s, k = 0.0, 0
         for r, m in zip(rows, fit):
             if m:
-                P, pr = trifecta_probs(r["odds"], beta, prm["g2"], prm["g3"])
-                i = np.where((P[:, 0] == r["win"][0]) & (P[:, 1] == r["win"][1]) & (P[:, 2] == r["win"][2]))[0][0]
-                s -= math.log(pr[i])
+                P, pr = combo_probs(r["odds"], beta, prm["g2"], prm["g3"], a.bet)
+                s -= math.log(pr[win_index(P, r["win"], a.bet)])
                 k += 1
         return s / k
     sc = {b: nll(b) for b in (0.9, 1.0, 1.1, 1.2)}
@@ -164,9 +184,8 @@ def main():
     # 払戻の回帰
     X, Y = [], []
     for r in rows:
-        P, pr = trifecta_probs(r["odds"], prm["beta"], prm["g2"], prm["g3"])
-        i = np.where((P[:, 0] == r["win"][0]) & (P[:, 1] == r["win"][1]) & (P[:, 2] == r["win"][2]))[0][0]
-        r["lp"] = math.log(1 / pr[i])
+        P, pr = combo_probs(r["odds"], prm["beta"], prm["g2"], prm["g3"], a.bet)
+        r["lp"] = math.log(1 / pr[win_index(P, r["win"], a.bet)])
         X.append(r["lp"])
         Y.append(math.log(r["payout"]))
     X, Y = np.array(X), np.array(Y)
