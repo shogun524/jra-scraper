@@ -1,16 +1,14 @@
 """
 JRA: レースごとの「万馬券率」と「配当の目安」。既定は3連複(3連単はJRAだと7割が万馬券で見分けがつかないため)。
-  検証(2025〜2026年 5,720レース): 3連複の万馬券率は平均32%、予測と実際がほぼ一致(AUC 0.73)、
-  配当の範囲(mass=0.57)に入る割合 49.7%・幅の中央値 5.3倍。
 
 JRAは3連単オッズの過去データが無いので、単勝オッズから作る:
   1) 単勝オッズ → 各馬の1着率 p ∝ (1/オッズ)^β
   2) ハーヴィル式(2着・3着は p^γ2, p^γ3 で割り引く。ev_board と同じ γ)で3連単の全組の確率 P(組)
   3) 組の払戻の見込み: log(払戻) = a + b·log(1/P(組)) (+ばらつき σ)… 過去の的中組で回帰
   4) 万馬券率 = Σ P(組) × P(その組の払戻 ≥ 1万円) → 過去の結果でロジスティック補正
-  5) 配当の目安 = P(組) で重み付けした払戻見込みの中央値と、確率 mass を含む一番狭い範囲
-     (mass=0.55 で実際の払戻が範囲に入る割合が約50%。25〜75%点より少し狭い 6.7倍→6.3倍。
-      単勝オッズからの推定なので、競輪(3連単オッズから直接)ほどは狭くならない)
+  5) 万馬券率・配当の目安(中央値と25〜75%点)は、過去の結果で補正した1つの分布からまとめて出す(食い違わない)
+  実績(2026年9/26〜11/8 の408レース): 万馬券率 AUC 0.78、万馬券率60%以上→実際62.5%、
+  払戻が範囲内51%・下に外れ26%・上に外れ23%、実際の払戻が分布のどこに来たかはほぼ均等(10等分で33〜57件)
 学習: --fit-until より前、検証: 以降。係数は data/manbaken.json に保存し、generate_html.py が読む。
 
 使い方: python src/manbaken.py features.parquet payouts.csv --fit-until 2025-01-01 --out data/manbaken.json
@@ -113,24 +111,19 @@ def payout_cdf(odds_win, prm):
     return np.maximum.accumulate(F)
 
 
-def view_from_cdf(F, mass):
-    """累積分布 -> 万馬券率・中央値・確率 mass を含む一番狭い範囲(すべて同じ分布から出すので矛盾しない)"""
+def view_from_cdf(F, mass=0.5):
+    """累積分布 -> 万馬券率・中央値・真ん中の範囲(下に外れる・上に外れるがそれぞれ (1-mass)/2)。
+    以前は「一番狭い範囲」にしていたが、配当の分布は穴側に長いので範囲が安い側に寄り、
+    実際の払戻が範囲より上に外れるのが39%・下は8%と偏っていた(2026年9〜11月の408レース)。
+    25〜75%点なら 上23%・下26% で釣り合う(幅は5.1倍→5.9倍)"""
     man = float(1 - np.interp(math.log(10000), GRID, F))
-    q50 = float(math.exp(np.interp(0.5, F, GRID)))
-    best = (np.inf, GRID[0], GRID[-1])
-    j = 0
-    for i in range(len(GRID)):
-        while j < len(GRID) and F[j] - F[i] < mass:
-            j += 1
-        if j >= len(GRID):
-            break
-        if GRID[j] - GRID[i] < best[0]:
-            best = (GRID[j] - GRID[i], GRID[i], GRID[j])
-    return dict(man=man, q25=float(math.exp(best[1])), q50=q50, q75=float(math.exp(best[2])))
+    q = lambda p: float(math.exp(np.interp(p, F, GRID)))  # noqa: E731
+    lo = (1 - mass) / 2
+    return dict(man=man, q25=q(lo), q50=q(0.5), q75=q(1 - lo))
 
 
 def market_view(odds_win, prm=None):
-    """単勝オッズ(出走全馬) -> dict(man=万馬券率, q25〜q75=半分のレースが入る一番狭い範囲, q50=配当の目安の中央値)。
+    """単勝オッズ(出走全馬) -> dict(man=万馬券率, q25〜q75=25〜75%点(半分のレースが入る真ん中の範囲), q50=配当の目安の中央値)。
     オッズが揃わなければ None"""
     prm = prm or load_params()
     o = np.asarray([x for x in odds_win if x and x > 0], dtype=float)
@@ -152,9 +145,10 @@ def market_view_trifecta(odds3, beta=TRI_BETA, mass=0.5, label="3連複"):
     q /= q.sum()
     idx = np.argsort(o)
     c = np.cumsum(q[idx])
-    q50 = float(o[idx][min(int(np.searchsorted(c, 0.5)), len(c) - 1)] * 100)
-    lo, hi = shortest_interval(o * 100, q, mass)
-    return dict(man=float(q[o >= 100].sum()), q25=lo, q50=q50, q75=hi, src=label)
+    v = o[idx] * 100
+    at = lambda p: float(v[min(int(np.searchsorted(c, p)), len(c) - 1)])  # noqa: E731
+    lo = (1 - mass) / 2
+    return dict(man=float(q[o >= 100].sum()), q25=at(lo), q50=at(0.5), q75=at(1 - lo), src=label)
 
 
 def main():
