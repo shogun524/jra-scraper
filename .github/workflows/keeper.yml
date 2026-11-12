@@ -1,0 +1,52 @@
+name: JRA 開催日の常駐更新（5分おきにオッズ・急落・予想ページを更新）
+
+# GitHub の定期実行(cron)は混雑時に大きく間引かれる(10分おき指定でも1日2回しか動かない日があった)。
+# 開催日は1つのジョブを動かし続け、5分おきに odds_update.yml を手動実行で呼ぶ(手動実行は間引かれない)。
+# 開催日でなければ(公開中の予想が今日の分でなければ)すぐ終わる。16:45(JST)で終わり、途中で時間切れなら自分を呼び直す。
+on:
+  schedule:
+    - cron: "23 23 * * 5,6,0"   # JST 土・日・月 08:23
+    - cron: "47 0 * * 6,0,1"    # JST 09:47(予備)
+    - cron: "31 2 * * 6,0,1"    # JST 11:31(予備)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: jra-keeper
+  cancel-in-progress: false
+
+jobs:
+  keep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 今日が開催日か(公開中の予想が今日の分か)
+        id: day
+        run: |
+          today=$(TZ=Asia/Tokyo date +%F)
+          if git fetch -q --depth=1 origin gh-pages && git show FETCH_HEAD:predictions.csv | grep -q "$today"; then
+            echo "race=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::今日($today)の予想が無いので終わります"; echo "race=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: 5分おきにオッズ更新を呼ぶ
+        if: steps.day.outputs.race == 'true'
+        run: |
+          start=$(date +%s)
+          while :; do
+            now=$(date +%s); hm=$(TZ=Asia/Tokyo date +%H%M)
+            if [ $((now - start)) -ge $((340 * 60)) ] || [ "$hm" -ge 1645 ]; then break; fi
+            if [ "$hm" -ge 0830 ]; then gh workflow run odds_update.yml --ref "${GITHUB_REF_NAME}" || echo "::warning::呼び出しに失敗"; fi
+            sleep $((300 - ($(date +%s) - now) % 300))
+          done
+      - name: 16:30(JST)より前なら続きを呼ぶ
+        if: always() && steps.day.outputs.race == 'true'
+        run: |
+          hm=$(TZ=Asia/Tokyo date +%H%M)
+          if [ "$hm" -lt 1630 ]; then gh workflow run keeper.yml --ref "${GITHUB_REF_NAME}"; fi

@@ -563,7 +563,7 @@ html = f"""<!DOCTYPE html>
 <header class="top">
   <div class="inner">
     <h1>JRA週末AI予想</h1>
-    <p><b>{date_label}</b> のレース ・ 最終更新 {generated_at} (JST) ・ {odds_status} ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイド</a> ・ <a href="performance.html" style="color:#F0D896;">予測の成績</a> ・ <a href="picks.html" style="color:#F0D896;font-weight:700;">買うべきレース</a></p>
+    <p><b>{date_label}</b> のレース ・ 最終更新 {generated_at} (JST) ・ {odds_status} ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイド</a> ・ <a href="performance.html" style="color:#F0D896;">予測の成績</a> ・ <a href="picks.html" style="color:#F0D896;font-weight:700;">買うべきレース</a> ・ <a href="drops.html" style="color:#F0D896;font-weight:700;">オッズ急落</a></p>
   </div>
   <nav class="tabs">{tab_buttons}</nav>
 </header>

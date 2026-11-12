@@ -110,7 +110,7 @@ def build_picks(df: pd.DataFrame, date_label: str, generated_at: str) -> str:
 </style></head>
 <body>
 <header><h1>買うべきレース</h1>
-<p>{_html.escape(date_label)} ・ 更新 {_html.escape(generated_at)}(10分おきに自動更新) ・ <a href="index.html">全レースの予想</a> ・ <a href="performance.html">成績</a></p></header>
+<p>{_html.escape(date_label)} ・ 更新 {_html.escape(generated_at)}(10分おきに自動更新) ・ <a href="index.html">全レースの予想</a> ・ <a href="drops.html">オッズ急落</a> ・ <a href="performance.html">成績</a></p></header>
 <main>{body}{wait}</main>
 <footer><ul>{notes}</ul>
 <p>各100円で6点。条件(人気・オッズ)は締切直前で変わることがあるので、買う直前にもう一度このページを開いて確認してください。

@@ -16,12 +16,25 @@ concurrency:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   update-odds:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # 定期実行が間引かれて当日の常駐(keeper.yml)が動いていなければ起こす
+      - name: 常駐更新が止まっていれば起こす
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          hm=$(TZ=Asia/Tokyo date +%H%M)
+          if [ "$hm" -ge 0800 ] && [ "$hm" -lt 1630 ]; then
+            n=$(gh run list --workflow keeper.yml --limit 5 --json status --jq '[.[]|select(.status=="in_progress" or .status=="queued")]|length')
+            if [ "$n" = "0" ]; then gh workflow run keeper.yml --ref "${GITHUB_REF_NAME}" && echo "keeper を起動しました"; fi
+          fi
 
       # 現在公開中のページ(予測結果の predictions.csv を含む)を site/ に取り出す
       - name: 公開中のページを取得
@@ -74,6 +87,12 @@ jobs:
       - name: ダッシュボードHTML再生成
         if: steps.odds.outputs.updated == 'true'
         run: python src/generate_html.py site/predictions.csv site/index.html
+
+      # 発走前に大きく下がった馬・組の一覧(drops.html)
+      - name: オッズ急落ページ
+        if: steps.odds.outputs.updated == 'true'
+        continue-on-error: true
+        run: python src/drops_page.py site/predictions.csv site
 
       # デプロイ用アクション(peaceiris)は、このジョブの使い方では内部の作業フォルダを
       # gitリポジトリとして扱えず失敗したため、gitコマンドで直接 gh-pages に書き込む。
