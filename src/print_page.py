@@ -58,37 +58,90 @@ def _card(rid, g, trio, prm):
     flags = ["bet"] if bets else []
     if mv and mv["man"] >= 0.5:
         flags.append("are")
+    def gv(r, c):
+        v = r.get(c) if c in r.index else None
+        try:
+            return None if v is None or (isinstance(v, float) and math.isnan(v)) else v
+        except TypeError:
+            return v
+
+    def style(x):
+        if x is None:
+            return ""
+        return "逃先" if x < 0.30 else ("好位" if x < 0.50 else ("中団" if x < 0.70 else "差追"))
+
     rows = ""
     for _, r in g.iterrows():
         w = int(r["waku"]) if pd.notna(r.get("waku")) else 0
         bg, fg = WAKU_COLORS.get(w, ("#eee", "#222"))
-        hw = r.get("horse_weight")
-        wd = r.get("weight_diff")
-        hw_txt = (f'{_f(hw, "{:.0f}")}' + (f'({_f(wd, "{:+.0f}")})' if _f(wd, "{:+.0f}") else "")) if _f(hw, "{:.0f}") else ""
+        hw, wd = gv(r, "horse_weight"), gv(r, "weight_diff")
+        hw_txt = (f'{_f(hw, "{:.0f}")}' + (f'({_f(wd, "{:+.0f}")})' if wd is not None else "")) if hw is not None else ""
         top = int(r.get("pred_win_rank", 99)) == 1
-        mk = r.get("mark")
-        mk = "" if mk is None or (isinstance(mk, float) and math.isnan(mk)) else str(mk)
-        vt = r.get("value_tag")
-        vt = "" if vt is None or (isinstance(vt, float) and math.isnan(vt)) else str(vt)
-        rows += (f'<tr class="{"top" if top else ""}"><td class="mk">{_html.escape(mk)}</td>'
-                 f'<td><span class="wk" style="background:{bg};color:{fg};">{w or ""}</span></td>'
-                 f'<td class="c">{int(r["umaban"])}</td><td class="nm">{_html.escape(str(r["horse"]))}</td>'
+        mk = gv(r, "mark") or ""
+        vt = gv(r, "value_tag") or ""
+        sexage = f'{gv(r, "sex") or ""}{_f(gv(r, "age"), "{:.0f}")}'
+        kin = _f(gv(r, "weight_carry"), "{:.0f}") + (f'({_f(gv(r, "weight_carry_change_from_last"), "{:+.0f}")})'
+                                                      if gv(r, "weight_carry_change_from_last") not in (None, 0) else "")
+        last = gv(r, "last_race_finish")
+        st5 = gv(r, "recent5_starts")
+        rec = (f'前走<b>{_f(last, "{:.0f}")}着</b>' if last is not None else "前走 -")
+        if st5:
+            rec += f'　近{_f(st5, "{:.0f}")}走 平均{_f(gv(r, "recent5_avg_finish"))}着・3着内{_f((gv(r, "recent5_top3rate") or 0) * 100, "{:.0f}")}%'
+        cs = gv(r, "career_starts")
+        if cs:
+            rec += f'　通算{_f(cs, "{:.0f}")}戦 勝率{_f((gv(r, "career_winrate") or 0) * 100, "{:.0f}")}%'
+        ds = gv(r, "dist_aptitude_starts")
+        if ds:
+            rec += f'　この距離帯 {_f(ds, "{:.0f}")}戦3着内{_f((gv(r, "dist_aptitude_top3rate") or 0) * 100, "{:.0f}")}%'
+        dd = gv(r, "days_since_last")
+        if dd is not None:
+            rec += f'　間隔{_f(dd, "{:.0f}")}日'
+        dc = gv(r, "distance_change_from_last")
+        if dc not in (None, 0):
+            rec += f'　距離{_f(dc, "{:+.0f}")}m'
+        jw, tw = gv(r, "jockey_winrate"), gv(r, "trainer_winrate")
+        if jw is not None:
+            rec += f'　騎手勝率{jw * 100:.0f}%'
+        if tw is not None:
+            rec += f'　厩舎勝率{tw * 100:.0f}%'
+        ev = gv(r, "expected_value")
+        rows += (f'<tr class="{"top" if top else ""}"><td class="mk" rowspan="2">{_html.escape(str(mk))}</td>'
+                 f'<td rowspan="2"><span class="wk" style="background:{bg};color:{fg};">{w or ""}</span></td>'
+                 f'<td class="c" rowspan="2"><b>{int(r["umaban"])}</b></td><td class="nm">{_html.escape(str(r["horse"]))}</td>'
+                 f'<td class="c sm">{_html.escape(sexage)}</td><td class="c sm">{kin}</td>'
                  f'<td class="nw">{_html.escape(str(r.get("jockey") or ""))}</td>'
                  f'<td class="c">{_f(r.get("market_rank"), "{:.0f}")}</td><td class="r">{_f(r.get("odds_win"))}</td>'
-                 f'<td class="r sm">{hw_txt}</td>'
+                 f'<td class="r sm">{hw_txt}</td><td class="c sm ks">{style(gv(r, "recent5_style_ratio"))}</td>'
                  f'<td class="r b">{_f(float(r.get("pred_win_norm", 0) or 0) * 100)}</td>'
                  f'<td class="r">{_f(float(r.get("pred_top3_norm", 0) or 0) * 100, "{:.0f}")}</td>'
                  f'<td class="c">{int(r.get("pred_win_rank", 0) or 0)}</td>'
-                 f'<td class="sm nw">{_html.escape(vt)}</td><td class="memo"></td></tr>')
+                 f'<td class="r sm">{_f(ev, "{:.2f}")}</td>'
+                 f'<td class="sm nw">{_html.escape(str(vt))}</td><td class="memo" rowspan="2"></td></tr>'
+                 f'<tr class="{"top" if top else ""} rc"><td colspan="13" class="rc">{rec}</td></tr>')
+    # レースの条件
+    surf, dist, baba, fs = gv(f0, "surface"), gv(f0, "distance"), gv(f0, "baba"), gv(f0, "field_size")
+    cond = " ".join(x for x in [f'{surf or ""}{_f(dist, "{:.0f}")}m' if dist is not None else "",
+                                f'馬場:{baba}' if baba else "", f'{len(g)}頭'] if x)
+    comp = gv(f0, "race_competitiveness")
+    if comp is not None:
+        cond += f'　混戦度 {_f(comp, "{:.0f}")}'
+    favp = gv(f0, "course_fav_win_pct")
+    if favp is not None:
+        cond += f'　このコースの1番人気勝率 {_f(favp, "{:.0f}")}%'
+    order = g.sort_values("pred_win_rank")
+    top3 = "　".join(f'{m}{int(x.umaban)} {_html.escape(str(x.horse))}({float(x.pred_win_norm) * 100:.0f}%)'
+                    for m, (_, x) in zip(["◎", "○", "▲"], order.head(3).iterrows()))
     venue = str(f0.get("track_name", ""))
     return f"""
     <div class="pp-card" data-venue="{_html.escape(venue)}" data-flags="{' '.join(flags)}" data-post="{_html.escape(post)}">
       <div class="pp-head"><b>{_html.escape(venue)} {int(f0['race_number'])}R</b>
         <span>{_html.escape(str(f0.get('race_name', '') or ''))}</span><span class="pp-post">発走 {_html.escape(post)}</span></div>
+      <div class="pp-sub">{_html.escape(cond)}</div>
       <div class="pp-sub">{man_txt}</div>
+      <div class="pp-sub">AIの上位: {top3}</div>
       {bet_html}
-      <table class="pp-t"><tr><th>印</th><th>枠</th><th>馬番</th><th>馬名</th><th>騎手</th><th>人気</th><th>単勝</th><th>馬体重</th>
-      <th>AI1着%</th><th>AI3着内%</th><th>AI順</th><th>妙味</th><th class="memo">メモ</th></tr>{rows}</table>
+      <table class="pp-t"><tr><th>印</th><th>枠</th><th>馬番</th><th>馬名</th><th>性齢</th><th>斤量</th><th>騎手</th><th>人気</th><th>単勝</th><th>馬体重</th>
+      <th>脚質</th><th>AI1着%</th><th>AI3着内%</th><th>AI順</th><th>期待値</th><th>妙味</th><th class="memo">メモ</th></tr>{rows}</table>
     </div>"""
 
 
@@ -128,13 +181,17 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   .pp-t tr.top td {{ background:#FFF4DE; }} .c {{ text-align:center; }} .r {{ text-align:right; }} .b {{ font-weight:700; }}
   .sm {{ font-size:11px; }} .nm {{ font-weight:700; white-space:nowrap; }} .mk {{ text-align:center; font-weight:700; }}
   .wk {{ display:inline-block; width:18px; text-align:center; border:1px solid #888; border-radius:3px; font-weight:700; }}
-  .memo {{ width:18%; }}
+  .memo {{ width:11%; }} .ks {{ white-space:nowrap; }}
+  tr.rc td {{ font-size:10.5px; color:#444; background:#fafafa; border-top:0; }} .pp-t tr.top.rc td {{ background:#FFF9EC; }}
   .pp-grid.two {{ display:grid; grid-template-columns:1fr; }}
   @media print {{
-    @page {{ size:A4; margin:10mm; }}
-    body {{ background:#fff; font-size:11px; }} header, .pp-controls {{ display:none; }} main {{ padding:0; max-width:none; }}
+    @page {{ size:A4; margin:8mm; }}
+    body {{ background:#fff; font-size:10px; }} header, .pp-controls {{ display:none; }} main {{ padding:0; max-width:none; }}
     .pp-venue {{ break-before:page; }} .pp-venue:first-of-type {{ break-before:auto; }}
-    .pp-grid:not(.two) .pp-card {{ break-after:page; }}
+    .pp-venue:has(.pp-grid:not(.two)) > h2 {{ display:none; }}
+    .pp-grid:not(.two) .pp-card {{ break-after:page; break-inside:auto; padding:4px 6px; margin:0; border:0; }}
+    .pp-t th, .pp-t td {{ padding:1px 3px; }} .pp-t th {{ font-size:9px; }} tr.rc td {{ font-size:8.5px; padding:0 3px; }}
+    .pp-t tr {{ break-inside:avoid; }} .pp-head b {{ font-size:1.05rem; }} .pp-sub {{ margin:2px 0; }}
     .pp-card {{ border:1px solid #888; }}
   }}
 </style></head><body>
@@ -152,7 +209,8 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
     </div>
     <div class="pp-row"><button type="button" class="pp-print" id="ppPrint">印刷 / PDFに保存</button></div>
     <p class="pp-hint">競馬場ごとに改ページします。印刷画面で「PDFとして保存」を選ぶとPDFになります(iPhoneは 共有 → プリント → プレビューをピンチアウト → 共有でPDF保存)。
-    印=AI評価順の◎○▲△、AI1着%・AI3着内%はAIの予測、妙味=AIと人気のズレの判定、メモ欄は手書き用です。</p>
+    印=AI評価順の◎○▲△、AI1着%・AI3着内%はAIの予測、期待値=AI1着率×単勝、妙味=AIと人気のズレの判定、
+    脚質=近5走の4コーナーの位置(逃先・好位・中団・差追)、2行目は前走・近5走・通算・この距離帯の成績・間隔・騎手と厩舎の勝率、メモ欄は手書き用です。</p>
   </div>
   {sections or '<p>本日の予想はありません。</p>'}
 </main>

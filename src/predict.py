@@ -401,7 +401,13 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
                 "mark", "ai_score", "stability", "gap_from_top",
                 "rank_diff", "market_rank", "waku_fit", "value_tag",
                 "race_competitiveness", "course_fav_win_pct"]
-    for optional_col in ["track_name", "race_number", "race_name", "post_time", "race_class", "horse_weight", "weight_diff"]:
+    for optional_col in ["track_name", "race_number", "race_name", "post_time", "race_class", "horse_weight", "weight_diff",
+                         # 印刷用ページ・出走表で使う(馬の過去成績・条件)
+                         "age", "sex", "weight_carry", "field_size", "distance", "surface", "baba", "weather",
+                         "recent5_avg_finish", "recent5_top3rate", "recent5_starts", "career_starts", "career_winrate",
+                         "career_top3rate", "dist_aptitude_top3rate", "dist_aptitude_starts", "days_since_last",
+                         "recent5_style_ratio", "jockey_winrate", "trainer_winrate", "last_race_finish",
+                         "distance_change_from_last", "weight_carry_change_from_last"]:
         if optional_col in feat_df.columns:
             out_cols.append(optional_col)
     if "odds_win" in feat_df.columns:

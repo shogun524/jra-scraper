@@ -98,23 +98,45 @@ def shortest_interval(values, weights, mass=0.5):
     return float(best[1]), float(best[2])
 
 
+GRID = np.linspace(math.log(100), math.log(3e6), 400)   # 払戻(円)の対数の目盛り
+
+
+def payout_cdf(odds_win, prm):
+    """単勝オッズ -> 払戻の分布(累積)を GRID 上で。各組の払戻を対数正規(中心=回帰の見込み、幅=σ)とし、組の確率で混ぜる。
+    pit_x/pit_y があれば、過去の「実際の払戻がこの分布のどこに来たか」で分布ごと補正する(万馬券率と配当の目安が食い違わない)"""
+    _, pr = combo_probs(odds_win, prm["beta"], prm["g2"], prm["g3"], prm.get("bet", "3連単"))
+    est = prm["a"] + prm["b"] * np.log(1 / pr)
+    F = (pr[None, :] * _phi((GRID[:, None] - est[None, :]) / prm["sigma"])).sum(axis=1)
+    F = np.clip(F / F[-1], 0, 1)
+    if prm.get("pit_x"):
+        F = np.interp(F, prm["pit_x"], prm["pit_y"])
+    return np.maximum.accumulate(F)
+
+
+def view_from_cdf(F, mass):
+    """累積分布 -> 万馬券率・中央値・確率 mass を含む一番狭い範囲(すべて同じ分布から出すので矛盾しない)"""
+    man = float(1 - np.interp(math.log(10000), GRID, F))
+    q50 = float(math.exp(np.interp(0.5, F, GRID)))
+    best = (np.inf, GRID[0], GRID[-1])
+    j = 0
+    for i in range(len(GRID)):
+        while j < len(GRID) and F[j] - F[i] < mass:
+            j += 1
+        if j >= len(GRID):
+            break
+        if GRID[j] - GRID[i] < best[0]:
+            best = (GRID[j] - GRID[i], GRID[i], GRID[j])
+    return dict(man=man, q25=float(math.exp(best[1])), q50=q50, q75=float(math.exp(best[2])))
+
+
 def market_view(odds_win, prm=None):
-    """単勝オッズ(出走全馬) -> dict(man=万馬券率, q25, q50, q75=3連単の配当の目安(円))。オッズが揃わなければ None"""
+    """単勝オッズ(出走全馬) -> dict(man=万馬券率, q25〜q75=半分のレースが入る一番狭い範囲, q50=配当の目安の中央値)。
+    オッズが揃わなければ None"""
     prm = prm or load_params()
     o = np.asarray([x for x in odds_win if x and x > 0], dtype=float)
     if len(o) < 5 or len(o) != len(odds_win):
         return None
-    _, pr = combo_probs(o, prm["beta"], prm["g2"], prm["g3"], prm.get("bet", "3連単"))
-    est = prm["a"] + prm["b"] * np.log(1 / pr)              # log(払戻の見込み)
-    raw = float((pr * _phi((est - math.log(10000)) / prm["sigma"])).sum())
-    lg = math.log(max(raw, 1e-6) / max(1 - raw, 1e-6))
-    man = 1 / (1 + math.exp(-(prm["la"] + prm["lb"] * lg)))
-    idx = np.argsort(est)
-    cum = np.cumsum(pr[idx])
-    q50 = float(math.exp(est[idx][min(int(np.searchsorted(cum, 0.5)), len(cum) - 1)]))
-    lo, hi = shortest_interval(np.exp(est), pr, prm.get("mass", 0.5))
-    # q25/q75 の名前のまま「半分のレースが入る一番狭い範囲」を入れる
-    return dict(man=man, q25=lo, q50=q50, q75=hi, raw=raw)
+    return view_from_cdf(payout_cdf(o, prm), prm.get("mass", 0.5))
 
 
 TRI_BETA = 1.05  # オッズの「人気薄ほど買われすぎ」の補正(競輪の3連単で推定した値。JRAのオッズがたまったら推定し直す)
@@ -193,12 +215,18 @@ def main():
     prm["a"], prm["b"] = float(a0), float(b)
     prm["sigma"] = float(np.std(Y[fit] - (a0 + b * X[fit])))
     print(f"払戻 = exp({a0:.3f} + {b:.3f}·log(1/P)) ± σ{prm['sigma']:.3f}")
-    # ロジスティック補正
-    raw = np.array([market_view(r["odds"], {**prm, "la": 0.0, "lb": 1.0})["raw"] for r in rows])
-    y = np.array([r["payout"] >= 10000 for r in rows]).astype(int)
-    lg = np.log(np.clip(raw, 1e-6, 1 - 1e-6) / np.clip(1 - raw, 1e-6, 1))
-    lr = LogisticRegression().fit(lg[fit].reshape(-1, 1), y[fit])
-    prm["la"], prm["lb"] = float(lr.intercept_[0]), float(lr.coef_[0][0])
+    # 分布ごとの補正(PIT): 学習期間で「実際の払戻がモデルの分布の何%点に来たか」を集め、それが一様になるように写像する
+    pits = []
+    for r, m in zip(rows, fit):
+        if m:
+            F = payout_cdf(r["odds"], {**prm, "pit_x": None})
+            pits.append(float(np.interp(math.log(r["payout"]), GRID, F)))
+    pits = np.sort(np.array(pits))
+    qs = np.linspace(0, 1, 101)
+    px = np.quantile(pits, qs)
+    px[0], px[-1] = 0.0, 1.0
+    px = np.maximum.accumulate(px + np.arange(len(px)) * 1e-9)
+    prm["pit_x"], prm["pit_y"] = [float(x) for x in px], [float(x) for x in qs]
     # 検証
     V = [(r, market_view(r["odds"], prm)) for r, m in zip(rows, fit) if not m]
     pm = np.array([v["man"] for _, v in V])
