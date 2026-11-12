@@ -563,7 +563,7 @@ html = f"""<!DOCTYPE html>
 <header class="top">
   <div class="inner">
     <h1>JRA週末AI予想</h1>
-    <p><b>{date_label}</b> のレース ・ 最終更新 {generated_at} (JST) ・ {odds_status} ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイド</a> ・ <a href="performance.html" style="color:#F0D896;">予測の成績</a> ・ <a href="picks.html" style="color:#F0D896;font-weight:700;">買うべきレース</a> ・ <a href="drops.html" style="color:#F0D896;font-weight:700;">オッズ急落</a></p>
+    <p><b>{date_label}</b> のレース ・ 最終更新 {generated_at} (JST) ・ {odds_status} ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイド</a> ・ <a href="performance.html" style="color:#F0D896;">予測の成績</a> ・ <a href="picks.html" style="color:#F0D896;font-weight:700;">買うべきレース</a> ・ <a href="drops.html" style="color:#F0D896;font-weight:700;">オッズ急落</a> ・ <a href="print.html" style="color:#F0D896;">印刷用</a></p>
   </div>
   <nav class="tabs">{tab_buttons}</nav>
 </header>
@@ -622,3 +622,11 @@ _picks = os.path.join(os.path.dirname(os.path.abspath(OUT_HTML)), "picks.html")
 with open(_picks, "w", encoding="utf-8") as f:
     f.write(build_picks(df, date_label, generated_at))
 print(f"{_picks} を生成しました")
+
+# 印刷用ページ(A4で印刷・PDF保存)も同じ場所に作る
+from print_page import build_print  # noqa: E402
+
+_print = os.path.join(os.path.dirname(os.path.abspath(OUT_HTML)), "print.html")
+with open(_print, "w", encoding="utf-8") as f:
+    f.write(build_print(df, date_label, generated_at, TRIFECTA))
+print(f"{_print} を生成しました")
