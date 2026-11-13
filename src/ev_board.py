@@ -91,8 +91,8 @@ def blended_win_probs(g: pd.DataFrame, cal: dict, moves: dict) -> np.ndarray | N
 EV_MAX_ODDS = {"単勝": 100.0, "馬連": 300.0, "ワイド": 100.0}
 # 馬連・ワイドは、その券種のオッズ自体が見ている確率の何倍まで「歪み」として認めるか。
 # 前日や朝の売れ始めは馬連・ワイドの票が薄く、単勝から作った確率と10倍以上ずれて EV が10を超える組が並んだ(11/13 前日オッズ)。
-# 3倍を超えるずれは「票が薄いだけ」とみなして外す(EVは最大でも約2.3にとどまる)
-EV_MAX_RATIO = 3.0
+# 一定以上のずれは「票が薄いだけ」とみなして外す(EVは最大でも約1.24にとどまる)
+EV_MAX_RATIO = 1.6   # 11/14: 3.0だと薄い馬連が軒並み上限(EV2.3〜2.5)に張り付いた。本当の歪みは大きくても1.5倍程度とみて1.6に
 
 
 def race_ev(g: pd.DataFrame, combos: pd.DataFrame | None, history: pd.DataFrame | None, cal: dict) -> pd.DataFrame:

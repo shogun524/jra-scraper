@@ -46,10 +46,8 @@ def manbaken_html(g):
     if not v:
         return '<p class="manbaken muted">3連複の万馬券率: オッズ待ち</p>'
     lvl = "hi" if v["man"] >= 0.5 else ("lo" if v["man"] < 0.2 else "")
-    return (f'<p class="manbaken">3連複の万馬券率 <b class="{lvl}">{v["man"]:.0%}</b>'
-            f'<span class="sep">・</span>3連複の配当の目安 <b>{v["q50"]:,.0f}円</b>'
-            f'<small>(半分くらいのレースは {v["q25"]:,.0f}〜{v["q75"]:,.0f}円'
-            f'{"・3連複オッズから" if v.get("src") == "3連複" else "・単勝オッズから推定"})</small></p>')
+    return (f'<p class="manbaken" title="{"3連複オッズから" if v.get("src") == "3連複" else "単勝オッズから推定"}">万馬券率(3連複) <b class="{lvl}">{v["man"]:.0%}</b>'
+            f'<span class="sep">・</span>目安 <b>{v["q50"]:,.0f}円</b> <small>({v["q25"]:,.0f}〜{v["q75"]:,.0f})</small></p>')
 
 IN_CSV = sys.argv[1] if len(sys.argv) > 1 else "data/predictions.csv"
 OUT_HTML = sys.argv[2] if len(sys.argv) > 2 else "docs/index.html"
@@ -164,8 +162,8 @@ def bias_html(race_id):
         return ""
     cls = "bias-in" if b["side"] == "内" else ("bias-out" if b["side"] == "外" else "bias-flat")
     adv = {"内": "内枠(馬番が頭数の内側1/3)が有利", "外": "外枠(外側1/3)が有利"}.get(b["side"], "内外の差なし")
-    return (f'<p class="bias {cls}">当日の{b.get("surface", "")}バイアス: <b>{b["label"]}</b> '
-            f'<small>({b["n"]}レース分・{adv})</small></p>')
+    return (f'<p class="bias {cls}" title="{adv}({b["n"]}レース分)">{b.get("surface", "")}バイアス <b>{b["label"]}</b>'
+            f'{" <small>緑の馬番が有利</small>" if b["side"] else ""}</p>')
 
 
 try:
@@ -212,7 +210,8 @@ def ev_box(race_id):
         parts.append(f'<div class="evcol"><h4>{bet}</h4><ul>{cells}</ul></div>')
     if not parts:
         return ""
-    return f'<div class="evbox"><div class="evhead">EVボード(AI×オッズの歪み×オッズの動き)</div><div class="evcols">{"".join(parts)}</div></div>'
+    n_ev = int((e["ev"] >= 1.0).sum())
+    return f'<details class="evbox"><summary class="evhead">このレースのEV1.0以上 {n_ev}件</summary><div class="evcols">{"".join(parts)}</div></details>'
 
 
 def race_card(race_id, g):
@@ -306,25 +305,16 @@ def race_card(race_id, g):
         gap = r.get("gap_from_top")
         gap_html = "—" if (pd.notnull(gap) and gap == 0) else (f"-{gap:.1f}pt" if pd.notnull(gap) else "-")
 
+        mk_cell = mk_html or f'<span class="rk">{int(r["pred_win_rank"])}</span>'
+        sub = " ".join(x for x in [str(r.get("jockey") or ""), weight_html if weight_html != "-" else ""] if x)
         rows += f"""
         <tr class="{rank_cls}">
-          <td class="rank">{int(r['pred_win_rank'])}</td>
-          <td>{waku_badge(r.get('waku'))}</td>
-          <td>{umaban}</td>
-          <td class="horse">{r['horse']}{blood}</td>
-          <td>{r['jockey']}</td>
-          <td class="pct">{r['pred_win_norm']*100:.1f}%</td>
-          <td class="pct">{r['pred_top3_norm']*100:.1f}%</td>
-          <td>{mk_html}</td>
-          <td>{ai_html}</td>
-          <td class="gap">{gap_html}</td>
-          <td>{stab_html}</td>
-          <td>{wf_html}</td>
-          <td>{weight_html}</td>
-          <td>{odds}</td>
-          <td>{rd_html}</td>
-          <td>{ev_badge}</td>
-          <td>{vt_html}</td>
+          <td class="c">{mk_cell}</td>
+          <td class="c ubc">{waku_badge(r.get('waku'))}<b class="ubn">{umaban}</b></td>
+          <td class="horse">{r['horse']}<br><small class="sub">{sub}</small>{blood}</td>
+          <td class="r od">{odds}</td>
+          <td class="r pct"><b>{r['pred_win_norm']*100:.1f}</b><small>%</small><br><small class="sub">3着内{r['pred_top3_norm']*100:.0f}%</small></td>
+          <td class="c">{ev_badge}<br>{vt_html if vt_html != "-" else ""}</td>
         </tr>"""
 
     return f"""
@@ -334,18 +324,14 @@ def race_card(race_id, g):
         <div class="race-title">
           <h2>{race_name}</h2>
           <p class="race-sub">{first.get('track_name','')} {post_time_html}</p>
-          {manbaken_html(g)}
-          {bias_html(race_id)}
+          <div class="chips">{manbaken_html(g)}{bias_html(race_id)}</div>
         </div>
       </header>
       {aibet_html}
       <div class="table-scroll">
-      <table>
+      <table class="ht"><colgroup><col style="width:26px"><col style="width:50px"><col><col style="width:58px"><col style="width:50px"><col style="width:54px"></colgroup>
         <thead>
-          <tr><th>予想</th><th>枠</th><th>馬番</th><th>馬名</th><th>騎手</th>
-              <th>1着率</th><th>3連対率</th><th>印</th><th>AI<br>指数</th>
-              <th>1位との差</th><th>安定度</th><th>枠順<br>評価</th>
-              <th>馬体重</th><th>単勝</th><th>人気との<br>乖離</th><th>期待値</th><th>妙味</th></tr>
+          <tr><th>印</th><th>馬番</th><th>馬名 / 騎手 馬体重 / 血統</th><th>単勝<br>複勝</th><th>AI<br>1着率</th><th>期待値</th></tr>
         </thead>
         <tbody>{rows}</tbody>
       </table>
@@ -395,12 +381,12 @@ if "race_class" in df.columns:
         items = sorted(_targets[rule.key], key=lambda x: x[0])
         lis = "".join(
             f'<li><span class="aibet-tag{"" if e["status"] == "対象" else " aibet-wait"}">{e["status"]}</span> '
-            f'{tn}{rn}R {nm if isinstance(nm, str) else ""} {pt} ― {e["desc"]}<small>({e["reason"]})</small></li>'
+            f'<b>{tn}{rn}R</b> {pt} {nm if isinstance(nm, str) else ""}<br><span class="aibet-buy">{e["desc"]}</span></li>'
             for pt, tn, rn, nm, e in items) or "<li>今日は対象レースなし</li>"
-        blocks += f"""<h3 class="aibet-h3{' aibet-h3-sub' if rule.key == 'sub' else ''}">{rule.label}</h3>
-      <p class="aibet-note">{rule.name}。{rule.backtest}。</p><ul>{lis}</ul>"""
+        blocks += f"""<h3 class="aibet-h3{' aibet-h3-sub' if rule.key == 'sub' else ''}">{rule.label}
+      <details class="why"><summary>条件</summary><p class="aibet-note">{rule.name}。{rule.backtest}。</p></details></h3><ul>{lis}</ul>"""
     aibet_summary = f"""<section class="aibet-summary"><h2>今日のAI買い目</h2>{blocks}
-      <p class="aibet-note">オッズ・人気は発走直前で変わります。条件の境目にいる馬は、買う前に確認してください。</p></section>"""
+      </section>"""
 
 # EV上位(全レース)
 ev_summary = ""
@@ -413,13 +399,17 @@ if not EV.empty:
         top = EV.sort_values("ev", ascending=False).head(10)
         title_note = "EV 1.0以上はなし。EVが高い順"
     lis = ""
-    for _, r in top.iterrows():
+    for i_, (_, r) in enumerate(top.iterrows()):
         m = _meta.loc[r["race_id"]]
         mv = ""
         if r["bet"] == "単勝" and pd.notna(r.get("move")) and abs(r["move"]) >= 0.1:
-            mv = f' <span class="mv {"mv-in" if r["move"] > 0 else "mv-out"}">{r["odds_first"]:.1f}→{r["odds"]:.1f}</span>'
-        lis += (f'<li>{m.tn}{int(m.rn)}R {m.pt} ・ <b>{r["bet"]} {r["combo"]}</b> {fmt_odds(r)}倍 ・ '
-                f'確率{r["p"] * 100:.1f}% ・ <span class="badge {"ev-good" if r["ev"] >= 1 else "ev-mid"}">EV {r["ev"]:.2f}</span>{mv}</li>')
+            mv = f' <span class="mv {"mv-in" if r["move"] > 0 else "mv-out"}">{"↓" if r["move"] > 0 else "↑"}</span>'
+        if i_ == 5:
+            lis += '</ul><details class="ev-more"><summary>もっと見る</summary><ul>'
+        lis += (f'<li><span class="evr">{m.tn}{int(m.rn)}R</span> <b>{r["bet"]} {r["combo"]}</b> {fmt_odds(r)}倍{mv}'
+                f' <span class="badge {"ev-good" if r["ev"] >= 1 else "ev-mid"}">{r["ev"]:.2f}</span></li>')
+    if len(top) > 5:
+        lis += "</ul></details><ul>"
     _how = (f'<details class="ev-how"><summary>EVの出し方</summary><p class="aibet-note">(99999.9倍などの未投票・単勝100倍超・馬連300倍超・ワイド100倍超は除外)確率 = AIの1着率^{_cal["a"]:.2f} × '
             f'市場の確率^{_cal["b"]:.2f} × オッズの動き(係数{_cal["c_move"]:.2f})を正規化。係数は過去の結果から毎週推定'
             f'(今のところAIの重みはほぼ0)。EVの実績は成績ページで採点しています。</p></details>')
@@ -608,23 +598,50 @@ html = f"""<!DOCTYPE html>
     color: var(--ink-soft); font-size: .74rem; line-height: 1.7;
   }}
 
-  @media (max-width: 480px) {{
-    table {{ font-size: .74rem; min-width: 840px; }}
-    th, td {{ padding: 7px 6px; }}
-  }}
+  /* 出走表(スマホで横スクロールなしで読める6列) */
+  table.ht {{ min-width: 0; width: 100%; font-size: .84rem; table-layout: fixed; }}
+  table.ht td.horse {{ white-space: normal; overflow: hidden; word-break: break-all; }}
+  table.ht .bl {{ display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+  table.ht th {{ font-size: .7rem; padding: 6px 3px; }}
+  table.ht th, table.ht td {{ padding: 6px 5px; vertical-align: middle; }}
+  table.ht td.c {{ text-align: center; }} table.ht td.r {{ text-align: right; white-space: nowrap; }}
+  table.ht .ubc {{ white-space: nowrap; }} table.ht .ubn {{ margin-left: 3px; font-size: .95rem; }}
+  table.ht .sub {{ color: var(--ink-soft); font-weight: 400; font-size: .72rem; }}
+  table.ht .rk {{ color: var(--ink-soft); font-size: .8rem; }}
+  table.ht .pct b {{ font-size: .95rem; }}
+  .chips {{ display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; }}
+  .chips p {{ margin: 0; }}
+  .top .meta {{ margin: 4px 0 8px; font-size: .78rem; opacity: .9; }}
+  .top .actions {{ display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }}
+  .top .btn {{ appearance: none; border: 0; border-radius: 999px; padding: 8px 14px; font-size: .85rem; font-weight: 700;
+               background: #F0D896; color: #1F3B2C; text-decoration: none; cursor: pointer; }}
+  .top .btn-sub {{ background: transparent; color: #F0D896; box-shadow: inset 0 0 0 1.5px #F0D896; }}
+  .top .links {{ display: flex; gap: 6px; flex-wrap: wrap; }}
+  .top .links a {{ color: #fff; font-size: .78rem; text-decoration: none; padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,.12); }}
+  details.why {{ display: inline; font-size: .7rem; font-weight: 400; margin-left: 6px; }}
+  details.why summary {{ display: inline; cursor: pointer; color: var(--ink-soft); }}
+  .aibet-buy {{ font-weight: 700; }}
+  .evr {{ color: var(--ink-soft); font-size: .76rem; }}
+  details.evbox summary {{ cursor: pointer; }}
+  .ev-more summary {{ cursor: pointer; font-size: .78rem; color: var(--ink-soft); margin: 4px 0; }}
+  footer details summary {{ cursor: pointer; }}
 </style>
 </head>
 <body>
 <header class="top">
   <div class="inner">
     <h1>JRA週末AI予想</h1>
-    <p><b>{date_label}</b> のレース ・ 最終更新 {generated_at} (JST) ・ {odds_status} ・ <a href="courses.html" style="color:#F0D896;">競馬場ガイド</a> ・ <a href="performance.html" style="color:#F0D896;">予測の成績</a> ・ <a href="picks.html" style="color:#F0D896;font-weight:700;">買うべきレース</a> ・ <a href="drops.html" style="color:#F0D896;font-weight:700;">オッズ急落</a> ・ <a href="print.html" style="color:#F0D896;">印刷用</a></p>
+    <p class="meta"><b>{date_label}</b> ・ 更新 {generated_at} ・ {odds_status}</p>
+    <div class="actions">
+      <button type="button" class="btn" onclick="location.href=location.pathname+'?t='+Date.now()">↻ 最新を表示</button>
+      <a class="btn btn-sub" href="https://github.com/shogun524/jra-scraper/actions/workflows/odds_update.yml" target="_blank" rel="noopener">オッズを今すぐ取り直す</a>
+    </div>
+    <nav class="links"><a href="picks.html">買うべきレース</a><a href="drops.html">オッズ急落</a><a href="print.html">印刷用</a><a href="performance.html">成績</a><a href="courses.html">競馬場</a></nav>
   </div>
   <nav class="tabs">{tab_buttons}</nav>
 </header>
 <main>{zenjitsu_note}{aibet_summary}{ev_summary}{tab_panels}</main>
-<footer>
-  <p><strong>各項目の見方</strong></p>
+<footer><details><summary><strong>各項目の見方</strong></summary>
   <p>
     <b>1着率 / 3連対率</b>: モデルの推定確率。レース内で合計が100% / 300%になるよう調整。<br>
     <b>1位との差</b>: 1着率1位の馬との差(pt)。差が小さいレースほど混戦。<br>
@@ -641,7 +658,9 @@ html = f"""<!DOCTYPE html>
   <p>期待値が1.0を上回るほど市場価格に対して割安と推定されますが、的中や回収率のプラスを保証するものでは
   ありません(バックテストでは市場を上回るエッジは確認できていません)。馬券の最終判断はご自身でお願いします。
   枠番の色は実際の帽色に合わせています。</p>
-</footer>
+  <p>「オッズを今すぐ取り直す」はGitHubのページが開きます。「Run workflow」を押すと1〜2分でオッズが入り、「↻ 最新を表示」で反映されます。
+  開催日は5分おき・前日の夜は10分おきに自動でも取り直しています。</p>
+</details></footer>
 <script>
 document.querySelectorAll('.tab-btn').forEach(btn => {{
   btn.addEventListener('click', () => {{
