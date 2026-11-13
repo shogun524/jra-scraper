@@ -85,12 +85,16 @@ def main():
 
     now = datetime.now(JST)
     today = now.strftime("%Y-%m-%d")
-    if "race_date" in df.columns and not (df["race_date"].astype(str) == today).any():
-        print(f"予測ファイルは {df['race_date'].iloc[0]} のもので、今日({today})ではありません。終了します。")
+    tomorrow = (now + timedelta(days=1)).strftime("%Y-%m-%d")
+    race_day = str(df["race_date"].iloc[0])[:10] if "race_date" in df.columns else today
+    # 今日のレースに加えて、翌日のレース(前日発売のオッズ)も取る
+    if race_day not in (today, tomorrow):
+        print(f"予測ファイルは {race_day} のもので、今日({today})・明日ではありません。終了します。")
         return 2
+    ahead = race_day == tomorrow
 
     race_ids = list(dict.fromkeys(df["race_id"].astype(str)))
-    if args.only_upcoming and "post_time" in df.columns:
+    if args.only_upcoming and "post_time" in df.columns and not ahead:
         pt = df.groupby(df["race_id"].astype(str))["post_time"].first()
         race_ids = [r for r in race_ids if _is_upcoming(pt.get(r), now)]
 

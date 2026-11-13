@@ -185,7 +185,12 @@ def parse_pair_odds(raw: str, bet: str) -> dict:
     return best
 
 
+DAY_OFFSET_MIN = 0  # 翌日のレースなら 1440(前日発売のオッズを取るとき)
+
+
 def is_upcoming(post_time, now, grace_min=5):
+    if DAY_OFFSET_MIN > 0:
+        return True
     if not isinstance(post_time, str) or ":" not in post_time:
         return True
     h, m = map(int, post_time.split(":")[:2])
@@ -196,7 +201,7 @@ def minutes_to_post(post_time, now):
     if not isinstance(post_time, str) or ":" not in post_time:
         return None
     h, m = map(int, post_time.split(":")[:2])
-    return (now.replace(hour=h, minute=m, second=0, microsecond=0) - now).total_seconds() / 60
+    return (now.replace(hour=h, minute=m, second=0, microsecond=0) - now).total_seconds() / 60 + DAY_OFFSET_MIN
 
 
 def refresh_weights(df, rid, race_date, log):
@@ -231,10 +236,16 @@ def main():
         return 2
     df = pd.read_csv(pred_csv, dtype={"race_id": str})
     now = datetime.now(JST)
-    today = now.strftime("%Y-%m-%d")
-    if "race_date" in df.columns and not (df["race_date"].astype(str) == today).any():
-        log(f"今日({today})の予測ではないので終了")
+    real_today = now.strftime("%Y-%m-%d")
+    tomorrow = (now + timedelta(days=1)).strftime("%Y-%m-%d")
+    race_day = str(df["race_date"].iloc[0])[:10] if "race_date" in df.columns else real_today
+    if race_day not in (real_today, tomorrow):
+        log(f"今日({real_today})・明日の予測ではないので終了")
         return 2
+    # 翌日のレース(前日発売のオッズ)は、時計を1日戻して「締切まで○分」を正しく数える
+    global DAY_OFFSET_MIN
+    DAY_OFFSET_MIN = 1440 if race_day == tomorrow else 0
+    today = race_day  # 記録ファイルはレースの日付で作る
     for c in ("horse_weight", "weight_diff"):
         if c not in df.columns:
             df[c] = np.nan

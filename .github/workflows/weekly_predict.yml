@@ -13,6 +13,7 @@ on:
     - cron: "30 3 * * 6,0,1"    # JST 土日月 12:30
     - cron: "0 5 * * 6,0,1"     # JST 土日月 14:00
     - cron: "30 6 * * 6,0,1"    # JST 土日月 15:30
+    - cron: "41 9 * * 5,6"      # JST 金土 18:41 → 翌日(土日)の予測を前日に作る(前日発売のオッズ用)
   workflow_dispatch:
     inputs:
       date:
@@ -52,6 +53,8 @@ jobs:
           INPUT_DATE: ${{ github.event.inputs.date }}
         run: |
           d="${INPUT_DATE:-}"
+          # 夕方以降の定期実行は翌日のレースの予測(前日発売)
+          if [ -z "$d" ] && [ "${{ github.event_name }}" = "schedule" ] && [ "$(TZ='Asia/Tokyo' date +%H)" -ge 17 ]; then d=tomorrow; fi
           case "$d" in
             "")         d=$(TZ='Asia/Tokyo' date +%F) ;;
             tomorrow)   d=$(TZ='Asia/Tokyo' date -d '+1 day' +%F) ;;
