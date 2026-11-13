@@ -1,0 +1,26 @@
+name: 診断 YouTube(JRA公式の中継)に届くか
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "試すURL(空なら候補を順に)"
+        required: false
+        default: ""
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pip install -U yt-dlp
+      - name: 試す
+        run: |
+          set +e
+          curl -s https://ipinfo.io/country; echo
+          for u in "${{ github.event.inputs.url }}" "https://www.youtube.com/@jraofficial/streams" "https://www.youtube.com/@JRA/streams" "https://www.youtube.com/watch?v=fNvIt4aGYGQ" "https://www.youtube.com/watch?v=WB7ytD5BnVo"; do
+            [ -z "$u" ] && continue
+            echo "=== $u"
+            timeout 120 yt-dlp --flat-playlist --playlist-end 5 --print "%(id)s | %(title)s | %(live_status)s | %(availability)s | %(channel)s %(channel_url)s" "$u" 2>&1 | tail -8
+            echo "--- formats"
+            timeout 120 yt-dlp -F --playlist-items 1 "$u" 2>&1 | tail -6
+          done
