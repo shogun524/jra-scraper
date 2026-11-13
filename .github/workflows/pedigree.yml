@@ -1,0 +1,97 @@
+name: 血統データの収集(過去レース)
+
+# 2018年以降のレースの出走馬について、父・母父・父の父を netkeiba から集める(1回だけ・途中で止まっても続きから)。
+# 1) ids: レース結果ページから馬IDを集める(4並列)
+# 2) ped: 馬IDごとに血統ページを読む(8並列)
+# 結果はリリース pedigree に置く(horse_ids.csv / pedigree.csv)
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pedigree
+  cancel-in-progress: false
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  ids:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests beautifulsoup4 lxml
+      - name: これまでの分を取得
+        run: |
+          gh release view pedigree >/dev/null 2>&1 || gh release create pedigree --title "血統データ" --notes "pedigree.yml が集めた馬IDと血統" || true
+          gh release download pedigree -p "horse_ids_${{ matrix.part }}.csv" -D . --clobber 2>/dev/null || true
+      - name: 馬IDを集める
+        run: python src/pedigree.py ids --races data/ped/races.txt --part ${{ matrix.part }} --parts 4 --out horse_ids_${{ matrix.part }}.csv --sleep 0.6 --max-minutes 300
+      - name: 保存
+        if: always()
+        run: gh release upload pedigree horse_ids_${{ matrix.part }}.csv --clobber
+
+  merge_ids:
+    needs: ids
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 馬IDをまとめる
+        run: |
+          gh release download pedigree -R ${{ github.repository }} -p "horse_ids_*.csv" -D parts --clobber
+          python - <<'PY'
+          import glob, pandas as pd
+          d = pd.concat([pd.read_csv(f, dtype=str) for f in glob.glob("parts/horse_ids_*.csv")]).drop_duplicates(["race_id", "horse_id"])
+          d.to_csv("horse_ids.csv", index=False)
+          print(len(d), "行", d.horse_id.nunique(), "頭", d.race_id.nunique(), "レース")
+          PY
+          gh release upload pedigree horse_ids.csv --clobber -R ${{ github.repository }}
+
+  ped:
+    needs: merge_ids
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install requests beautifulsoup4 lxml
+      - name: これまでの分を取得
+        run: |
+          gh release download pedigree -p horse_ids.csv -D . --clobber
+          gh release download pedigree -p "pedigree_${{ matrix.part }}.csv" -D . --clobber 2>/dev/null || true
+      - name: 血統を読む
+        run: python src/pedigree.py ped --ids horse_ids.csv --part ${{ matrix.part }} --parts 8 --out pedigree_${{ matrix.part }}.csv --sleep 0.6 --max-minutes 300
+      - name: 保存
+        if: always()
+        run: gh release upload pedigree pedigree_${{ matrix.part }}.csv --clobber
+
+  merge_ped:
+    needs: ped
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 血統をまとめる
+        run: |
+          gh release download pedigree -R ${{ github.repository }} -p "pedigree_*.csv" -D parts --clobber
+          python - <<'PY'
+          import glob, pandas as pd
+          d = pd.concat([pd.read_csv(f, dtype=str) for f in glob.glob("parts/pedigree_*.csv")]).drop_duplicates("horse_id")
+          d.to_csv("pedigree.csv", index=False)
+          print(len(d), "頭")
+          PY
+          gh release upload pedigree pedigree.csv --clobber -R ${{ github.repository }}

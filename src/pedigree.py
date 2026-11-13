@@ -51,7 +51,7 @@ def get(url, tries=3):
 def parse_result_ids(html):
     """結果ページ -> [(馬番, 馬名, 馬ID)]"""
     soup = BeautifulSoup(html, "lxml")
-    out = []
+    out, seen = [], set()
     for tr in soup.select("table tr"):
         a = tr.select_one('a[href*="/horse/"]')
         if not a:
@@ -71,6 +71,9 @@ def parse_result_ids(html):
             ub = int(nums[2])
         elif len(nums) == 2:
             ub = int(nums[1])
+        if m.group(1) in seen:
+            continue
+        seen.add(m.group(1))
         out.append((ub, a.get_text(strip=True), m.group(1)))
     return out
 
@@ -89,7 +92,8 @@ def parse_ped(html):
     r8 = [td for td in t.find_all("td") if td.get("rowspan") == "8"]
     if len(r16) < 2 or len(r8) < 4:
         return None
-    return dict(sire=name(r16[0]), dam=name(r16[1]), sire_sire=name(r8[0]), damsire=name(r8[2]))
+    clean = lambda x: re.sub(r"[\s\u00a0]*[(（].*$", "", x).strip()  # noqa: E731  「Galileo (愛)」→「Galileo」
+    return dict(sire=clean(name(r16[0])), dam=clean(name(r16[1])), sire_sire=clean(name(r8[0])), damsire=clean(name(r8[2])))
 
 
 def part_of(items, part, parts):
