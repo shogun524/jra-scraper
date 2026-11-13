@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(__file__))
-from fetch_odds import fetch_odds_http
+from fetch_odds import fetch_odds_http, fetch_win_place_http  # noqa: F401
 
 JST = timezone(timedelta(hours=9))
 
@@ -106,12 +106,18 @@ def main():
         return 2
     updated_races = 0
     for rid in race_ids:
-        odds = fetch_odds_http(rid)
+        odds, place = fetch_win_place_http(rid)
         if odds:
             mask = df["race_id"].astype(str) == rid
             new = df.loc[mask, "umaban"].map(lambda u: odds.get(int(u)) if pd.notna(u) else None)
             # 取れた馬だけ上書きし、取れなかった馬は既存値を残す
             df.loc[mask, "odds_win"] = new.where(new.notna(), df.loc[mask, "odds_win"])
+            if place:  # 複勝(下限・上限)。新聞・サイトでアプリを開かなくても見られるように
+                for col, idx in (("odds_place_lo", 0), ("odds_place_hi", 1)):
+                    if col not in df.columns:
+                        df[col] = np.nan
+                    pv = df.loc[mask, "umaban"].map(lambda u, i=idx: place.get(int(u), (None, None))[i] if pd.notna(u) else None)
+                    df.loc[mask, col] = pd.to_numeric(pv, errors="coerce").where(pv.notna(), df.loc[mask, col])
             updated_races += 1
             print(f"  [{rid}] {int(rid[-2:])}R {len(odds)}頭分を更新")
         time.sleep(args.sleep)

@@ -156,6 +156,43 @@ def run_ped(a):
             time.sleep(a.sleep)
 
 
+SHUTUBA_URL = "https://race.netkeiba.com/race/shutuba.html?race_id={}"
+
+
+def run_runners(a):
+    """予想(predictions.csv)の出走馬の 父・母父・父の父 を runner_ped.json に {馬名: {...}} で保存。
+    すでに分かっている馬(--cache の json)は取りに行かない。新聞・サイトの血統欄に使う"""
+    import json
+    import pandas as pd
+    pred = pd.read_csv(a.pred, dtype={"race_id": str})
+    cache = {}
+    if a.cache and os.path.exists(a.cache):
+        try:
+            cache = json.load(open(a.cache, encoding="utf-8"))
+        except ValueError:
+            cache = {}
+    need = set(pred["horse"].astype(str)) - set(cache)
+    print(f"[INFO] runners: 出走{pred['horse'].nunique()}頭のうち新しく調べる {len(need)}頭")
+    ids = {}
+    for rid in dict.fromkeys(pred.loc[pred["horse"].astype(str).isin(need), "race_id"]):
+        h = get(SHUTUBA_URL.format(rid))
+        for _, nm, hid in (parse_result_ids(h) if h else []):
+            if nm in need:
+                ids[nm] = hid
+        time.sleep(a.sleep)
+    for nm, hid in ids.items():
+        h = get(PED_URL.format(hid))
+        p = parse_ped(h) if h else None
+        if p:
+            cache[nm] = dict(id=hid, **p)
+        time.sleep(a.sleep)
+    keep = set(pred["horse"].astype(str)) | set(list(cache)[-3000:])   # 増えすぎないよう古い馬は捨てる
+    cache = {k: v for k, v in cache.items() if k in keep}
+    with open(a.out, "w", encoding="utf-8") as f:
+        json.dump(cache, f, ensure_ascii=False, separators=(",", ":"))
+    print(f"[INFO] {len(ids)}頭の血統を取得、{a.out} に {len(cache)}頭分を保存")
+
+
 def run_test(a):
     h = get(RESULT_URL.format(a.race))
     rows = parse_result_ids(h) if h else []
@@ -170,7 +207,9 @@ def run_test(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=["ids", "ped", "test"])
+    ap.add_argument("mode", choices=["ids", "ped", "test", "runners"])
+    ap.add_argument("--pred")
+    ap.add_argument("--cache")
     ap.add_argument("--races")
     ap.add_argument("--ids")
     ap.add_argument("--have")
@@ -181,7 +220,7 @@ def main():
     ap.add_argument("--sleep", type=float, default=0.7)
     ap.add_argument("--max-minutes", type=float, default=0)
     a = ap.parse_args()
-    {"ids": run_ids, "ped": run_ped, "test": run_test}[a.mode](a)
+    {"ids": run_ids, "ped": run_ped, "test": run_test, "runners": run_runners}[a.mode](a)
 
 
 if __name__ == "__main__":

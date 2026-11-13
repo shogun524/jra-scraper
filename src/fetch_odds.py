@@ -183,3 +183,41 @@ def fetch_odds_http(race_id: str, log=print, timeout: int = 15) -> dict:
         log(f"    オッズAPI呼び出し失敗 [{race_id}]: {e}")
         return {}
     return _parse_response(raw, race_id, log)
+
+
+def fetch_win_place_http(race_id: str, log=print, timeout: int = 15):
+    """単勝と複勝をまとめて取る -> ({馬番: 単勝}, {馬番: (複勝下限, 複勝上限)})。
+    API(type=1)の data.odds は {"1": 単勝 {"01": [オッズ, "0", 人気]}, "2": 複勝 {"01": [下限, 上限, 人気]}}。
+    形が想定と違えば単勝だけ従来の解析で返す。"""
+    import urllib.request
+    req = urllib.request.Request(ODDS_API.format(race_id=race_id), headers={
+        "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
+        "Referer": f"https://race.netkeiba.com/race/shutuba.html?race_id={race_id}",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "X-Requested-With": "XMLHttpRequest",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as res:
+            raw = res.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        log(f"    オッズAPI呼び出し失敗 [{race_id}]: {e}")
+        return {}, {}
+    win, place = {}, {}
+    try:
+        data = json.loads(raw).get("data")
+        od = (data or {}).get("odds") or {}
+        for k, v in (od.get("1") or {}).items():
+            f = _to_float(v[0] if isinstance(v, list) else v)
+            if f is not None and 1 <= int(k) <= 18:
+                win[int(k)] = f
+        for k, v in (od.get("2") or {}).items():
+            if isinstance(v, list) and len(v) >= 2:
+                lo, hi = _to_float(v[0]), _to_float(v[1])
+                if lo is not None and 1 <= int(k) <= 18:
+                    place[int(k)] = (lo, hi if hi is not None else lo)
+    except Exception:  # noqa: BLE001
+        pass
+    if not win:
+        win = _parse_response(raw, race_id, log)
+    return win, place

@@ -134,6 +134,12 @@ _site_dir = os.path.dirname(os.path.abspath(IN_CSV))
 _race_date = str(df["race_date"].iloc[0]) if "race_date" in df.columns and len(df) else ""
 _latest, _hist = load_odds_files(_site_dir, _race_date) if _race_date else (None, None)
 _cal = load_calibration()
+# ---- 出走馬の血統(父・母父) ----
+try:
+    with open(os.path.join(_site_dir, "runner_ped.json"), encoding="utf-8") as _rpf:
+        RUNNER_PED = json.load(_rpf)
+except (OSError, ValueError):
+    RUNNER_PED = {}
 # ---- 当日のトラックバイアス(その日のそれまでのレース結果から) ----
 from track_bias import compute as _bias_compute, favored as _bias_favored  # noqa: E402
 try:
@@ -228,6 +234,11 @@ def race_card(race_id, g):
         else:
             ev_badge = '<span class="na">オッズ待ち</span>'
         odds = f'{r["odds_win"]:.1f}倍' if pd.notnull(r.get("odds_win")) else "-"
+        if pd.notnull(r.get("odds_place_lo")):
+            _hi = r.get("odds_place_hi")
+            odds += f'<br><small class="plc">複{r["odds_place_lo"]:.1f}{"-" + format(_hi, ".1f") if pd.notnull(_hi) and _hi != r["odds_place_lo"] else ""}</small>'
+        _bl = (RUNNER_PED.get(str(r["horse"])) or {})
+        blood = f'<br><small class="bl">父{_bl["sire"]} 母父{_bl.get("damsire") or "-"}</small>' if _bl.get("sire") else ""
         if not EV.empty and pd.notnull(r.get("umaban")):
             _m = EV[(EV["race_id"] == str(race_id)) & (EV["bet"] == "単勝") & (EV["combo"] == str(int(r["umaban"])))]
             if not _m.empty and pd.notna(_m["move"].iloc[0]) and abs(_m["move"].iloc[0]) >= 0.1:
@@ -300,7 +311,7 @@ def race_card(race_id, g):
           <td class="rank">{int(r['pred_win_rank'])}</td>
           <td>{waku_badge(r.get('waku'))}</td>
           <td>{umaban}</td>
-          <td class="horse">{r['horse']}</td>
+          <td class="horse">{r['horse']}{blood}</td>
           <td>{r['jockey']}</td>
           <td class="pct">{r['pred_win_norm']*100:.1f}%</td>
           <td class="pct">{r['pred_top3_norm']*100:.1f}%</td>
@@ -527,7 +538,7 @@ html = f"""<!DOCTYPE html>
   tr:last-child td {{ border-bottom: none; }}
   tr.top-pick {{ background: #FBF3DC; }}
   .rank {{ font-weight: 800; color: var(--turf); text-align: center; }}
-  .horse {{ font-weight: 700; }}
+  .horse {{ font-weight: 700; }} .horse .bl {{ font-weight:400; color:#6B5F4D; font-size:.72rem; }} small.plc {{ color:#6B5F4D; }}
   .pct {{ font-variant-numeric: tabular-nums; }}
   .waku {{
     display: inline-flex; align-items: center; justify-content: center;
@@ -678,5 +689,11 @@ with open(_print, "w", encoding="utf-8") as f:
             _past = json.load(_pf)
     except (OSError, ValueError):
         pass
-    f.write(build_print(df, date_label, generated_at, TRIFECTA, _past, BIAS))
+    _ped = {}
+    try:  # 出走馬の血統(weekly_predict.yml が pedigree.py runners で作る)
+        with open(os.path.join(_site_dir, "runner_ped.json"), encoding="utf-8") as _pf:
+            _ped = json.load(_pf)
+    except (OSError, ValueError):
+        pass
+    f.write(build_print(df, date_label, generated_at, TRIFECTA, _past, BIAS, _ped, _latest))
 print(f"{_print} を生成しました")

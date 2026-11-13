@@ -40,7 +40,7 @@ jobs:
 
       - name: 依存関係インストール
         run: |
-          pip install duckdb lightgbm pandas numpy beautifulsoup4 lxml playwright
+          pip install duckdb lightgbm pandas numpy beautifulsoup4 lxml playwright requests
           playwright install chromium --with-deps
 
       # 対象日を決める。
@@ -107,6 +107,10 @@ jobs:
         run: |
           python src/past_runs.py data/predictions.csv data/race_result_merged.csv data/past_runs.json || echo "::warning::近4走を作れませんでした(印刷用は近4走なしで出ます)"
           mkdir -p docs && [ -f data/past_runs.json ] && cp data/past_runs.json docs/past_runs.json || true
+          # 出走馬の血統(父・母父)。前回までに調べた馬は公開中のページから引き継ぐ
+          git fetch -q --depth=1 origin gh-pages 2>/dev/null && git show FETCH_HEAD:runner_ped.json > data/runner_ped.json 2>/dev/null || true
+          timeout 900 python src/pedigree.py runners --pred data/predictions.csv --cache data/runner_ped.json --out data/runner_ped.json --sleep 0.5 || echo "::warning::血統を取れませんでした"
+          [ -f data/runner_ped.json ] && cp data/runner_ped.json docs/runner_ped.json || true
 
       - name: ダッシュボードHTML生成
         if: steps.scrape.outputs.has_races == 'true'
