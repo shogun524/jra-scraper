@@ -59,7 +59,7 @@ jobs:
 
       - name: 依存関係インストール
         if: steps.site.outputs.exists == 'true'
-        run: pip install pandas numpy beautifulsoup4 lxml
+        run: pip install pandas numpy beautifulsoup4 lxml requests
 
       # 終了コード 0=更新した / 2=今日の予測がない等で更新対象なし(正常)
       - name: オッズ更新
