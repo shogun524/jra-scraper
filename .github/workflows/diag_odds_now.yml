@@ -1,0 +1,30 @@
+name: 診断 今のオッズの出どころ
+
+on:
+  workflow_dispatch:
+    inputs:
+      race_id:
+        required: false
+        default: "202605050311"
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 試す
+        run: |
+          r=${{ github.event.inputs.race_id }}
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+          for u in \
+            "https://race.netkeiba.com/api/api_get_jra_odds.html?race_id=$r&type=1" \
+            "https://race.netkeiba.com/api/api_get_jra_odds.html?race_id=$r&type=1&action=init" \
+            "https://race.netkeiba.com/api/api_get_jra_odds.html?pid=api_get_jra_odds&input=UTF-8&output=json&race_id=$r&type=1&action=init&sort=odds&compress=0" \
+            "https://race.netkeiba.com/api/api_get_jra_odds.html?race_id=$r&type=b1" \
+            ; do
+            echo "=== $u"
+            curl -s -A "$UA" -H "Referer: https://race.netkeiba.com/odds/index.html?race_id=$r" -H "X-Requested-With: XMLHttpRequest" "$u" | head -c 600; echo
+          done
+          echo "=== odds page"
+          curl -s -A "$UA" "https://race.netkeiba.com/odds/index.html?race_id=$r&type=b1" | iconv -f EUC-JP -t UTF-8 2>/dev/null | grep -oE "(前日|予想オッズ|発売|締切|Odds[^\"]{0,30}|odds_[a-z_]{0,20})[^<]{0,60}" | sort | uniq -c | head -40
+          echo "=== shutuba odds cells"
+          curl -s -A "$UA" "https://race.netkeiba.com/race/shutuba.html?race_id=$r" | iconv -f EUC-JP -t UTF-8 2>/dev/null | grep -oE "(odds-[0-9_]+\"[^>]*>[^<]*|Odds Txt_R[^>]*>[^<]*<span[^>]*>[^<]*|予想オッズ[^<]{0,40}|前日[^<]{0,40})" | head -30
