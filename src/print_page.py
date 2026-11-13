@@ -39,7 +39,7 @@ def _manbaken(g, trio, prm):
     return v
 
 
-def _card(rid, g, trio, prm):
+def _card(rid, g, trio, prm, past=None):
     g = g.sort_values("umaban")
     f0 = g.iloc[0]
     post = str(f0.get("post_time", "") or "")
@@ -77,66 +77,81 @@ def _card(rid, g, trio, prm):
     def kv(k, v, strong=False):
         return f'<span class="kv"><i>{k}</i><b class="{"hl" if strong else ""}">{v}</b></span>'
 
+    def run_cell(x):
+        """近走1つ分: 左に大きく着順、右に3行(日付・場・クラス・距離馬場 / 頭数・馬番・人気・騎手斤量 / タイム差・上り・通過・体重)"""
+        if not x:
+            return '<td class="run none"></td>'
+        fin = x.get("fin")
+        fcls = "f1" if fin == 1 else ("f23" if fin in (2, 3) else ("f45" if fin in (4, 5) else ""))
+        fin_txt = str(fin) if isinstance(fin, int) else _html.escape(str(fin or "-"))[:2]
+        n, ub, pop = x.get("n"), x.get("ub"), x.get("pop")
+        l1 = f'{_html.escape(x.get("d", "")[3:])} {_html.escape(x.get("v", ""))} {_html.escape(x.get("sd", ""))}{_html.escape(x.get("baba", ""))} <b>{_html.escape(x.get("cls", "")[:6])}</b>'
+        l2 = (f'{n or "-"}頭{ub or "-"}番 <span class="{"pp1" if pop == 1 else ""}">{pop or "-"}人</span> '
+              f'{_html.escape(x.get("jky", ""))}{_f(x.get("kin"), "{:.0f}")}')
+        diff = x.get("diff")
+        dtxt = "" if diff is None else (f'<span class="dw">{diff:+.1f}</span>' if diff < 0 else f'({diff:.1f})')
+        l3r = x.get("l3r")
+        l3 = (f'上{_f(x.get("l3f"))}<span class="{"l3top" if l3r and l3r <= 3 else ""}">{"①②③"[l3r - 1] if l3r and l3r <= 3 else (f"[{l3r}]" if l3r else "")}</span>'
+              if x.get("l3f") else "")
+        hw = f'{x["hw"]}' + (f'({x["hwd"]:+d})' if x.get("hwd") is not None else "") if x.get("hw") else ""
+        l3line = f'{_html.escape(x.get("t", ""))}{dtxt} {l3} {_html.escape(x.get("pas", ""))} {hw}'
+        return (f'<td class="run"><div class="rw"><span class="fin {fcls}">{fin_txt}</span>'
+                f'<span class="rl"><span>{l1}</span><span>{l2}</span><span>{l3line}</span></span></div></td>')
+
     rows = ""
     for i, (_, r) in enumerate(g.iterrows()):
         w = int(r["waku"]) if pd.notna(r.get("waku")) else 0
         bg, fg = WAKU_COLORS.get(w, ("#eee", "#222"))
         hw, wd = gv(r, "horse_weight"), gv(r, "weight_diff")
-        hw_txt = (f'{_f(hw, "{:.0f}")}' + (f'<small>({_f(wd, "{:+.0f}")})</small>' if wd is not None else "")) if hw is not None else ""
+        hw_txt = (f'{_f(hw, "{:.0f}")}' + (f'({_f(wd, "{:+.0f}")})' if wd is not None else "")) if hw is not None else ""
         top = int(r.get("pred_win_rank", 99)) == 1
         mk = gv(r, "mark") or ""
         vt = str(gv(r, "value_tag") or "")
         vcls = "v-hot" if "大" in vt else ("v-ok" if "あり" in vt else ("v-bad" if "過剰" in vt else ""))
         sexage = f'{gv(r, "sex") or ""}{_f(gv(r, "age"), "{:.0f}")}'
         kc = gv(r, "weight_carry_change_from_last")
-        kin = _f(gv(r, "weight_carry"), "{:.0f}") + (f'<small>({_f(kc, "{:+.0f}")})</small>' if kc not in (None, 0) else "")
-        # 2行目: 過去の成績を「項目名 + 数字」で区切って並べる(良い数字は赤太字)
-        last, st5, cs = gv(r, "last_race_finish"), gv(r, "recent5_starts"), gv(r, "career_starts")
-        parts = []
-        if not cs and not st5 and last is None:
-            parts.append(kv("経歴", "初出走"))
-        else:
-            parts.append(kv("前走", f'{_f(last, "{:.0f}")}着' if last is not None else "-", last is not None and float(last) <= 3))
-            if st5:
-                t3 = gv(r, "recent5_top3rate") or 0
-                parts.append(kv(f'近{_f(st5, "{:.0f}")}走', f'平均{_f(gv(r, "recent5_avg_finish"))}着 3着内{pct(t3)}', t3 >= 0.5))
-            if cs:
-                cw = gv(r, "career_winrate") or 0
-                parts.append(kv("通算", f'{_f(cs, "{:.0f}")}戦{round(cw * float(cs))}勝', cw >= 0.25))
-            ds = gv(r, "dist_aptitude_starts")
-            if ds:
-                dt = gv(r, "dist_aptitude_top3rate") or 0
-                parts.append(kv("同距離帯", f'{_f(ds, "{:.0f}")}戦 3着内{pct(dt)}', dt >= 0.5))
-        dd = gv(r, "days_since_last")
+        kin = _f(gv(r, "weight_carry"), "{:.0f}") + (f'({_f(kc, "{:+.0f}")})' if kc not in (None, 0) else "")
+        pr = (past or {}).get(str(r["horse"])) or {}
+        trainer = pr.get("trainer", "")
+        runs = (pr.get("runs") or [])[:4]
+        # 成績の欄
+        st = []
+        cs = gv(r, "career_starts")
+        if cs:
+            cw = gv(r, "career_winrate") or 0
+            c3 = gv(r, "career_top3rate")
+            st.append(f'通算 <b>{_f(cs, "{:.0f}")}戦{round(cw * float(cs))}勝</b>' + (f' 複{pct(c3)}' if c3 is not None else ""))
+        elif not runs:
+            st.append("<b>初出走</b>")
+        ds = gv(r, "dist_aptitude_starts")
+        if ds:
+            dt = gv(r, "dist_aptitude_top3rate") or 0
+            st.append(f'同距離 {_f(ds, "{:.0f}")}戦 <b class="{"hl" if dt >= 0.5 else ""}">複{pct(dt)}</b>')
+        dd, dc = gv(r, "days_since_last"), gv(r, "distance_change_from_last")
         if dd is not None:
-            parts.append(kv("間隔", f'{_f(dd, "{:.0f}")}日', False))
-        dc = gv(r, "distance_change_from_last")
-        if dc not in (None, 0):
-            parts.append(kv("距離", f'{_f(dc, "{:+.0f}")}m'))
+            st.append(f'間隔{_f(dd, "{:.0f}")}日' + (f' 距離{_f(dc, "{:+.0f}")}' if dc not in (None, 0) else ""))
         jw, tw = gv(r, "jockey_winrate"), gv(r, "trainer_winrate")
         if jw is not None or tw is not None:
-            parts.append(kv("騎/厩", f'{pct(jw)} / {pct(tw)}', (jw or 0) >= 0.15))
-        rec = "".join(parts)
+            st.append(f'騎{pct(jw)} 厩{pct(tw)}')
         ev = gv(r, "expected_value")
         pw = float(r.get("pred_win_norm", 0) or 0)
         p3 = float(r.get("pred_top3_norm", 0) or 0)
         bar = f'<span class="bar"><span style="width:{min(pw * 250, 100):.0f}%"></span></span>'
         ks = style(gv(r, "recent5_style_ratio"))
         cls = ("top " if top else "") + ("odd" if i % 2 else "even")
-        rows += (f'<tr class="{cls} r1"><td class="mk mk-{_html.escape(str(mk))}" rowspan="2">{_html.escape(str(mk))}</td>'
-                 f'<td class="c" rowspan="2"><span class="wk" style="background:{bg};color:{fg};">{w or ""}</span></td>'
-                 f'<td class="c ub" rowspan="2">{int(r["umaban"])}</td>'
-                 f'<td class="nm">{_html.escape(str(r["horse"]))}</td>'
-                 f'<td class="c sm">{_html.escape(sexage)}</td><td class="c sm">{kin}</td>'
-                 f'<td class="nw sm">{_html.escape(str(r.get("jockey") or ""))}</td>'
-                 f'<td class="c sm nw">{ks}</td>'
-                 f'<td class="c sep">{_f(r.get("market_rank"), "{:.0f}")}</td><td class="r b">{_f(r.get("odds_win"))}</td>'
-                 f'<td class="r sm">{hw_txt}</td>'
-                 f'<td class="r sep ai"><b>{_f(pw * 100)}</b>{bar}</td>'
-                 f'<td class="r">{_f(p3 * 100, "{:.0f}")}</td>'
-                 f'<td class="r sm {"evh" if ev is not None and float(ev) >= 1 else ""}">{_f(ev, "{:.2f}")}</td>'
-                 f'<td class="c"><span class="vt {vcls}">{_html.escape(vt)}</span></td><td class="memo" rowspan="2"></td></tr>'
-                 f'<tr class="{cls} rc"><td colspan="12">{rec}</td></tr>')
+        pop = _f(r.get("market_rank"), "{:.0f}")
+        run_cells = "".join(run_cell(runs[k] if k < len(runs) else None) for k in range(4))
+        rows += (f'<tr class="{cls}"><td class="mk mk-{_html.escape(str(mk))}">{_html.escape(str(mk))}</td>'
+                 f'<td class="c"><span class="wk" style="background:{bg};color:{fg};">{w or ""}</span></td>'
+                 f'<td class="c ub">{int(r["umaban"])}</td>'
+                 f'<td class="horse"><div class="nm">{_html.escape(str(r["horse"]))}</div>'
+                 f'<div class="hs">{_html.escape(sexage)} {kin} <b>{_html.escape(str(r.get("jockey") or ""))}</b></div>'
+                 f'<div class="hs">{_html.escape(trainer)}{"厩舎" if trainer else ""} {hw_txt}{" ・" + ks if ks else ""}</div></td>'
+                 f'<td class="c sep od"><div class="popn {"pp1" if pop == "1" else ""}">{pop}<small>人気</small></div><div class="b">{_f(r.get("odds_win"))}</div></td>'
+                 f'<td class="sep ai"><div><b>{_f(pw * 100)}</b><small>%</small> {bar} <span class="vt {vcls}">{_html.escape(vt)}</span></div>'
+                 f'<div class="sm">複{_f(p3 * 100, "{:.0f}")}% 期待<span class="{"evh" if ev is not None and float(ev) >= 1 else ""}">{_f(ev, "{:.2f}")}</span></div></td>'
+                 f'<td class="sep stat">{"<br>".join(st)}</td>'
+                 f'{run_cells}<td class="memo"></td></tr>')
     # レースの条件
     surf, dist, baba = gv(f0, "surface"), gv(f0, "distance"), gv(f0, "baba")
     conds = [x for x in [f'{surf or ""}{_f(dist, "{:.0f}")}m' if dist is not None else "",
@@ -162,18 +177,20 @@ def _card(rid, g, trio, prm):
     venue = str(f0.get("track_name", ""))
     rno = int(f0['race_number'])
     return f"""
-    <div class="pp-card" id="c{_html.escape(rid)}" data-rid="{_html.escape(rid)}" data-venue="{_html.escape(venue)}" data-flags="{' '.join(flags)}" data-post="{_html.escape(post)}">
+    <div class="pp-card{" big" if len(g) >= 17 else ""}" id="c{_html.escape(rid)}" data-rid="{_html.escape(rid)}" data-venue="{_html.escape(venue)}" data-flags="{' '.join(flags)}" data-post="{_html.escape(post)}">
       <div class="pp-head"><span class="rno">{_html.escape(venue)} <b>{rno}R</b></span>
         <span class="rname">{_html.escape(str(f0.get('race_name', '') or ''))}</span><span class="pp-post">発走 <b>{_html.escape(post)}</b></span></div>
       <div class="pp-cond">{cond_html}</div>
       <div class="pp-sum">{man_box}<div class="box ai3"><i>AIの上位(1着率)</i>{top3}</div></div>
       {bet_html}
-      <table class="pp-t"><thead><tr><th>印</th><th>枠</th><th>馬番</th><th>馬名</th><th>性齢</th><th>斤量</th><th>騎手</th><th>脚質</th>
-      <th class="sep">人気</th><th>単勝</th><th>馬体重</th><th class="sep">AI1着%</th><th>AI3着内%</th><th>期待値</th><th>妙味</th><th class="memo">メモ</th></tr></thead><tbody>{rows}</tbody></table>
+      <table class="pp-t"><colgroup><col class="c-mk"><col class="c-wk"><col class="c-ub"><col class="c-h"><col class="c-od"><col class="c-ai"><col class="c-st">
+      <col><col><col><col><col class="c-memo"></colgroup><thead><tr><th>印</th><th>枠</th><th>馬番</th><th>馬名・性齢 斤量 騎手 / 厩舎 馬体重 脚質</th>
+      <th class="sep">人気<br>単勝</th><th class="sep">AI 1着%<br>複勝% 期待値</th><th class="sep">成績</th>
+      <th class="sep">前走</th><th>2走前</th><th>3走前</th><th>4走前</th><th class="memo">メモ</th></tr></thead><tbody>{rows}</tbody></table>
     </div>"""
 
 
-def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict | None = None) -> str:
+def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict | None = None, past: dict | None = None) -> str:
     prm = load_manbaken()
     sections, picker = "", ""
     df = df.copy()
@@ -183,13 +200,13 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
         cards, chips = "", ""
         for rid, g in races:
             rid = str(rid)
-            cards += _card(rid, g, trio, prm)
+            cards += _card(rid, g, trio, prm, past)
             mv = _manbaken(g.sort_values("umaban"), trio, prm)
             man = f'{mv["man"]:.0%}' if mv else "-"
             mcls = "hi" if mv and mv["man"] >= 0.5 else ("lo" if mv and mv["man"] < 0.2 else "")
             post = str(g["post_time"].iloc[0] or "") if "post_time" in g.columns else ""
             chips += (f'<label class="rc-chip {mcls}"><input type="checkbox" class="pp-r" value="{_html.escape(rid)}" checked>'
-                      f'<span><b>{int(g["race_number"].iloc[0])}R</b><small>{_html.escape(post)}</small><em>{man}</em></span></label>')
+                      f'<span><b>{int(g["race_number"].iloc[0])}R</b><small>{_html.escape(post)}</small><i class="hc">{len(g)}頭</i><em>{man}</em></span></label>')
         v = _html.escape(str(venue))
         picker += (f'<div class="pp-vrow" data-venue="{v}"><div class="pp-vname">{v}'
                    f'<button type="button" class="mini" data-act="von">全部</button><button type="button" class="mini" data-act="voff">外す</button></div>'
@@ -216,10 +233,10 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   .mini {{ padding:2px 9px; font-size:11px; margin-left:6px; }}
   .pp-vrow {{ border-top:1px solid #EEE6D2; padding:8px 0; }}
   .pp-vname {{ font-weight:700; margin-bottom:6px; }}
-  .pp-chips {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); gap:6px; }}
+  .pp-chips {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(68px,1fr)); gap:6px; }}
   .rc-chip input {{ position:absolute; opacity:0; pointer-events:none; }}
   .rc-chip span {{ display:flex; flex-direction:column; align-items:center; border:2px solid #D8CDB2; border-radius:8px; padding:4px 2px; background:#F3EEE2; color:#8A7E6A; cursor:pointer; line-height:1.25; }}
-  .rc-chip b {{ font-size:14px; }} .rc-chip small {{ font-size:10px; }} .rc-chip em {{ font-style:normal; font-size:11px; font-weight:700; }}
+  .rc-chip b {{ font-size:14px; }} .rc-chip small {{ font-size:10px; }} .rc-chip em {{ font-style:normal; font-size:11px; font-weight:700; }} .rc-chip .hc {{ font-style:normal; font-size:11px; font-weight:700; color:#2A2118; }}
   .rc-chip input:checked + span {{ background:#fff; border-color:#1F4D3A; color:#2A2118; box-shadow:inset 0 -3px 0 #1F4D3A; }}
   .rc-chip.hi em {{ color:#C0392B; }} .rc-chip.lo em {{ color:#2E7D4F; }}
   .pp-row {{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:10px 0 0; }}
@@ -244,42 +261,56 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   .ai3 .t3 {{ display:flex; gap:4px; align-items:baseline; line-height:1.5; }} .t3 > b {{ font-size:1.05rem; }} .t3n {{ font-weight:700; }} .t3p {{ color:#555; font-variant-numeric:tabular-nums; }}
   .pp-bet {{ margin:6px 0; padding:5px 8px; border:2px solid #B8862B; border-radius:6px; background:#FBF6E8; }}
   .cb {{ display:inline-block; border:1px solid #999; border-radius:3px; padding:0 4px; margin:1px 2px; background:#fff; font-variant-numeric:tabular-nums; }}
-  /* 出走表 */
-  .pp-t {{ width:100%; border-collapse:collapse; margin-top:6px; font-variant-numeric:tabular-nums; }}
-  .pp-t th {{ background:#1F4D3A; color:#fff; font-size:10.5px; font-weight:700; padding:3px 3px; border:1px solid #1F4D3A; white-space:nowrap; }}
-  .pp-t td {{ border-left:1px solid #ddd; border-right:1px solid #ddd; padding:3px 4px; }}
-  .pp-t tr.r1 td {{ border-top:1px solid #999; }}
+  /* 出走表(競馬新聞の形: 1頭1行、右に近4走) */
+  main {{ max-width:1400px; }}
+  .pp-card {{ overflow-x:auto; }}
+  .pp-t {{ width:100%; min-width:1180px; border-collapse:collapse; margin-top:6px; font-variant-numeric:tabular-nums; table-layout:fixed; }}
+  .pp-t th {{ background:#1F4D3A; color:#fff; font-size:10.5px; font-weight:700; padding:3px; border:1px solid #1F4D3A; line-height:1.25; }}
+  .pp-t td {{ border:1px solid #cfc8b8; padding:2px 4px; vertical-align:middle; line-height:1.3; }}
   .pp-t tr.odd td {{ background:#F7F5EF; }} .pp-t tr.top td {{ background:#FFF1D6; }}
-  .pp-t .sep {{ border-left:2px solid #888; }}
-  .c {{ text-align:center; }} .r {{ text-align:right; }} .b {{ font-weight:700; }}
-  .sm {{ font-size:11px; }} .sm small, .r small {{ font-size:9.5px; color:#666; }}
-  .nm {{ font-weight:700; font-size:13.5px; white-space:nowrap; }}
-  .ub {{ font-weight:700; font-size:15px; }}
-  .mk {{ text-align:center; font-weight:900; font-size:16px; }} .mk-◎ {{ color:#C0392B; }} .mk-○ {{ color:#1F4D3A; }} .mk-▲ {{ color:#2a6ad1; }}
+  .pp-t .sep {{ border-left:2px solid #777; }}
+  col.c-mk {{ width:26px; }} col.c-wk {{ width:28px; }} col.c-ub {{ width:30px; }} col.c-h {{ width:150px; }} col.c-od {{ width:52px; }}
+  col.c-ai {{ width:118px; }} col.c-st {{ width:112px; }} col.c-memo {{ width:70px; }}
+  .c {{ text-align:center; }} .r {{ text-align:right; }} .b {{ font-weight:700; }} .sm {{ font-size:10.5px; }}
+  .nm {{ font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; }}
+  .hs {{ font-size:10.5px; white-space:nowrap; overflow:hidden; color:#333; }}
+  .ub {{ font-weight:700; font-size:16px; }}
+  .mk {{ text-align:center; font-weight:900; font-size:17px; }} .mk-◎ {{ color:#C0392B; }} .mk-○ {{ color:#1F4D3A; }} .mk-▲ {{ color:#2a6ad1; }}
   .wk {{ display:inline-block; width:20px; text-align:center; border:1px solid #888; border-radius:3px; font-weight:700; }}
-  .ai b {{ font-size:13px; }} .bar {{ display:block; height:4px; background:#eee; border-radius:2px; margin-top:1px; }}
+  .od .popn {{ font-size:15px; font-weight:700; }} .od .popn small {{ font-size:9px; font-weight:400; }} .pp1 {{ color:#C0392B; font-weight:700; }}
+  .ai div {{ white-space:nowrap; overflow:hidden; }} .ai b {{ font-size:14px; }} .ai small {{ font-size:9px; }}
+  .bar {{ display:inline-block; vertical-align:middle; width:28px; height:5px; background:#eee; border-radius:2px; }}
   .bar span {{ display:block; height:100%; background:#C0392B; border-radius:2px; }}
   .evh {{ color:#C0392B; font-weight:700; }}
-  .vt {{ font-size:10.5px; white-space:nowrap; padding:0 4px; border-radius:3px; }}
+  .vt {{ font-size:10px; white-space:nowrap; padding:0 4px; border-radius:3px; }}
   .v-hot {{ background:#C0392B; color:#fff; font-weight:700; }} .v-ok {{ background:#FCE3C4; color:#7A4A00; }} .v-bad {{ color:#999; }}
-  .memo {{ width:12%; border-left:2px solid #888 !important; }}
-  tr.rc td {{ font-size:10.5px; color:#333; padding:1px 4px 3px; }}
-  .kv {{ display:inline-block; margin-right:10px; white-space:nowrap; }}
-  .kv i {{ font-style:normal; color:#fff; background:#8A7E6A; border-radius:3px; padding:0 4px; margin-right:3px; font-size:9.5px; }}
-  .kv b {{ font-weight:500; }} .kv b.hl {{ color:#C0392B; font-weight:700; }}
+  .stat {{ font-size:10px; white-space:nowrap; overflow:hidden; }} .stat b {{ font-weight:700; }} .hl {{ color:#C0392B; }}
+  .run {{ font-size:9.5px; padding:2px 3px; }} .run.none {{ background:repeating-linear-gradient(135deg,transparent 0 6px,#eee 6px 7px) !important; }}
+  .rw {{ display:flex; gap:4px; align-items:center; }}
+  .fin {{ flex:0 0 auto; min-width:22px; text-align:center; font-size:15px; font-weight:900; border-radius:4px; padding:1px 2px; color:#555; }}
+  .fin.f1 {{ background:#C0392B; color:#fff; }} .fin.f23 {{ background:#F6D6D2; color:#B03024; }} .fin.f45 {{ color:#222; }}
+  .rl {{ display:flex; flex-direction:column; min-width:0; }} .rl > span {{ white-space:nowrap; overflow:hidden; }}
+  .rl b {{ font-weight:700; }} .dw {{ color:#C0392B; font-weight:700; }} .l3top {{ color:#C0392B; font-weight:700; }}
+  .memo {{ border-left:2px solid #777 !important; }}
   .pp-grid.two {{ display:grid; grid-template-columns:1fr; }}
-  @media (max-width:640px) {{ .pp-sum {{ grid-template-columns:1fr 1fr; }} .ai3 {{ grid-column:1/-1; }} .pp-card {{ overflow-x:auto; }} }}
+  @media (max-width:640px) {{ .pp-sum {{ grid-template-columns:1fr 1fr; }} .ai3 {{ grid-column:1/-1; }} }}
   @media print {{
-    @page {{ size:A4; margin:7mm; }}
+    @page {{ size:A4 landscape; margin:6mm; }}
     body {{ background:#fff; font-size:10px; }} header, .pp-controls {{ display:none; }} main {{ padding:0; max-width:none; }}
+    .pp-card {{ overflow:visible; }} .pp-t {{ min-width:0; }}
     .pp-card.off {{ display:none !important; }}
     .pp-venue {{ break-before:page; }} .pp-venue:first-of-type {{ break-before:auto; }}
     .pp-venue:has(.pp-grid:not(.two)) > h2 {{ display:none; }}
-    .pp-grid:not(.two) .pp-card {{ break-after:page; break-inside:auto; padding:2px 4px; margin:0; border:0; }}
-    .pp-t td {{ padding:1px 3px; }} .pp-t th {{ font-size:9px; padding:2px; }} tr.rc td {{ font-size:8.8px; padding:0 3px 2px; }}
-    .nm {{ font-size:11.5px; }} .ub {{ font-size:12.5px; }} .mk {{ font-size:13px; }}
-    .pp-t tr {{ break-inside:avoid; }} .pp-sum {{ margin:4px 0; }} .box {{ padding:2px 6px; }} .box b {{ font-size:1.05rem; }}
-    .kv {{ margin-right:7px; }} .kv i {{ font-size:8px; padding:0 3px; }} .bar {{ height:3px; }} .pp-cond {{ margin:3px 0; }} .tag {{ font-size:10px; padding:0 5px; }}
+    .pp-grid:not(.two) .pp-card {{ break-after:page; break-inside:auto; padding:0; margin:0; border:0; }}
+    .pp-t td {{ padding:1px 3px; line-height:1.22; }} .pp-t th {{ font-size:9px; padding:1px 2px; }}
+    .run {{ font-size:8.6px; }} .fin {{ font-size:13px; min-width:19px; }} .nm {{ font-size:12.5px; }} .hs, .stat {{ font-size:9px; }}
+    .ub {{ font-size:14px; }} .mk {{ font-size:15px; }} .od .popn {{ font-size:13px; }} .ai b {{ font-size:12.5px; }}
+    .pp-t tr {{ break-inside:avoid; }} .pp-sum {{ margin:3px 0; }} .box {{ padding:1px 6px; }} .box b {{ font-size:1.05rem; }}
+    .pp-head {{ padding-bottom:2px; }} .rno b {{ font-size:1.35rem; }} .pp-cond {{ margin:2px 0; }} .tag {{ font-size:9.5px; padding:0 5px; }}
+    .pp-sum {{ grid-template-columns:0.8fr 1.6fr 3fr; }} .box i {{ display:inline; margin-right:6px; }} .box small {{ display:inline; margin-left:6px; }} .ai3 i {{ flex-basis:auto; }}
+    .pp-t td {{ line-height:1.15; }}
+    .pp-card.big .pp-t td {{ padding:0 2px; line-height:1.07; }} .pp-card.big .run {{ font-size:8px; }} .pp-card.big .nm {{ font-size:11px; }}
+    .pp-card.big .fin {{ font-size:12px; }} .pp-card.big .pp-sum {{ margin:2px 0; }} .pp-card.big .pp-cond {{ margin:1px 0; }} .nm {{ font-size:11.5px; }} .hs, .stat {{ font-size:8.5px; }} .run {{ font-size:8.3px; }}
   }}
 </style></head><body>
 <header><h1>印刷用 予想一覧</h1>
@@ -300,8 +331,10 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
     </div>
     <p class="pp-hint">レース番号をタップで 選ぶ/外す(下の数字は3連複の万馬券率。赤=荒れそう・緑=堅そう)。選んだレースだけ下に表示・印刷されます。
     印刷画面で「PDFとして保存」を選ぶとPDFになります(iPhoneは 共有 → プリント → プレビューをピンチアウト → 共有でPDF保存)。<br>
-    表の見方: 印=AIの評価順、AI1着%(赤い棒)・AI3着内%=AIの予測、期待値=AI1着率×単勝(1以上は赤)、妙味=AIと人気のズレ、
-    脚質=近5走の4コーナーの位置。2行目は過去の成績(赤字=前走3着以内・3着内率50%以上・通算勝率25%以上など良い数字)。メモ欄は手書き用です。</p>
+    紙はA4横。表の見方: 印=AIの評価順、AI 1着%(赤い棒)・複勝%=AIの3着内予測、期待値=AI1着率×単勝(1以上は赤)、妙味=AIと人気のズレ、
+    成績=通算・同距離帯の3着内率(50%以上は赤)・間隔・騎手/厩舎の勝率。<br>
+    近4走: 左の大きい数字=着順(1着は赤地・2〜3着はピンク)、1行目=日付 場 クラス 距離馬場、2行目=頭数・馬番・人気(1人気は赤)・騎手斤量、
+    3行目=タイム(勝ち馬との差、勝った時は2着との差を赤で)・上り3F(①〜③=メンバー中の順位)・通過順・馬体重。メモ欄は手書き用です。</p>
   </div>
   {sections or '<p>本日の予想はありません。</p>'}
 </main>

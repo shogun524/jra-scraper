@@ -99,6 +99,12 @@ jobs:
         if: steps.scrape.outputs.has_races == 'true'
         run: python src/predict.py data/entries_this_week.csv
 
+      - name: 印刷用(競馬新聞)の近4走を作る
+        if: steps.scrape.outputs.has_races == 'true'
+        run: |
+          python src/past_runs.py data/predictions.csv data/race_result_merged.csv data/past_runs.json || echo "::warning::近4走を作れませんでした(印刷用は近4走なしで出ます)"
+          mkdir -p docs && [ -f data/past_runs.json ] && cp data/past_runs.json docs/past_runs.json || true
+
       - name: ダッシュボードHTML生成
         if: steps.scrape.outputs.has_races == 'true'
         run: |

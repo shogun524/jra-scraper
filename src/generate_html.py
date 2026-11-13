@@ -628,5 +628,11 @@ from print_page import build_print  # noqa: E402
 
 _print = os.path.join(os.path.dirname(os.path.abspath(OUT_HTML)), "print.html")
 with open(_print, "w", encoding="utf-8") as f:
-    f.write(build_print(df, date_label, generated_at, TRIFECTA))
+    _past = {}
+    try:  # 近4走(weekly_predict.yml が past_runs.py で予想と同じ場所に作る)
+        with open(os.path.join(_site_dir, "past_runs.json"), encoding="utf-8") as _pf:
+            _past = json.load(_pf)
+    except (OSError, ValueError):
+        pass
+    f.write(build_print(df, date_label, generated_at, TRIFECTA, _past))
 print(f"{_print} を生成しました")
