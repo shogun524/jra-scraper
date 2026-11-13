@@ -150,8 +150,6 @@ except Exception:  # noqa: BLE001
 zenjitsu_note = ('<p class="zenjitsu">⚠ 前日発売のオッズです。まだ売れ始めで、999.9倍など極端な値が混じり、期待値・妙味・万馬券率は大きくぶれます。'
                  'EVボードは単勝だけ出しています(馬連・ワイドは票が薄く、EVが意味をなさないため当日から)。'
                  '買う判断は当日朝からのオッズ(5分おきに更新)で。</p>') if _is_zenjitsu else ""
-if _is_zenjitsu and not EV.empty:
-    EV = EV[EV["bet"] == "単勝"].reset_index(drop=True)
 
 
 def bias_html(race_id):
@@ -176,6 +174,10 @@ def fmt_odds(r):
     if r["bet"] == "ワイド" and pd.notna(r.get("odds_high")):
         return f'{r["odds"]:.1f}〜{r["odds_high"]:.1f}'
     return f'{r["odds"]:.1f}'
+
+
+if _is_zenjitsu and not EV.empty:
+    EV = EV[EV["bet"] == "単勝"].reset_index(drop=True)
 
 
 def ev_box(race_id):
