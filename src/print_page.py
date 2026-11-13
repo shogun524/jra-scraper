@@ -39,7 +39,7 @@ def _manbaken(g, trio, prm):
     return v
 
 
-def _card(rid, g, trio, prm, past=None):
+def _card(rid, g, trio, prm, past=None, bias=None):
     g = g.sort_values("umaban")
     f0 = g.iloc[0]
     post = str(f0.get("post_time", "") or "")
@@ -98,6 +98,8 @@ def _card(rid, g, trio, prm, past=None):
         return (f'<td class="run"><div class="rw"><span class="fin {fcls}">{fin_txt}</span>'
                 f'<span class="rl"><span>{l1}</span><span>{l2}</span><span>{l3line}</span></span></div></td>')
 
+    from track_bias import favored as _fav
+    b = (bias or {}).get(str(rid)) or {}
     rows = ""
     for i, (_, r) in enumerate(g.iterrows()):
         w = int(r["waku"]) if pd.notna(r.get("waku")) else 0
@@ -143,7 +145,7 @@ def _card(rid, g, trio, prm, past=None):
         run_cells = "".join(run_cell(runs[k] if k < len(runs) else None) for k in range(4))
         rows += (f'<tr class="{cls}"><td class="mk mk-{_html.escape(str(mk))}">{_html.escape(str(mk))}</td>'
                  f'<td class="c"><span class="wk" style="background:{bg};color:{fg};">{w or ""}</span></td>'
-                 f'<td class="c ub">{int(r["umaban"])}</td>'
+                 f'<td class="c ub {({True: "bfav", False: "bunf"}).get(_fav(r["umaban"], len(g), b.get("side")), "")}">{int(r["umaban"])}</td>'
                  f'<td class="horse"><div class="nm">{_html.escape(str(r["horse"]))}</div>'
                  f'<div class="hs">{_html.escape(sexage)} {kin} <b>{_html.escape(str(r.get("jockey") or ""))}</b></div>'
                  f'<div class="hs">{_html.escape(trainer)}{"厩舎" if trainer else ""} {hw_txt}{" ・" + ks if ks else ""}</div></td>'
@@ -163,6 +165,9 @@ def _card(rid, g, trio, prm, past=None):
     if favp is not None:
         conds.append(f'このコースの1番人気勝率 {_f(favp, "{:.0f}")}%')
     cond_html = "".join(f'<span class="tag">{_html.escape(c)}</span>' for c in conds)
+    if b.get("label"):
+        cond_html += (f'<span class="tag bias-{ {"内": "in", "外": "out"}.get(b["side"], "flat") }">当日{_html.escape(b.get("surface", ""))}バイアス '
+                      f'<b>{_html.escape(b["label"])}</b>({b["n"]}R分{"・緑の馬番が有利な側" if b["side"] else ""})</span>')
     order = g.sort_values("pred_win_rank")
     top3 = "".join(f'<div class="t3"><b class="mk-{m}">{m}</b><span class="t3n">{int(x.umaban)} {_html.escape(str(x.horse))}</span>'
                    f'<span class="t3p">{float(x.pred_win_norm) * 100:.0f}%</span></div>'
@@ -190,7 +195,7 @@ def _card(rid, g, trio, prm, past=None):
     </div>"""
 
 
-def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict | None = None, past: dict | None = None) -> str:
+def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict | None = None, past: dict | None = None, bias: dict | None = None) -> str:
     prm = load_manbaken()
     sections, picker = "", ""
     df = df.copy()
@@ -200,7 +205,7 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
         cards, chips = "", ""
         for rid, g in races:
             rid = str(rid)
-            cards += _card(rid, g, trio, prm, past)
+            cards += _card(rid, g, trio, prm, past, bias)
             mv = _manbaken(g.sort_values("umaban"), trio, prm)
             man = f'{mv["man"]:.0%}' if mv else "-"
             mcls = "hi" if mv and mv["man"] >= 0.5 else ("lo" if mv and mv["man"] < 0.2 else "")
@@ -250,6 +255,8 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   .rno {{ font-size:1rem; font-weight:700; }} .rno b {{ font-size:1.6rem; }} .rname {{ font-size:1.05rem; font-weight:700; }}
   .pp-post {{ margin-left:auto; }} .pp-post b {{ font-size:1.25rem; }}
   .pp-cond {{ margin:6px 0; display:flex; flex-wrap:wrap; gap:4px; }}
+  .ub.bfav {{ background:#D9EEDF !important; box-shadow:inset 0 0 0 2px #6FAE85; }} .ub.bunf {{ color:#B0A796; }}
+  .tag.bias-in {{ background:#D9EEDF; border-color:#6FAE85; }} .tag.bias-out {{ background:#F6E3D3; border-color:#D9A27A; }}
   .tag {{ background:#EEF3EF; border:1px solid #C9D9CF; border-radius:4px; padding:1px 7px; font-size:11.5px; }}
   .pp-sum {{ display:grid; grid-template-columns:1fr 1.3fr 2.2fr; gap:6px; margin:6px 0; }}
   .box {{ border:1px solid #DDD3BC; border-radius:6px; padding:4px 8px; background:#FCFAF4; }}

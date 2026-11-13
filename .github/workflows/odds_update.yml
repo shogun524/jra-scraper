@@ -84,6 +84,12 @@ jobs:
         continue-on-error: true
         run: python src/odds_snapshot.py site/predictions.csv site || [ $? -eq 2 ]
 
+      # 終わったレースの結果を取って当日のトラックバイアス(内外)の計算に使う(失敗してもページは出す)
+      - name: 当日の終わったレースの結果
+        if: steps.odds.outputs.updated == 'true'
+        continue-on-error: true
+        run: python src/live_results.py site/history site/predictions.csv
+
       - name: ダッシュボードHTML再生成
         if: steps.odds.outputs.updated == 'true'
         run: python src/generate_html.py site/predictions.csv site/index.html

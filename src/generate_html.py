@@ -134,6 +134,25 @@ _site_dir = os.path.dirname(os.path.abspath(IN_CSV))
 _race_date = str(df["race_date"].iloc[0]) if "race_date" in df.columns and len(df) else ""
 _latest, _hist = load_odds_files(_site_dir, _race_date) if _race_date else (None, None)
 _cal = load_calibration()
+# ---- 当日のトラックバイアス(その日のそれまでのレース結果から) ----
+from track_bias import compute as _bias_compute, favored as _bias_favored  # noqa: E402
+try:
+    _res_today = pd.read_csv(os.path.join(_site_dir, "history", f"results_{_race_date[:10]}.csv"), dtype={"race_id": str}) if _race_date else None
+except (OSError, ValueError):
+    _res_today = None
+BIAS = _bias_compute(df, _res_today)
+
+
+def bias_html(race_id):
+    b = BIAS.get(str(race_id))
+    if not b or not b.get("label"):
+        return ""
+    cls = "bias-in" if b["side"] == "内" else ("bias-out" if b["side"] == "外" else "bias-flat")
+    adv = {"内": "内枠(馬番が頭数の内側1/3)が有利", "外": "外枠(外側1/3)が有利"}.get(b["side"], "内外の差なし")
+    return (f'<p class="bias {cls}">当日の{b.get("surface", "")}バイアス: <b>{b["label"]}</b> '
+            f'<small>({b["n"]}レース分・{adv})</small></p>')
+
+
 try:
     EV = board(df.assign(race_id=df["race_id"].astype(str)),
                _latest[_latest["bet"] != "単勝"] if _latest is not None else None, _hist, _cal)
@@ -205,6 +224,12 @@ def race_card(race_id, g):
                        else (f"{int(hw)}" if pd.notnull(hw) else "-"))
         umaban = int(r["umaban"]) if pd.notnull(r.get("umaban")) else "-"
         rank_cls = "top-pick" if r["pred_win_rank"] == 1 else ""
+        _b = BIAS.get(str(race_id)) or {}
+        _fav = _bias_favored(r.get("umaban"), len(g), _b.get("side"))
+        if _fav is True:
+            umaban = f'<span class="ub-fav" title="当日バイアスで有利な側">{umaban}</span>'
+        elif _fav is False:
+            umaban = f'<span class="ub-unfav" title="当日バイアスで不利な側">{umaban}</span>'
 
         # 安定度: 3連対率÷1着率。大きいほど「勝ち切れないが崩れにくい」
         stab = r.get("stability")
@@ -286,6 +311,7 @@ def race_card(race_id, g):
           <h2>{race_name}</h2>
           <p class="race-sub">{first.get('track_name','')} {post_time_html}</p>
           {manbaken_html(g)}
+          {bias_html(race_id)}
         </div>
       </header>
       {aibet_html}
@@ -457,6 +483,10 @@ html = f"""<!DOCTYPE html>
   .race-sub {{ margin: 3px 0 0; font-size: .78rem; color: var(--ink-soft); }}
   .post-time {{ margin-left: 8px; color: var(--gold); font-weight: 700; }}
   .manbaken {{ margin: 2px 0 0; font-size: .82rem; }}
+  .bias {{ margin: 2px 0 0; font-size: .8rem; }} .bias small {{ color:#6B5F4D; }}
+  .bias-in b {{ color:#1F4D3A; }} .bias-out b {{ color:#9A4A12; }} .bias-flat b {{ color:#6B5F4D; }}
+  .ub-fav {{ display:inline-block; min-width:1.6em; text-align:center; border-radius:4px; background:#D9EEDF; color:#1F4D3A; font-weight:700; box-shadow:inset 0 0 0 1px #6FAE85; }}
+  .ub-unfav {{ display:inline-block; min-width:1.6em; text-align:center; color:#9A8F7E; text-decoration:line-through; text-decoration-color:#C9BFAE; }}
   details.ev-summary > summary, details.ev-how > summary {{ cursor: pointer; }}
   details.ev-how {{ margin-top: 6px; font-size: .8rem; }}
   .manbaken b {{ font-variant-numeric: tabular-nums; }}
@@ -634,5 +664,5 @@ with open(_print, "w", encoding="utf-8") as f:
             _past = json.load(_pf)
     except (OSError, ValueError):
         pass
-    f.write(build_print(df, date_label, generated_at, TRIFECTA, _past))
+    f.write(build_print(df, date_label, generated_at, TRIFECTA, _past, BIAS))
 print(f"{_print} を生成しました")
