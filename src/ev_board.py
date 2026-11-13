@@ -84,6 +84,17 @@ def blended_win_probs(g: pd.DataFrame, cal: dict, moves: dict) -> np.ndarray | N
     return e / e.sum()
 
 
+# EVを出すオッズの上限。これより大きいオッズは
+#  - 99999.9倍・9999.9倍 = まだ1票も入っていない組の仮の値(前日発売の売れ始めに大量に出る)
+#  - 数百倍以上 = 票が薄くて1票で大きく動き、確率×オッズが数十〜数百になって意味をなさない
+# ので、EVボードからは外す(単勝100倍・馬連300倍・ワイド(下限)100倍まで。オッズ急落ページの範囲とそろえた)
+EV_MAX_ODDS = {"単勝": 100.0, "馬連": 300.0, "ワイド": 100.0}
+# 馬連・ワイドは、その券種のオッズ自体が見ている確率の何倍まで「歪み」として認めるか。
+# 前日や朝の売れ始めは馬連・ワイドの票が薄く、単勝から作った確率と10倍以上ずれて EV が10を超える組が並んだ(11/13 前日オッズ)。
+# 3倍を超えるずれは「票が薄いだけ」とみなして外す(EVは最大でも約2.3にとどまる)
+EV_MAX_RATIO = 3.0
+
+
 def race_ev(g: pd.DataFrame, combos: pd.DataFrame | None, history: pd.DataFrame | None, cal: dict) -> pd.DataFrame:
     """1レースの EV 表(単勝・馬連・ワイド)。列: race_id, bet, combo, odds, odds_high, p, ev, move, weight_diff"""
     g = g.sort_values("umaban").reset_index(drop=True)
@@ -97,6 +108,8 @@ def race_ev(g: pd.DataFrame, combos: pd.DataFrame | None, history: pd.DataFrame 
     rows = []
     for i, um in enumerate(u):
         o = float(g["odds_win"].iloc[i])
+        if not (o > 0) or o > EV_MAX_ODDS["単勝"]:
+            continue
         mv = moves.get(um)
         rows.append(dict(race_id=rid, bet="単勝", combo=str(um), odds=o, odds_high=np.nan, p=p[i], ev=p[i] * o,
                          move=mv[2] if mv else np.nan, odds_first=mv[0] if mv else np.nan,
@@ -115,12 +128,23 @@ def race_ev(g: pd.DataFrame, combos: pd.DataFrame | None, history: pd.DataFrame 
             i, j = pos[x], pos[y]
             prob = Q[i, j] if r["bet"] == "馬連" else W[i, j]
             o = r["odds"]
-            if pd.isna(o) or o <= 0:
+            if pd.isna(o) or o <= 0 or float(o) > EV_MAX_ODDS.get(r["bet"], 300.0):
                 continue
             rows.append(dict(race_id=rid, bet=r["bet"], combo=f"{min(x, y)}-{max(x, y)}", odds=float(o),
                              odds_high=r.get("odds_high", np.nan), p=prob, ev=prob * float(o),
                              move=np.nan, odds_first=np.nan, weight_diff=np.nan))
-    return pd.DataFrame(rows)
+    out = pd.DataFrame(rows)
+    if not out.empty:
+        pair = out["bet"].isin(["馬連", "ワイド"])
+        if pair.any():
+            inv = 1.0 / out.loc[pair, "odds"]
+            q = inv / inv.groupby(out.loc[pair, "bet"]).transform("sum")   # その券種のオッズが見ている確率
+            ratio = out.loc[pair, "p"] / q
+            # ワイドは3組が当たりなので合計が3になるよう直す
+            ratio = ratio.where(out.loc[pair, "bet"] != "ワイド", ratio / 3)
+            drop = ratio[ratio > EV_MAX_RATIO].index
+            out = out.drop(index=drop)
+    return out.reset_index(drop=True)
 
 
 def board(pred: pd.DataFrame, combos: pd.DataFrame | None, history: pd.DataFrame | None,

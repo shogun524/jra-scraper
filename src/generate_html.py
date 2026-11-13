@@ -148,7 +148,10 @@ try:
 except Exception:  # noqa: BLE001
     _is_zenjitsu = False
 zenjitsu_note = ('<p class="zenjitsu">⚠ 前日発売のオッズです。まだ売れ始めで、999.9倍など極端な値が混じり、期待値・妙味・万馬券率は大きくぶれます。'
+                 'EVボードは単勝だけ出しています(馬連・ワイドは票が薄く、EVが意味をなさないため当日から)。'
                  '買う判断は当日朝からのオッズ(5分おきに更新)で。</p>') if _is_zenjitsu else ""
+if _is_zenjitsu and not EV.empty:
+    EV = EV[EV["bet"] == "単勝"].reset_index(drop=True)
 
 
 def bias_html(race_id):
@@ -404,7 +407,7 @@ if not EV.empty:
             mv = f' <span class="mv {"mv-in" if r["move"] > 0 else "mv-out"}">{r["odds_first"]:.1f}→{r["odds"]:.1f}</span>'
         lis += (f'<li>{m.tn}{int(m.rn)}R {m.pt} ・ <b>{r["bet"]} {r["combo"]}</b> {fmt_odds(r)}倍 ・ '
                 f'確率{r["p"] * 100:.1f}% ・ <span class="badge {"ev-good" if r["ev"] >= 1 else "ev-mid"}">EV {r["ev"]:.2f}</span>{mv}</li>')
-    _how = (f'<details class="ev-how"><summary>EVの出し方</summary><p class="aibet-note">確率 = AIの1着率^{_cal["a"]:.2f} × '
+    _how = (f'<details class="ev-how"><summary>EVの出し方</summary><p class="aibet-note">(99999.9倍などの未投票・単勝100倍超・馬連300倍超・ワイド100倍超は除外)確率 = AIの1着率^{_cal["a"]:.2f} × '
             f'市場の確率^{_cal["b"]:.2f} × オッズの動き(係数{_cal["c_move"]:.2f})を正規化。係数は過去の結果から毎週推定'
             f'(今のところAIの重みはほぼ0)。EVの実績は成績ページで採点しています。</p></details>')
     if title_note.startswith("EV 1.0以上の"):
