@@ -5,7 +5,7 @@ odds_snapshot.py が記録する site/odds_history/odds_<日付>.csv(単勝・�
   基準 = 発走30分以上前で、一番発走に近い記録
   今   = 一番新しい記録
   下落率 = 今 ÷ 基準 − 1
-単勝: 今5倍以上・−30%以下 / 馬連: 今10〜300倍・−40%以下 / ワイド: 今(下限)5〜100倍・−40%以下 を、下落の大きい順に並べる。
+単勝: 今5倍以上・−20%以下 / 馬連: 今10〜300倍・−25%以下 / ワイド: 今(下限)5〜100倍・−25%以下 を(単勝−30%・馬連ワイド−40%以下は赤で強調)、下落の大きい順に並べる。
 ※ 直前に下がった馬は来やすいが、下がった分だけ回収率は下がるという話もある。記録がたまったら回収率を検証する。
 
 使い方: python src/drops_page.py site/predictions.csv site
@@ -20,8 +20,9 @@ import pandas as pd
 
 JST = ZoneInfo("Asia/Tokyo")
 BASE_MIN = 30
-RULES = {"単勝": (5.0, 1e9, -0.30), "馬連": (10.0, 300.0, -0.40), "ワイド": (5.0, 100.0, -0.40)}
-SHOW = 6
+RULES = {"単勝": (5.0, 1e9, -0.20), "馬連": (10.0, 300.0, -0.25), "ワイド": (5.0, 100.0, -0.25)}
+STRONG = {"単勝": -0.30, "馬連": -0.40, "ワイド": -0.40}   # これ以下は「大きく下落」として赤で強調(11/13に下限を広げた)
+SHOW = 8
 
 
 def race_drops(h, post_dt):
@@ -78,7 +79,7 @@ def render(races, now, date_label):
         rows = ""
         for bet, combo, bo, o, d in r["drops"][:SHOW]:
             nm = r["names"].get(combo, "") if bet == "単勝" else ""
-            rows += (f'<tr><td>{bet}</td><td><b>{html.escape(combo)}</b> {html.escape(nm)}</td><td>{bo:.1f}</td>'
+            rows += (f'<tr class="{"strong" if d <= STRONG.get(bet, -1) else ""}"><td>{bet}</td><td><b>{html.escape(combo)}</b> {html.escape(nm)}</td><td>{bo:.1f}</td>'
                      f'<td>→ <b>{o:.1f}</b></td><td class="d">{d:.0%}</td></tr>')
         body = (f'<table><tr><th>券種</th><th>馬番</th><th>基準</th><th>今</th><th>下落</th></tr>{rows}</table>' if rows
                 else '<p class="dim">急落した馬・組はありません</p>')
@@ -110,14 +111,15 @@ def render(races, now, date_label):
   .nm {{ font-weight:800; font-size:1.1rem; color:var(--turf); }} .when {{ font-weight:700; color:var(--red); }}
   .dim {{ font-size:.75rem; color:var(--soft); }}
   table {{ width:100%; border-collapse:collapse; margin-top:6px; font-size:.9rem; font-variant-numeric:tabular-nums; }}
-  th, td {{ border-bottom:1px solid var(--line); padding:4px 6px; text-align:left; }} td.d {{ color:var(--red); font-weight:800; }}
+  th, td {{ border-bottom:1px solid var(--line); padding:4px 6px; text-align:left; }} td.d {{ color:var(--soft); font-weight:700; }}
+  tr.strong td {{ background:#FDECEA; }} tr.strong td.d {{ color:var(--red); font-weight:800; }}
   h2 {{ font-size:1rem; margin:20px 0 8px; }} .none {{ background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px; text-align:center; }}
   details {{ margin-top:12px; }} summary {{ cursor:pointer; font-weight:700; color:var(--soft); }}
 </style></head><body>
 <header><h1>オッズ急落</h1>
 <p>{html.escape(date_label)} ・ {now:%H:%M} 時点(5分おきに記録・1分おきに再読み込み) ・ <a href="index.html">全レースの予想</a> ・ <a href="picks.html">買うべきレース</a></p></header>
 <main>
-<p class="dim">発走30分前に一番近い記録から大きく下がった馬・組(単勝: 5倍以上で−30%以上、馬連: 10〜300倍で−40%以上、ワイド: 5〜100倍で−40%以上)。
+<p class="dim">発走30分前に一番近い記録から大きく下がった馬・組(単勝: 5倍以上で−20%以上、馬連: 10〜300倍・ワイド: 5〜100倍で−25%以上)。赤い行は大きな下落(単勝−30%・馬連ワイド−40%以上)。
 直前に大きく買われたものです。来やすくなる一方、下がった分だけ割安さは減ります(回収率は記録がたまり次第検証)。</p>
 <h2>発走30分以内</h2>{main}
 {f'<details><summary>このあとのレース({len(later)})</summary>{"".join(card(r, False) for r in later)}</details>' if later else ''}
