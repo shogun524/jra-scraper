@@ -1,0 +1,33 @@
+name: 診断 当日結果の取得(requests)
+
+# live_results.py が、ブラウザなしで netkeiba の結果ページを読めるかを1レースで確かめる
+on:
+  workflow_dispatch:
+    inputs:
+      race_id:
+        description: "確かめるレースID"
+        required: false
+        default: "202605050811"
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pandas numpy beautifulsoup4 lxml requests
+      - name: 取得して解析
+        run: |
+          python - <<'PY'
+          import sys; sys.path.insert(0, "src")
+          from live_results import fetch_html
+          from scrape_race_result import parse_race_result
+          from fetch_results import rows_to_results
+          rid = "${{ github.event.inputs.race_id }}"
+          h = fetch_html(rid)
+          print("len", len(h), "title", h[h.find("<title>"):h.find("</title>")][:120])
+          res = rows_to_results(parse_race_result(h, rid), rid)
+          print(res.head(20).to_string())
+          PY
