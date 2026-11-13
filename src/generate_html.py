@@ -141,6 +141,14 @@ try:
 except (OSError, ValueError):
     _res_today = None
 BIAS = _bias_compute(df, _res_today)
+# 前日発売のオッズ(レースが明日)は売れ始めで薄く、999.9倍など極端な値が混じる → 期待値は当日のオッズで見るよう注意を出す
+try:
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+    _is_zenjitsu = bool(_race_date) and _race_date[:10] > _dt.now(_tz(_td(hours=9))).strftime("%Y-%m-%d")
+except Exception:  # noqa: BLE001
+    _is_zenjitsu = False
+zenjitsu_note = ('<p class="zenjitsu">⚠ 前日発売のオッズです。まだ売れ始めで、999.9倍など極端な値が混じり、期待値・妙味・万馬券率は大きくぶれます。'
+                 '買う判断は当日朝からのオッズ(5分おきに更新)で。</p>') if _is_zenjitsu else ""
 
 
 def bias_html(race_id):
@@ -483,6 +491,7 @@ html = f"""<!DOCTYPE html>
   .race-sub {{ margin: 3px 0 0; font-size: .78rem; color: var(--ink-soft); }}
   .post-time {{ margin-left: 8px; color: var(--gold); font-weight: 700; }}
   .manbaken {{ margin: 2px 0 0; font-size: .82rem; }}
+  .zenjitsu {{ background:#FFF3D6; border:1px solid #E2B94F; border-radius:8px; padding:8px 12px; margin:10px 0; font-size:.85rem; }}
   .bias {{ margin: 2px 0 0; font-size: .8rem; }} .bias small {{ color:#6B5F4D; }}
   .bias-in b {{ color:#1F4D3A; }} .bias-out b {{ color:#9A4A12; }} .bias-flat b {{ color:#6B5F4D; }}
   .ub-fav {{ display:inline-block; min-width:1.6em; text-align:center; border-radius:4px; background:#D9EEDF; color:#1F4D3A; font-weight:700; box-shadow:inset 0 0 0 1px #6FAE85; }}
@@ -597,7 +606,7 @@ html = f"""<!DOCTYPE html>
   </div>
   <nav class="tabs">{tab_buttons}</nav>
 </header>
-<main>{aibet_summary}{ev_summary}{tab_panels}</main>
+<main>{zenjitsu_note}{aibet_summary}{ev_summary}{tab_panels}</main>
 <footer>
   <p><strong>各項目の見方</strong></p>
   <p>
