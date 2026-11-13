@@ -8,6 +8,7 @@ on:
     - cron: "23 23 * * 5,6,0"   # JST 土・日・月 08:23
     - cron: "47 0 * * 6,0,1"    # JST 09:47(予備)
     - cron: "31 2 * * 6,0,1"    # JST 11:31(予備)
+    - cron: "53 9 * * 5,6"      # JST 金土 18:53 → 翌日のレースの前日オッズを夜のあいだ10分おきに
   workflow_dispatch: {}
 
 permissions:
@@ -26,27 +27,32 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
-      - name: 今日が開催日か(公開中の予想が今日の分か)
+      - name: 今日が開催日か / 夜なら明日の前日オッズか
         id: day
         run: |
-          today=$(TZ=Asia/Tokyo date +%F)
-          if git fetch -q --depth=1 origin gh-pages && git show FETCH_HEAD:predictions.csv | grep -q "$today"; then
-            echo "race=true" >> "$GITHUB_OUTPUT"
+          today=$(TZ=Asia/Tokyo date +%F); tomorrow=$(TZ=Asia/Tokyo date -d '+1 day' +%F); hh=$(TZ=Asia/Tokyo date +%H)
+          git fetch -q --depth=1 origin gh-pages && git show FETCH_HEAD:predictions.csv > /tmp/pred.csv || true
+          if [ "$hh" -ge 17 ] && grep -q "$tomorrow" /tmp/pred.csv; then
+            echo "race=true" >> "$GITHUB_OUTPUT"; echo "mode=eve" >> "$GITHUB_OUTPUT"
+          elif grep -q "$today" /tmp/pred.csv; then
+            echo "race=true" >> "$GITHUB_OUTPUT"; echo "mode=day" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::今日($today)の予想が無いので終わります"; echo "race=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::今日($today)・明日の予想が無いので終わります"; echo "race=false" >> "$GITHUB_OUTPUT"
           fi
-      - name: 5分おきにオッズ更新を呼ぶ
+      - name: オッズ更新を呼び続ける(開催日は5分おき・前日の夜は10分おき)
         if: steps.day.outputs.race == 'true'
         run: |
-          start=$(date +%s)
+          start=$(date +%s); mode="${{ steps.day.outputs.mode }}"
+          if [ "$mode" = "eve" ]; then every=600; end=2355; from=0000; else every=300; end=1645; from=0830; fi
           while :; do
             now=$(date +%s); hm=$(TZ=Asia/Tokyo date +%H%M)
-            if [ $((now - start)) -ge $((340 * 60)) ] || [ "$hm" -ge 1645 ]; then break; fi
-            if [ "$hm" -ge 0830 ]; then gh workflow run odds_update.yml --ref "${GITHUB_REF_NAME}" || echo "::warning::呼び出しに失敗"; fi
-            sleep $((300 - ($(date +%s) - now) % 300))
+            if [ $((now - start)) -ge $((340 * 60)) ] || [ "$hm" -ge "$end" ]; then break; fi
+            if [ "$mode" = "eve" ] && [ "$hm" -lt 1700 ]; then break; fi
+            if [ "$hm" -ge "$from" ]; then gh workflow run odds_update.yml --ref "${GITHUB_REF_NAME}" || echo "::warning::呼び出しに失敗"; fi
+            sleep $((every - ($(date +%s) - now) % every))
           done
       - name: 16:30(JST)より前なら続きを呼ぶ
-        if: always() && steps.day.outputs.race == 'true'
+        if: always() && steps.day.outputs.race == 'true' && steps.day.outputs.mode == 'day'
         run: |
           hm=$(TZ=Asia/Tokyo date +%H%M)
           if [ "$hm" -lt 1630 ]; then gh workflow run keeper.yml --ref "${GITHUB_REF_NAME}"; fi
