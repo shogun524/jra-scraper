@@ -31,3 +31,5 @@ jobs:
           res = rows_to_results(parse_race_result(h, rid), rid)
           print(res.head(20).to_string())
           PY
+      - name: 血統の取得テスト
+        run: python src/pedigree.py test --race ${{ github.event.inputs.race_id }}
