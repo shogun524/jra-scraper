@@ -20,7 +20,7 @@ JSONを再帰的に走査して取り出す方式にしている。
 import json
 import re
 
-ODDS_API = "https://race.netkeiba.com/api/api_get_jra_odds.html?race_id={race_id}&type=1"
+ODDS_API = "https://race.netkeiba.com/api/api_get_jra_odds.html?race_id={race_id}&type=1&action=init"  # action=init が無いと「前回からの差分」扱いで空が返ることがある(前日オッズで判明)
 
 
 def _to_float(v):

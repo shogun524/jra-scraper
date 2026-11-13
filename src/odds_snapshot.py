@@ -32,7 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ev_board import board, load_calibration  # noqa: E402
 
 JST = timezone(timedelta(hours=9))
-ODDS_API = "https://race.netkeiba.com/api/api_get_jra_odds.html?race_id={race_id}&type={type}"
+ODDS_API = "https://race.netkeiba.com/api/api_get_jra_odds.html?race_id={race_id}&type={type}&action=init"  # action=init で全件を返させる
 TRI_TYPE = 7          # 3連複(万馬券率は3連複で出す。3連単はほぼ万馬券になるので見分けがつかない)
 TRI_WINDOW_MIN = 60   # 発走60分前から取る
 SHUTUBA_URL = "https://race.netkeiba.com/race/shutuba.html?race_id={race_id}"
