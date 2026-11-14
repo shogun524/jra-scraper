@@ -193,8 +193,15 @@ def load(path=MODEL_PATH):
     return _SPEC
 
 
+# True にすると 1着率・印 をこのモデルで置き換える。
+# 11/14: このモデルの◎はほぼ1番人気になる(97%)ため、ユーザーの希望で印は旧AIのまま。
+# このモデルは「妙味(オッズの見込みの何倍か)」と mm_win / mm_top3 列にだけ使う。
+OVERWRITE = False
+
+
 def apply(df: pd.DataFrame, spec=None) -> pd.DataFrame:
-    """オッズのそろっているレースの 1着率・3連対率・順位・印 をオッズ+補正モデルで置き換える。
+    """オッズのそろっているレースに、オッズ+補正モデルの 1着率(mm_win)・3連対率(mm_top3)・妙味(value_ratio) を付ける。
+    OVERWRITE のときだけ 1着率・3連対率・順位・印 も置き換える。
     旧AIの値は lgb_win / lgb_top3 に残す(何度呼んでも同じ結果になる)。"""
     spec = spec or load()
     if not spec or "w" not in spec or df is None or df.empty or "odds_win" not in df.columns:
@@ -206,21 +213,28 @@ def apply(df: pd.DataFrame, spec=None) -> pd.DataFrame:
     rid = df["race_id"].astype(str)
     odds = pd.to_numeric(df["odds_win"], errors="coerce")
     ok = odds.gt(1.0).groupby(rid).transform("all") & odds.groupby(rid).transform("size").ge(2)
-    df["model"] = np.where(ok, "odds", "ai")
+    df["model"] = np.where(ok & OVERWRITE, "odds", "ai")
     df["market_win"] = np.nan
     df["value_ratio"] = np.nan
+    df["mm_win"] = np.nan
+    df["mm_top3"] = np.nan
     if ok.any():
         sub = df[ok].copy()
         sub["odds_win"] = odds[ok]
         p = _probs(sub, spec)
         pm = _market(sub, float(spec.get("beta_market", 1.0)))
-        df.loc[ok, "pred_win_norm"] = p
+        df.loc[ok, "mm_win"] = p
         df.loc[ok, "market_win"] = pm
         df.loc[ok, "value_ratio"] = np.round(p / pm, 3)
         t3 = pd.Series(np.nan, index=sub.index)
         for _, g in sub.assign(_p=p).groupby(rid[ok]):
             t3.loc[g.index] = harville_top3(g["_p"].values)
-        df.loc[ok, "pred_top3_norm"] = t3
+        df.loc[ok, "mm_top3"] = t3
+    df["pred_win_norm"] = df["lgb_win"]
+    df["pred_top3_norm"] = df["lgb_top3"]
+    if OVERWRITE:
+        df.loc[ok, "pred_win_norm"] = df.loc[ok, "mm_win"]
+        df.loc[ok, "pred_top3_norm"] = df.loc[ok, "mm_top3"]
     no = ~ok
     df.loc[no, "pred_win_norm"] = df.loc[no, "lgb_win"]
     df.loc[no, "pred_top3_norm"] = df.loc[no, "lgb_top3"]
