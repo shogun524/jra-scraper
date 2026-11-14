@@ -339,6 +339,21 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   .rl b {{ font-weight:700; }} .dw {{ color:#C0392B; font-weight:700; }} .l3top {{ color:#C0392B; font-weight:700; }}
   .memo {{ border-left:2px solid #777 !important; }}
   .pp-grid.two {{ display:grid; grid-template-columns:1fr; }}
+  .pp-dl {{ margin:8px 0; font-size:13px; }} .pp-dl b {{ margin-right:6px; }}
+  .pp-dl a {{ display:inline-block; margin:3px 4px 3px 0; padding:5px 10px; border-radius:999px; background:#1F4D3A; color:#fff; text-decoration:none; font-weight:700; font-size:12px; }}
+  .pp-dl a.sub {{ background:#fff; color:#1F4D3A; box-shadow:inset 0 0 0 1.5px #1F4D3A; }}
+  /* 2レースで1枚: 3走前・4走前・メモ欄・血統・人気の組を省いてA4縦に */
+  body.compact .pp-t td:nth-child(10), body.compact .pp-t td:nth-child(11), body.compact .pp-t td:nth-child(12),
+  body.compact .pp-t th:nth-child(10), body.compact .pp-t th:nth-child(11), body.compact .pp-t th:nth-child(12),
+  body.compact .pp-t col:nth-child(n+10), body.compact .bl, body.compact .pp-pop, body.compact .pp-bet {{ display:none; }}
+  body.compact .pp-t {{ min-width:0; }} body.compact col.c-h {{ width:190px; }} body.compact col.c-ai {{ width:84px; }} body.compact col.c-od {{ width:66px; }}
+  body.compact .od {{ white-space:nowrap; }}
+  /* 1頭1行: 騎手は馬名の横、近走は1行目(日付 場 距離馬場 クラス)と着順だけ、成績欄は省く */
+  body.compact .pp-t td:nth-child(7), body.compact .pp-t th:nth-child(7), body.compact .pp-t col:nth-child(7) {{ display:none; }}
+  body.compact .hs:nth-of-type(n+2), body.compact .plc, body.compact .ai .sm, body.compact .rl > span:not(:first-child) {{ display:none; }}
+  body.compact .nm {{ display:inline; }} body.compact .horse .hs {{ display:inline; margin-left:4px; }}
+  body.compact .od .popn, body.compact .od .b {{ display:inline; }} body.compact .od .popn small {{ display:none; }} body.compact .od .b {{ margin-left:3px; }}
+  body.compact .ai .vt {{ display:none; }} body.compact .fin {{ font-size:11px !important; min-width:15px; padding:0 1px; }}
   @media (max-width:640px) {{ .pp-sum {{ grid-template-columns:1fr 1fr; }} .ai3 {{ grid-column:1/-1; }} }}
   @media print {{
     @page {{ size:A4 landscape; margin:6mm; }}
@@ -358,6 +373,11 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
     .pp-card.big .pp-t td {{ padding:0 2px; line-height:1.07; }} .pp-card.big .run {{ font-size:8px; }} .pp-card.big .nm {{ font-size:11px; }}
     .pp-card.big .fin {{ font-size:12px; }}
     .pp-card.huge .pp-t td {{ line-height:1.0; }} .pp-card.huge .run {{ font-size:7.6px; }} .pp-card.huge .hs, .pp-card.huge .bl, .pp-card.huge .stat, .pp-card.huge .plc {{ font-size:7.4px; }}
+    body.compact .pp-grid .pp-card {{ break-after:auto !important; break-inside:avoid; margin:0 0 3mm; padding:0; border:0; border-bottom:1px dashed #999 !important; }}
+    body.compact .pp-venue {{ break-before:auto; }} body.compact .pp-venue > h2 {{ display:none; }}
+    body.compact .pp-t td {{ padding:0 2px; line-height:1.05; }} body.compact .run {{ font-size:7.4px; }} body.compact .nm {{ font-size:10px; }}
+    body.compact .hs, body.compact .stat, body.compact .plc {{ font-size:7.2px; }} body.compact .pp-sum {{ margin:1px 0; }}
+    body.compact .pp-cond, body.compact .pp-sum {{ font-size:8.5px; }} body.compact .rname {{ font-size:1rem; }}
     .pp-card.huge .nm {{ font-size:10.5px; }} .pp-card.huge .pp-sum {{ margin:1px 0; }} .pp-card.huge .box b {{ font-size:.95rem; }} .pp-card.big .pp-sum {{ margin:2px 0; }} .pp-card.big .pp-cond {{ margin:1px 0; }} .nm {{ font-size:11.5px; }} .hs, .stat {{ font-size:8.5px; }} .run {{ font-size:8.3px; }}
   }}
 </style></head><body>
@@ -372,13 +392,15 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
       <button type="button" data-q="future">発走前のレース</button>
     </div>
     {picker}
+    <div class="pp-dl" id="ppPdf"></div>
     <div class="pp-row">
-      <label>レイアウト <select id="ppLay"><option value="1">1ページ1レース</option><option value="2">詰めて印刷(1ページに複数)</option></select></label>
+      <label>レイアウト <select id="ppLay"><option value="1">1枚1レース(全部入り・A4横)</option><option value="2">2レースで1枚(近2走まで・A4縦)</option></select></label>
       <span class="pp-count" id="ppCount"></span>
       <button type="button" class="pp-print" id="ppPrint">選んだレースを印刷 / PDFに保存</button>
     </div>
     <p class="pp-hint">レース番号をタップで 選ぶ/外す(下の数字は3連複の万馬券率。赤=荒れそう・緑=堅そう)。選んだレースだけ下に表示・印刷されます。
-    印刷画面で「PDFとして保存」を選ぶとPDFになります(iPhoneは 共有 → プリント → プレビューをピンチアウト → 共有でPDF保存)。<br>
+    印刷画面で「PDFとして保存」を選ぶとPDFになります(iPhoneは 共有 → プリント → プレビューをピンチアウト → 共有でPDF保存)。
+    LINE・X・Gmail などのアプリ内で開くと印刷ボタンが動かないので、上の「できあがりPDF」を使うか、Safari/Chromeで開いてください。<br>
     紙はA4横。表の見方: 印=AIの評価順、AI 1着%(赤い棒)・複勝%=AIの3着内予測、期待値=AI1着率×単勝(1以上は赤)、妙味=AIと人気のズレ、
     成績=通算・同距離帯の3着内率(50%以上は赤)・間隔・騎手/厩舎の勝率。<br>
     近4走: 左の大きい数字=着順(1着は赤地・2〜3着はピンク)、1行目=日付 場 クラス 距離馬場、2行目=頭数・馬番・人気(1人気は赤)・騎手斤量、
@@ -393,18 +415,32 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   var boxes=Array.prototype.slice.call(document.querySelectorAll('.pp-r'));
   function card(id){{ return document.getElementById('c'+id); }}
   function save(){{ try{{ localStorage.setItem(KEY, JSON.stringify(boxes.filter(function(b){{return !b.checked;}}).map(function(b){{return b.value;}}))); }}catch(e){{}} }}
+  var PS=document.createElement('style'); document.head.appendChild(PS);
   function apply(){{
     var two=document.getElementById('ppLay').value==='2', n=0;
+    document.body.classList.toggle('compact',two);
+    PS.textContent = two ? '@page {{ size:A4 portrait; margin:6mm; }}' : '@page {{ size:A4 landscape; margin:6mm; }}';
     boxes.forEach(function(b){{ var c=card(b.value); if(!c) return; c.style.display=b.checked?'':'none'; c.classList.toggle('off',!b.checked); if(b.checked) n++; }});
     document.querySelectorAll('.pp-venue').forEach(function(v){{
       var any=Array.prototype.some.call(v.querySelectorAll('.pp-card'),function(c){{ return c.style.display!=='none'; }});
-      v.style.display=any?'':'none'; v.querySelector('.pp-grid').classList.toggle('two',two);
+      v.style.display=any?'':'none';
     }});
     document.getElementById('ppCount').textContent=n+'レース選択中';
     document.getElementById('ppPrint').disabled=(n===0);
     save();
   }}
   try{{ var off=JSON.parse(localStorage.getItem(KEY)||'[]'); boxes.forEach(function(b){{ if(off.indexOf(b.value)>=0) b.checked=false; }}); }}catch(e){{}}
+  // URLで指定(できあがりPDFを作るとき用): ?sel=all|bet|are|v:競馬場 &lay=2
+  var qs=new URLSearchParams(location.search), sel=qs.get('sel');
+  if(qs.get('lay')) document.getElementById('ppLay').value=qs.get('lay');
+  if(sel){{ boxes.forEach(function(b){{ var c=card(b.value); if(!c) return; var f=' '+(c.dataset.flags||'')+' ';
+    b.checked = sel==='all' ? true : sel.indexOf('v:')===0 ? c.dataset.venue===sel.slice(2) : f.indexOf(' '+sel+' ')>=0; }}); KEY=KEY+'-url'; }}
+  // できあがりPDF(GitHubで作った物)のリンク
+  fetch('pdf/index.json?t='+Date.now()).then(function(r){{ return r.ok?r.json():null; }}).then(function(j){{
+    if(!j||!j.files||!j.files.length) return;
+    document.getElementById('ppPdf').innerHTML='<b>できあがりPDF</b><small>('+j.made+' 作成)</small><br>'+j.files.map(function(f,i){{
+      return '<a class="'+(i>1?'sub':'')+'" href="pdf/'+encodeURIComponent(f.file)+'?t='+Date.now()+'" download>'+f.label+'('+f.pages+'枚)</a>'; }}).join('');
+  }}).catch(function(){{}});
   document.querySelectorAll('.pp-quick button').forEach(function(btn){{ btn.addEventListener('click',function(){{
     var q=btn.dataset.q, now=hm();
     boxes.forEach(function(b){{ var c=card(b.value); if(!c) return; var f=' '+(c.dataset.flags||'')+' ';

@@ -97,6 +97,17 @@ jobs:
         run: python src/generate_html.py site/predictions.csv site/index.html
 
       # 発走前に大きく下がった馬・組の一覧(drops.html)
+
+      # できあがりPDF(アプリ内ブラウザでは印刷ボタンが動かないので、ダウンロードだけで済むように)。20分おきに作り直す
+      - name: 印刷用のPDFを作る
+        if: steps.odds.outputs.updated == 'true'
+        continue-on-error: true
+        run: |
+          python -c "import sys,json,time; d=json.load(open('site/pdf/index.json')); sys.exit(0 if time.time()-d.get('ts',0)<1200 else 1)" 2>/dev/null && { echo "前回から20分たっていないので作らない"; exit 0; }
+          sudo apt-get install -y -qq fonts-noto-cjk >/dev/null 2>&1 || true
+          pip install -q playwright pypdf
+          python -m playwright install chromium >/dev/null
+          python src/print_pdf.py site/print.html site/pdf
       - name: オッズ急落ページ
         if: steps.odds.outputs.updated == 'true'
         continue-on-error: true
