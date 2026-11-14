@@ -10,6 +10,7 @@ generate_html.py が予想ページを作るたびに一緒に作る(オッズ�
 """
 import html as _html
 import json
+import os
 import math
 
 import numpy as np
@@ -119,6 +120,10 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
     if "s_best3" in g.columns:
         _sb = pd.to_numeric(g["s_best3"], errors="coerce")
         sb_rank = {int(u): int(k) for u, k in zip(g["umaban"], _sb.rank(ascending=False, method="min").fillna(99))}
+    l3z_rank = {}
+    if "l3z_best3" in g.columns:
+        _lz = pd.to_numeric(g["l3z_best3"], errors="coerce")
+        l3z_rank = {int(u): int(k) for u, k in zip(g["umaban"], _lz.rank(ascending=False, method="min").fillna(99))}
     rows = ""
     for i, (_, r) in enumerate(g.iterrows()):
         w = int(r["waku"]) if pd.notna(r.get("waku")) else 0
@@ -166,10 +171,22 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
         p3 = float(r.get("pred_top3_norm", 0) or 0)
         bar = f'<span class="bar"><span style="width:{min(pw * 250, 100):.0f}%"></span></span>'
         ks = style(gv(r, "recent5_style_ratio"))
-        # 成績の欄: 1行目=指数・同距離 / 2行目=通算(2レースで1枚では省く) / 3行目=間隔・騎手厩舎
+        # 成績の欄
+        #   1行目: スピード指数・上がりの速さ / 2行目(2レースで1枚では省く): 通算・同距離
+        #   3行目: 前走と近3走の最良の着差・間隔 / 4行目(2レースで1枚では省く): 騎手・厩舎の勝率
         def _pick(keys):
             return " ".join(x for x in st if any(x.startswith(k) for k in keys))
-        stat_lines = [(_pick(("指数", "同距離")), ""), (_pick(("通算", "<b>初出走")), "stc"), (_pick(("間隔", "騎")), "")]
+        l3z = gv(r, "l3z_best3")
+        up = (f' 上り<b class="{"hl" if l3z_rank.get(int(r["umaban"]), 99) <= 3 else ""}">{float(l3z):+.1f}</b>'
+              if l3z is not None else "")
+        diffs = [x.get("diff") for x in runs[:3] if x.get("diff") is not None]
+        def _d(v):
+            return "勝" if v <= 0 else f"{v:.1f}"
+        mg = (f'着差 前<b class="{"hl" if diffs[0] <= 0.2 else ""}">{_d(diffs[0])}</b>' +
+              (f' 最良{_d(min(diffs))}' if len(diffs) > 1 else "")) if diffs else ""
+        gap = _pick(("間隔",))
+        stat_lines = [(_pick(("指数",)) + up, ""), (_pick(("通算", "<b>初出走", "同距離")), "stc"),
+                      (" ".join(x for x in (mg, gap) if x), ""), (_pick(("騎",)), "stc")]
         stat_html = "".join(f'<div class="{c}">{t}</div>' for t, c in stat_lines if t)
         cls = ("top " if top else "") + ("odd" if i % 2 else "even")
         pop = _f(r.get("market_rank"), "{:.0f}")
@@ -197,6 +214,14 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
     if favp is not None:
         conds.append(f'このコースの1番人気勝率 {_f(favp, "{:.0f}")}%')
     cond_html = "".join(f'<span class="tag">{_html.escape(c)}</span>' for c in conds)
+    cst = _course_stats().get(f'{str(gv(f0, "track_code") or "").zfill(2)}_{surf}_{_f(dist, "{:.0f}")}')
+    if cst and cst.get("nige_top3_pct") is not None:
+        def _hi(v, others):
+            return f'<b class="hl">{v:.0f}</b>' if v >= max(others) else f'{v:.0f}'
+        wk = [cst.get(k) or 0 for k in ("inner_top3_pct", "mid_top3_pct", "outer_top3_pct")]
+        ks = [cst.get(k) or 0 for k in ("nige_top3_pct", "senko_top3_pct", "sashi_top3_pct", "oikomi_top3_pct")]
+        cond_html += (f'<span class="tag">コース傾向(3着内%) 枠 内{_hi(wk[0], wk)}・中{_hi(wk[1], wk)}・外{_hi(wk[2], wk)}'
+                      f' / 逃{_hi(ks[0], ks)}・先{_hi(ks[1], ks)}・差{_hi(ks[2], ks)}・追{_hi(ks[3], ks)}</span>')
     if b.get("label"):
         cond_html += (f'<span class="tag bias-{ {"内": "in", "外": "out"}.get(b["side"], "flat") }">当日{_html.escape(b.get("surface", ""))}バイアス '
                       f'<b>{_html.escape(b["label"])}</b>({b["n"]}R分{"・緑の馬番が有利な側" if b["side"] else ""})</span>')
@@ -251,6 +276,21 @@ def short_name(nm):
             return v
     nm = nm.replace("ステークス", "S")
     return nm[:8]
+
+
+_CST = None
+
+
+def _course_stats():
+    """data/course_stats.json(コースごとの枠・脚質の3着内率)"""
+    global _CST
+    if _CST is None:
+        try:
+            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "course_stats.json"), encoding="utf-8") as f:
+                _CST = json.load(f)
+        except (OSError, ValueError):
+            _CST = {}
+    return _CST
 
 
 def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict | None = None, past: dict | None = None, bias: dict | None = None,
@@ -346,7 +386,7 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   .pp-t tr.odd td {{ background:#F7F5EF; }} .pp-t tr.top td {{ background:#FFF1D6; }}
   .pp-t .sep {{ border-left:2px solid #777; }}
   col.c-mk {{ width:26px; }} col.c-wk {{ width:28px; }} col.c-ub {{ width:30px; }} col.c-h {{ width:190px; }} col.c-od {{ width:52px; }}
-  col.c-ai {{ width:118px; }} col.c-st {{ width:150px; }} col.c-memo {{ width:70px; }}
+  col.c-ai {{ width:118px; }} col.c-st {{ width:178px; }} col.c-memo {{ width:70px; }}
   .c {{ text-align:center; }} .r {{ text-align:right; }} .b {{ font-weight:700; }} .sm {{ font-size:10.5px; }}
   .nm {{ font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; }}
   .hs {{ font-size:10.5px; white-space:nowrap; overflow:hidden; color:#333; }}
@@ -439,6 +479,8 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
     「ブラウザで印刷」はパソコン向け(印刷画面で「PDFとして保存」も可)。<br>
     紙はA4横。表の見方: 印=AIの評価順、AI 1着%(赤い棒)・複勝%=AIの3着内予測、込%=オッズ込みの1着率(実際に勝ちそうな確率の目安)、期待値=AI1着率×単勝(1以上は赤)、妙味=AIと人気のズレ、
     成績=通算・同距離帯の3着内率(50%以上は赤)・間隔・騎手/厩舎の勝率。<br>
+    上り=過去3走で一番速かった上がり3Fが、そのコースの標準より何秒速いか(赤=このレースの上位3頭)、着差=前走と近3走で一番良かった勝ち馬との差(秒。勝=1着、0.2以内は赤)、
+    コース傾向=このコースの枠(内1-2枠・中・外7-8枠)と脚質ごとの3着内率(赤=一番高い)、当日バイアス=その日の同じ芝ダの終わったレースで来た馬番の内外(緑の馬番=有利な側・灰=不利な側)、
     指数=スピード指数(過去3走の最高。走破タイムを同じ競馬場・芝ダ・距離・馬場の勝ちタイムの基準と比べたもの。50≒勝ち馬並み、赤=このレースの上位3頭。かっこ内は前走)、
     近4走: 左の大きい数字=着順(1着は赤地・2〜3着はピンク)、1行目=日付 場 クラス 距離馬場、2行目=頭数・馬番・人気(1人気は赤)・騎手斤量、
     3行目=タイム(勝ち馬との差、勝った時は2着との差を赤で)・上り3F(①〜③=メンバー中の順位)・通過順・馬体重。メモ欄は手書き用です。</p>
