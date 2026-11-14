@@ -253,7 +253,7 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
             man = f'{mv["man"]:.0%}' if mv else "-"
             mcls = "hi" if mv and mv["man"] >= 0.5 else ("lo" if mv and mv["man"] < 0.2 else "")
             post = str(g["post_time"].iloc[0] or "") if "post_time" in g.columns else ""
-            chips += (f'<label class="rc-chip {mcls}"><input type="checkbox" class="pp-r" value="{_html.escape(rid)}" checked>'
+            chips += (f'<label class="rc-chip {mcls}"><input type="checkbox" class="pp-r" value="{_html.escape(rid)}">'
                       f'<span><b>{int(g["race_number"].iloc[0])}R</b><small class="cn">{_html.escape(short_name(g["race_name"].iloc[0] if "race_name" in g.columns else ""))}</small><small>{_html.escape(post)}</small><i class="hc">{len(g)}頭</i><em>{man}</em></span></label>')
         v = _html.escape(str(venue))
         picker += (f'<div class="pp-vrow" data-venue="{v}"><div class="pp-vname">{v}'
@@ -286,7 +286,12 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   .rc-chip span {{ display:flex; flex-direction:column; align-items:center; border:2px solid #D8CDB2; border-radius:8px; padding:4px 2px; background:#F3EEE2; color:#8A7E6A; cursor:pointer; line-height:1.25; }}
   .rc-chip .cn {{ font-size:10.5px; font-weight:700; color:#1F4D3A; white-space:nowrap; overflow:hidden; max-width:100%; }}
   .rc-chip b {{ font-size:14px; }} .rc-chip small {{ font-size:10px; }} .rc-chip em {{ font-style:normal; font-size:11px; font-weight:700; }} .rc-chip .hc {{ font-style:normal; font-size:11px; font-weight:700; color:#2A2118; }}
-  .rc-chip input:checked + span {{ background:#fff; border-color:#1F4D3A; color:#2A2118; box-shadow:inset 0 -3px 0 #1F4D3A; }}
+  .rc-chip span {{ position:relative; }}
+  .rc-chip input:checked + span {{ background:#1F4D3A; border-color:#1F4D3A; color:#fff; }}
+  .rc-chip input:checked + span .cn, .rc-chip input:checked + span .hc {{ color:#fff; }}
+  .rc-chip input:checked + span::after {{ content:"✓"; position:absolute; top:1px; right:4px; font-size:11px; font-weight:700; color:#fff; }}
+  .rc-chip.hi input:checked + span em {{ color:#FFB3A7; }} .rc-chip.lo input:checked + span em {{ color:#A8E6C0; }}
+  .pp-none {{ padding:24px; text-align:center; color:#8A7E6A; }}
   .rc-chip.hi em {{ color:#C0392B; }} .rc-chip.lo em {{ color:#2E7D4F; }}
   .pp-row {{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:10px 0 0; }}
   .pp-print {{ background:#1F4D3A; color:#fff; border:0; border-radius:8px; padding:10px 18px; font-size:15px; font-weight:700; }}
@@ -370,7 +375,7 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
     @page {{ size:A4 landscape; margin:6mm; }}
     body {{ background:#fff; font-size:10px; }} header, .pp-controls {{ display:none; }} main {{ padding:0; max-width:none; }}
     .pp-card {{ overflow:visible; }} .pp-t {{ min-width:0; }}
-    .pp-card.off {{ display:none !important; }}
+    .pp-card.off {{ display:none !important; }} .pp-none {{ display:none !important; }}
     .pp-venue {{ break-before:page; }} .pp-venue:first-of-type {{ break-before:auto; }}
     .pp-venue:has(.pp-grid:not(.two)) > h2 {{ display:none; }}
     .pp-grid:not(.two) .pp-card {{ break-after:page; break-inside:auto; padding:0; margin:0; border:0; }}
@@ -411,7 +416,7 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
       <button type="button" class="pp-print2" id="ppPrintBr">ブラウザで印刷</button>
     </div>
     <div class="pp-made" id="ppMade"></div>
-    <p class="pp-hint">レース番号をタップで 選ぶ/外す(下の数字は3連複の万馬券率。赤=荒れそう・緑=堅そう)。選んだレースだけ下に表示・印刷されます。
+    <p class="pp-hint">レース番号をタップで選ぶ(緑になって✓が付く。もう一度タップで外す)(下の数字は3連複の万馬券率。赤=荒れそう・緑=堅そう)。選んだレースだけ下に表示・印刷されます。
     「選んだレースをPDFにする」→「できたPDFを開く」で、選んだレースだけのPDFが開きます(スマホ・LINEなどのアプリ内でも使えます。そこから印刷・保存)。
     「ブラウザで印刷」はパソコン向け(印刷画面で「PDFとして保存」も可)。<br>
     紙はA4横。表の見方: 印=AIの評価順、AI 1着%(赤い棒)・複勝%=AIの3着内予測、込%=オッズ込みの1着率(実際に勝ちそうな確率の目安)、期待値=AI1着率×単勝(1以上は赤)、妙味=AIと人気のズレ、
@@ -419,15 +424,16 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
     近4走: 左の大きい数字=着順(1着は赤地・2〜3着はピンク)、1行目=日付 場 クラス 距離馬場、2行目=頭数・馬番・人気(1人気は赤)・騎手斤量、
     3行目=タイム(勝ち馬との差、勝った時は2着との差を赤で)・上り3F(①〜③=メンバー中の順位)・通過順・馬体重。メモ欄は手書き用です。</p>
   </div>
+  <p class="pp-none" id="ppNone">上のレース番号をタップして、印刷するレースを選んでください(「全部」で全レース)。</p>
   {sections or '<p>本日の予想はありません。</p>'}
 </main>
 <script>
 (function(){{
-  var KEY='jra-print-'+{json.dumps(date_label)};
+  var KEY='jra-print-sel-'+{json.dumps(date_label)};
   function hm(){{ var d=new Date(); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }}
   var boxes=Array.prototype.slice.call(document.querySelectorAll('.pp-r'));
   function card(id){{ return document.getElementById('c'+id); }}
-  function save(){{ try{{ localStorage.setItem(KEY, JSON.stringify(boxes.filter(function(b){{return !b.checked;}}).map(function(b){{return b.value;}}))); }}catch(e){{}} }}
+  function save(){{ try{{ localStorage.setItem(KEY, JSON.stringify(boxes.filter(function(b){{return b.checked;}}).map(function(b){{return b.value;}}))); }}catch(e){{}} }}
   var PS=document.createElement('style'); document.head.appendChild(PS);
   function apply(){{
     var two=document.getElementById('ppLay').value==='2', n=0;
@@ -438,11 +444,13 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
       var any=Array.prototype.some.call(v.querySelectorAll('.pp-card'),function(c){{ return c.style.display!=='none'; }});
       v.style.display=any?'':'none';
     }});
-    document.getElementById('ppCount').textContent=n+'レース選択中';
+    document.getElementById('ppCount').textContent=n ? n+'レース選択中' : 'レースを選んでください';
+    var nn=document.getElementById('ppNone'); if(nn) nn.style.display=n?'none':'';
     document.getElementById('ppPrint').disabled=(n===0); document.getElementById('ppPrintBr').disabled=(n===0);
     save();
   }}
-  try{{ var off=JSON.parse(localStorage.getItem(KEY)||'[]'); boxes.forEach(function(b){{ if(off.indexOf(b.value)>=0) b.checked=false; }}); }}catch(e){{}}
+  // 最初は何も選ばない。タップしたレースが選ばれる(選んだレースはブラウザに覚えておく)
+  try{{ var on=JSON.parse(localStorage.getItem(KEY)||'[]'); boxes.forEach(function(b){{ b.checked = on.indexOf(b.value)>=0; }}); }}catch(e){{}}
   // URLで指定(できあがりPDFを作るとき用): ?sel=all|bet|are|v:競馬場 &lay=2
   var qs=new URLSearchParams(location.search), sel=qs.get('sel');
   if(qs.get('lay')) document.getElementById('ppLay').value=qs.get('lay');
