@@ -37,7 +37,13 @@ MAIN = Rule("main", "AI買い目", "OP以上・◎単勝6倍以上 → 3連複 �
             "2019〜2026年の検証で回収率160%(年約70レース・的中率11%・最大32連敗)")
 SUB = Rule("sub", "準AI買い目", "◎が2〜3人気・AI上位3頭に6人気以下あり → 3連単 ◎→AI2,3位→AI2〜5位(6点)", "3連単",
            "2019〜2026年の検証で回収率120%(年約260レース)。本命より不安定(8年中5年で100%超)")
-RULES = [MAIN, SUB]
+# クラス別(11/15追加。新AI=今の◎で判定。strategy_search をクラスごとに回して、選定2019-23・検証2024-26 の両方で100%超、
+#            上位5本を除いても100%超、8年中6年以上で100%超 のものだけ)
+C1 = Rule("c1", "1勝クラス 単勝", "1勝クラス・◎単勝6倍以上 → 妙味馬(AI上位5頭でオッズより一番高く見ている馬)の単勝(1点)", "単勝",
+          "2019〜2026年の検証で回収率133%(年約76レース・的中率10%・上位5本を除いても104%・8年中6年で100%超)")
+GR = Rule("gr", "重賞 ワイド", "重賞(G1〜G3)・◎の1着率30%以上 → ワイド AI上位3頭BOX(3点)", "ワイド",
+          "2019〜2026年の検証で回収率139%・的中率60%(年約16レース・上位5本を除いても101%・8年中7年で100%超)")
+RULES = [MAIN, SUB, C1, GR]
 RULE_NAME = MAIN.name  # 互換用
 
 CLASS_MIN = 20       # race_class: 新馬0 / 未勝利1 / 1勝5 / 2勝9 / 3勝14 / オープン20
@@ -111,13 +117,70 @@ def evaluate_sub(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> dict:
     return {"status": "対象", "reason": f"◎{int(p1)}番人気・AI上位に人気薄あり", **base}
 
 
+def _new_ai(g):
+    """クラス別ルールは新AI(画面の◎ = pred_win_rank)で判定する"""
+    g = g.sort_values("pred_win_rank")
+    return g, [int(x) for x in g["umaban"]]
+
+
+def _value_horse(g):
+    """AI上位5頭のうち、AIの1着率 ÷ オッズから見た確率 が一番大きい馬(妙味馬)"""
+    if "odds_win" not in g.columns or g["odds_win"].isna().any() or (g["odds_win"] <= 0).any():
+        return None
+    inv = 1 / g["odds_win"].astype(float)
+    ratio = g["pred_win_norm"].astype(float) / (inv / inv.sum())
+    top5 = g.head(5)
+    return int(top5.loc[ratio.loc[top5.index].idxmax(), "umaban"])
+
+
+def evaluate_c1(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> dict:
+    g, A = _new_ai(g)
+    v = _value_horse(g)
+    base = {"rule": C1, "honmei": A[0], "partners": [], "tickets": [str(v)] if v else [],
+            "desc": f"単勝 {v}番(妙味馬)" if v else "単勝 妙味馬(オッズが出たら決まる)"}
+    cls = g["race_class"].iloc[0] if "race_class" in g.columns else None
+    if cls is None or pd.isna(cls) or int(cls) != 5:
+        return {"status": "対象外", "reason": "1勝クラスではない", **base}
+    if len(g) < 6:
+        return {"status": "対象外", "reason": "頭数が少ない", **base}
+    odds = g["odds_win"].iloc[0] if "odds_win" in g.columns else None
+    if odds is None or pd.isna(odds) or v is None:
+        return {"status": "オッズ待ち", "reason": "◎の単勝が6倍超なら対象", **base}
+    if odds <= ODDS_MIN:
+        return {"status": "対象外", "reason": f"◎の単勝{odds:.1f}倍", **base}
+    return {"status": "対象", "reason": f"1勝クラス・◎単勝{odds:.1f}倍", **base}
+
+
+def _is_graded(g):
+    import re
+    nm = str(g["race_name"].iloc[0]) if "race_name" in g.columns else ""
+    return bool(re.search(r"\(G[123]\)|\(GI{1,3}\)", nm)) and not re.search(r"J\.?G", nm)
+
+
+def evaluate_gr(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> dict:
+    g, A = _new_ai(g)
+    top3 = A[:3]
+    tickets = ["-".join(map(str, sorted(x))) for x in combinations(top3, 2)]
+    base = {"rule": GR, "honmei": A[0], "partners": top3[1:], "tickets": tickets,
+            "desc": f"ワイド {'・'.join(map(str, top3))} BOX(3点)"}
+    if not _is_graded(g):
+        return {"status": "対象外", "reason": "重賞ではない", **base}
+    p1 = float(g["pred_win_norm"].iloc[0])
+    if p1 < 0.30:
+        return {"status": "対象外", "reason": f"◎の1着率{p1:.0%}(30%未満)", **base}
+    return {"status": "対象", "reason": f"重賞・◎の1着率{p1:.0%}", **base}
+
+
 def evaluate_race(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> dict:
     """互換用: 本命ルールの判定"""
     return evaluate_main(g, rank_col)
 
 
 def evaluate_all(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> list[dict]:
-    return [evaluate_main(g, rank_col), evaluate_sub(g, rank_col)]
+    out = [evaluate_main(g, rank_col), evaluate_sub(g, rank_col)]
+    if "pred_win_norm" in g.columns:
+        out += [evaluate_c1(g, rank_col), evaluate_gr(g, rank_col)]
+    return out
 
 
 def settle(tickets, payouts_for_race: pd.DataFrame, bet_type: str = MAIN.bet_type) -> int:
