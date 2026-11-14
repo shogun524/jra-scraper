@@ -318,6 +318,14 @@ def race_card(race_id, g):
         gap = r.get("gap_from_top")
         gap_html = "—" if (pd.notnull(gap) and gap == 0) else (f"-{gap:.1f}pt" if pd.notnull(gap) else "-")
 
+        def mm_html(r):
+            # オッズ込みの1着率(market_model.py: 単勝オッズ+市場が織り込み切れていない要素)。◎はAIのまま、実際に勝つ確率の目安
+            v = r.get("mm_win")
+            if not pd.notnull(v):
+                return ""
+            hi = pd.notnull(r.get("value_ratio")) and r["value_ratio"] >= 1.15
+            return f'<br><small class="mm{" mm-hi" if hi else ""}">込{v*100:.0f}%</small>'
+
         mk_cell = mk_html or f'<span class="rk">{int(r["pred_win_rank"])}</span>'
         sub = " ".join(x for x in [str(r.get("jockey") or ""), weight_html if weight_html != "-" else ""] if x)
         rows += f"""
@@ -326,7 +334,7 @@ def race_card(race_id, g):
           <td class="c ubc">{waku_badge(r.get('waku'))}<b class="ubn">{umaban}</b></td>
           <td class="horse">{r['horse']}<br><small class="sub">{sub}</small>{blood}</td>
           <td class="r od">{odds}</td>
-          <td class="r pct"><b>{r['pred_win_norm']*100:.1f}</b><small>%</small><br><small class="sub">3着内{r['pred_top3_norm']*100:.0f}%</small></td>
+          <td class="r pct"><b>{r['pred_win_norm']*100:.1f}</b><small>%</small><br><small class="sub">3着内{r['pred_top3_norm']*100:.0f}%</small>{mm_html(r)}</td>
           <td class="c">{ev_badge}<br>{vt_html if vt_html != "-" else ""}</td>
         </tr>"""
 
@@ -345,7 +353,7 @@ def race_card(race_id, g):
       <div class="table-scroll">
       <table class="ht"><colgroup><col style="width:26px"><col style="width:50px"><col><col style="width:58px"><col style="width:50px"><col style="width:54px"></colgroup>
         <thead>
-          <tr><th>印</th><th>馬番</th><th>馬名 / 騎手 馬体重 / 血統</th><th>単勝<br>複勝</th><th>AI<br>1着率</th><th>期待値</th></tr>
+          <tr><th>印</th><th>馬番</th><th>馬名 / 騎手 馬体重 / 血統</th><th>単勝<br>複勝</th><th>AI<br>1着率<br><small>オッズ込</small></th><th>期待値</th></tr>
         </thead>
         <tbody>{rows}</tbody>
       </table>
@@ -648,6 +656,8 @@ html = f"""<!DOCTYPE html>
   table.ht .sub {{ color: var(--ink-soft); font-weight: 400; font-size: .72rem; }}
   table.ht .rk {{ color: var(--ink-soft); font-size: .8rem; }}
   table.ht .pct b {{ font-size: .95rem; }}
+  table.ht .mm {{ color: #2E5BA8; font-size: .72rem; font-weight: 600; }}
+  table.ht .mm-hi {{ color: #C8102E; }}
   .hit-summary .hp, .hitline .hp {{ color:#1F4D3A; font-weight:800; }}
   .hitline {{ margin: 3px 0 0; font-size: .76rem; }} .hitline .hp {{ color: #1F4D3A; font-weight: 800; }}
   .chips {{ display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; }}
@@ -685,6 +695,8 @@ html = f"""<!DOCTYPE html>
 <footer><details><summary><strong>各項目の見方</strong></summary>
   <p>
     <b>1着率 / 3連対率</b>: AI(オッズを使わない予想)の推定確率。レース内で合計が100% / 300%になるよう調整。<br>
+    <b>込◯%(オッズ込みの1着率)</b>: 単勝オッズから見た勝つ確率に、市場が織り込み切れていない要素(近走・前走の人気と着順・距離適性・騎手など)を足した確率。
+    ◎はAIの評価のまま選び、実際に勝ちそうな確率はこちらで確かめる(2023年〜の検証で、市場・AIより確率の当たりが良い)。赤字はオッズの見込みより1.15倍以上高い馬。<br>
     <b>1位との差</b>: 1着率1位の馬との差(pt)。差が小さいレースほど混戦。<br>
     <b>安定度</b>: 3連対率÷1着率。数値が大きいほど「勝ち切れないが崩れにくい」(複勝・ワイド向き)、
     小さいほど「勝つか凡走かの一発型」(単勝向き)。<br>

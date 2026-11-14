@@ -149,6 +149,8 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
             st.append(f'騎{pct(jw)} 厩{pct(tw)}')
         ev = gv(r, "expected_value")
         pw = float(r.get("pred_win_norm", 0) or 0)
+        mm = gv(r, "mm_win")
+        mm_txt = f' 込{_f(float(mm) * 100, "{:.0f}")}%' if mm is not None else ""
         p3 = float(r.get("pred_top3_norm", 0) or 0)
         bar = f'<span class="bar"><span style="width:{min(pw * 250, 100):.0f}%"></span></span>'
         ks = style(gv(r, "recent5_style_ratio"))
@@ -164,7 +166,7 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
                  f'{blood_html(r["horse"])}</td>'
                  f'<td class="c sep od"><div class="popn {"pp1" if pop == "1" else ""}">{pop}<small>人気</small></div><div class="b">{_f(r.get("odds_win"))}</div>{place_html(r)}</td>'
                  f'<td class="sep ai"><div><b>{_f(pw * 100)}</b><small>%</small> {bar} <span class="vt {vcls}">{_html.escape(vt)}</span></div>'
-                 f'<div class="sm">複{_f(p3 * 100, "{:.0f}")}% 期待<span class="{"evh" if ev is not None and float(ev) >= 1 else ""}">{_f(ev, "{:.2f}")}</span></div></td>'
+                 f'<div class="sm">複{_f(p3 * 100, "{:.0f}")}%{mm_txt} 期待<span class="{"evh" if ev is not None and float(ev) >= 1 else ""}">{_f(ev, "{:.2f}")}</span></div></td>'
                  f'<td class="sep stat">{"<br>".join([" ".join(st[i:i + 2]) for i in range(0, len(st), 2)])}</td>'
                  f'{run_cells}<td class="memo"></td></tr>')
     # レースの条件
@@ -405,7 +407,7 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
     <p class="pp-hint">レース番号をタップで 選ぶ/外す(下の数字は3連複の万馬券率。赤=荒れそう・緑=堅そう)。選んだレースだけ下に表示・印刷されます。
     印刷画面で「PDFとして保存」を選ぶとPDFになります(iPhoneは 共有 → プリント → プレビューをピンチアウト → 共有でPDF保存)。
     LINE・X・Gmail などのアプリ内で開くと印刷ボタンが動かないので、上の「できあがりPDF」を使うか、Safari/Chromeで開いてください。<br>
-    紙はA4横。表の見方: 印=AIの評価順、AI 1着%(赤い棒)・複勝%=AIの3着内予測、期待値=AI1着率×単勝(1以上は赤)、妙味=AIと人気のズレ、
+    紙はA4横。表の見方: 印=AIの評価順、AI 1着%(赤い棒)・複勝%=AIの3着内予測、込%=オッズ込みの1着率(実際に勝ちそうな確率の目安)、期待値=AI1着率×単勝(1以上は赤)、妙味=AIと人気のズレ、
     成績=通算・同距離帯の3着内率(50%以上は赤)・間隔・騎手/厩舎の勝率。<br>
     近4走: 左の大きい数字=着順(1着は赤地・2〜3着はピンク)、1行目=日付 場 クラス 距離馬場、2行目=頭数・馬番・人気(1人気は赤)・騎手斤量、
     3行目=タイム(勝ち馬との差、勝った時は2着との差を赤で)・上り3F(①〜③=メンバー中の順位)・通過順・馬体重。メモ欄は手書き用です。</p>

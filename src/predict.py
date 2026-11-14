@@ -26,6 +26,24 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from scrape_race_result import JOCKEY_KEY_SQL, jockey_key, normalize_trainer, race_class_value  # noqa: E402
 
 
+def _normalize_logit(s: pd.Series, target_sum: float) -> pd.Series:
+    """合計が target_sum になるよう、ロジット(log(p/(1-p)))を全馬同じだけずらす。
+    掛け算で合わせる _normalize_capped と違って100%に張り付かない(11/15: 新モデルで3着内100%の馬が6頭出たため)"""
+    p = s.clip(1e-4, 1 - 1e-4).to_numpy(dtype=float)
+    n = len(p)
+    if n <= target_sum:
+        return pd.Series(np.ones(n), index=s.index)
+    z = np.log(p / (1 - p))
+    lo, hi = -20.0, 20.0
+    for _ in range(60):
+        c = (lo + hi) / 2
+        if (1 / (1 + np.exp(-(z + c)))).sum() > target_sum:
+            hi = c
+        else:
+            lo = c
+    return pd.Series(1 / (1 + np.exp(-(z + (lo + hi) / 2))), index=s.index)
+
+
 def _normalize_capped(s: pd.Series, target_sum: float, cap: float = 1.0) -> pd.Series:
     """sの合計がtarget_sumになるよう比例配分するが、どの値も cap(=100%) を超えないようにする。
     超えた分は、まだ超えていない馬たちに比例配分し直す(水準器のように繰り返し均す)。
@@ -308,7 +326,7 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
     # レースによって合計が161%だったり450%だったりバラつき、馬同士の比較に使えないため)。
     # ただし単純に合計を揃えるだけだと1頭だけ突出した予測値がある場合に100%を超えてしまうため、
     # 100%を上限にキャップし、超えた分は他の馬に配り直す。
-    feat_df["pred_top3_norm"] = feat_df.groupby("race_id")["pred_top3"].transform(lambda s: _normalize_capped(s, target_sum=3.0))
+    feat_df["pred_top3_norm"] = feat_df.groupby("race_id")["pred_top3"].transform(lambda s: _normalize_logit(s, target_sum=3.0))
 
     # ------------------------------------------------------------------
     # 追加ファクター(1着率・3連対率だけでは見えない情報を補う)
