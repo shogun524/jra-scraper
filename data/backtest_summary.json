@@ -5,12 +5,12 @@
   "train_rows": 685028,
   "valid_rows": 46563,
   "test_rows": 85484,
-  "win_auc": 0.7858067214715314,
-  "top3_auc": 0.7744928616658996,
-  "win_best_iteration": 403,
-  "top3_best_iteration": 545,
+  "win_auc": 0.8070322684024362,
+  "top3_auc": 0.7943169413623817,
+  "win_best_iteration": 319,
+  "top3_best_iteration": 496,
   "test_races_with_odds": 5897,
-  "logloss_ai": 2.1367863053696357,
+  "logloss_ai": 2.0815298631435297,
   "logloss_market": 1.9266448975977748,
   "logloss_uniform": 2.595302016696632,
   "blend_weight_ai": 0.0,
@@ -19,9 +19,9 @@
   "baseline_flat_roi_pct": 72.91535571730454,
   "honmei_roi": {
     "n_bets": 6179,
-    "hit_rate": 0.2715649781518045,
-    "roi_pct": 79.72163780547015,
-    "avg_odds": 4.168490046933161
+    "hit_rate": 0.2866159572746399,
+    "roi_pct": 77.93008577439716,
+    "avg_odds": 3.608172843502185
   },
   "favorite_roi": {
     "n_bets": 6197,
