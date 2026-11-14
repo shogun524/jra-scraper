@@ -63,6 +63,11 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # 本命・印を決めるオッズ+補正モデル(market_model.py)を学習し直す(2023年〜で確認した成績も残す)
+      - name: オッズ+補正モデルの学習
+        run: |
+          python src/market_model.py fit data/features.parquet data/market_model.json | tee -a "$GITHUB_STEP_SUMMARY"
+
       # EVボードの係数(AIと市場の混ぜ方・オッズの動きの効き方)を推定し直す
       - name: EV係数の推定
         run: |
@@ -76,7 +81,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/model_win.txt data/model_top3.txt data/backtest_win.json data/backtest_summary.json \
-                  data/feature_importance.json data/course_stats.json data/ev_calibration.json
+                  data/feature_importance.json data/course_stats.json data/ev_calibration.json data/market_model.json
           if git diff --cached --quiet; then
             echo "変更なし"
             exit 0

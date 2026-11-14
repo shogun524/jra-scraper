@@ -110,6 +110,7 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
         CASE WHEN TRY_CAST("着順" AS INTEGER)=1 THEN 1 ELSE 0 END AS y_win,
         CASE WHEN TRY_CAST("着順" AS INTEGER)<=3 THEN 1 ELSE 0 END AS y_top3,
         TRY_CAST("4コーナー" AS INTEGER) AS corner4,
+        TRY_CAST("人気" AS INTEGER) AS popularity,
         count(*) OVER (PARTITION BY "レースID") AS field_size
     FROM read_csv_auto('{RACE_RESULT}', encoding='utf-8', union_by_name=true, types={{'着順': 'VARCHAR'}})
     WHERE "レース日付" IS NOT NULL AND "馬名" IS NOT NULL
@@ -202,6 +203,8 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
             row["last_race_finish"] = np.nan
             row["distance_change_from_last"] = np.nan
             row["weight_carry_change_from_last"] = np.nan
+            for k in ("prev_popularity", "prev2_finish", "prev_c4_minus_fin", "field_size_change"):
+                row[k] = np.nan
             # 脚質のみ、古いデータからでも算出する(モデル入力には使わず表示用)
             row["recent5_style_ratio"] = np.nan
             row["style_ratio_display"] = (h["corner4"] / h["field_size"]).mean() if len(h) else np.nan
@@ -225,10 +228,19 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
                 row["last_race_finish"] = last_row["finish"]
                 row["distance_change_from_last"] = e["distance"] - last_row["distance"]
                 row["weight_carry_change_from_last"] = e["weight_carry"] - last_row["weight_carry"] if "weight_carry" in last_row else np.nan
+                # オッズ+補正モデル(market_model.py)用: 前走の人気・前々走の着順・前走4角→着順・頭数の変化
+                row["prev_popularity"] = last_row.get("popularity", np.nan)
+                row["prev2_finish"] = h.iloc[1]["finish"] if len(h) >= 2 else np.nan
+                row["prev_c4_minus_fin"] = (last_row["corner4"] - last_row["finish"]
+                                            if pd.notna(last_row.get("corner4")) and pd.notna(last_row.get("finish")) else np.nan)
+                fs = e.get("field_size", np.nan)
+                row["field_size_change"] = fs - last_row["field_size"] if pd.notna(fs) and pd.notna(last_row.get("field_size")) else np.nan
             else:
                 row["last_race_finish"] = np.nan
                 row["distance_change_from_last"] = np.nan
                 row["weight_carry_change_from_last"] = np.nan
+                for k in ("prev_popularity", "prev2_finish", "prev_c4_minus_fin", "field_size_change"):
+                    row[k] = np.nan
 
         row["jockey_winrate"] = jockey["w"]
         row["jockey_top3rate"] = jockey["t3"]
@@ -407,12 +419,23 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
                          "recent5_avg_finish", "recent5_top3rate", "recent5_starts", "career_starts", "career_winrate",
                          "career_top3rate", "dist_aptitude_top3rate", "dist_aptitude_starts", "days_since_last",
                          "recent5_style_ratio", "jockey_winrate", "trainer_winrate", "last_race_finish",
-                         "distance_change_from_last", "weight_carry_change_from_last"]:
+                         "distance_change_from_last", "weight_carry_change_from_last",
+                         # オッズ+補正モデル(market_model.py)の要素。オッズ更新のたびに印を作り直すので残す
+                         "prev_popularity", "prev2_finish", "prev_c4_minus_fin", "field_size_change",
+                         "jockey_trainer_combo_winrate"]:
         if optional_col in feat_df.columns:
             out_cols.append(optional_col)
     if "odds_win" in feat_df.columns:
         out_cols += ["odds_win", "expected_value"]
-    result = feat_df[out_cols].sort_values(["race_id", "pred_win_rank"])
+    result = feat_df[out_cols]
+    if "odds_win" in result.columns:
+        # オッズがそろったレースは、1着率・印をオッズ+補正モデルで作り直す(旧AIの値は lgb_win / lgb_top3 に残る)
+        import market_model
+        result = market_model.apply(result)
+        result["market_rank"] = result.groupby("race_id")["odds_win"].rank(ascending=True, method="min")
+        result["rank_diff"] = result["market_rank"] - result["pred_win_rank"]
+        result["expected_value"] = (result["pred_win_norm"] * result["odds_win"]).round(2)
+    result = result.sort_values(["race_id", "pred_win_rank"])
     result.to_csv(out_csv, index=False)
     print(f"予測結果を {out_csv} に出力しました({len(result)}頭)")
     return result

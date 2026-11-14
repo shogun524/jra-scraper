@@ -1,8 +1,8 @@
 """
 オッズだけを取り直して予測ファイルを更新する(定期実行用)
 
-予測モデルは動かさない。1着率・3連対率などAIの評価はそのままで、
-オッズと、オッズから計算する項目(期待値・人気順位・人気との乖離・妙味)だけを最新化する。
+旧AI(LightGBM)は動かさない。オッズと、オッズから計算する項目(期待値・人気順位・人気との乖離・妙味)を最新化し、
+オッズのそろったレースは 1着率・3連対率・印 をオッズ+補正モデル(market_model.py)で作り直す。
 ブラウザを使わないので1回数十秒で終わり、10分おきの定期実行に向いている。
 
 使い方:
@@ -23,6 +23,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(__file__))
 from fetch_odds import fetch_odds_http, fetch_win_place_http  # noqa: F401
+import market_model  # noqa: E402
 
 JST = timezone(timedelta(hours=9))
 
@@ -41,13 +42,19 @@ def _value_tag(ev):
 
 
 def recompute_odds_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """オッズから導出する列を predict.py と同じ式で計算し直す。"""
+    """オッズから導出する列を predict.py と同じ式で計算し直す。
+    オッズがそろったレースは、1着率・3連対率・印もオッズ+補正モデル(market_model.py)で作り直す。"""
     df["odds_win"] = pd.to_numeric(df["odds_win"], errors="coerce")
+    df = market_model.apply(df)
     df["market_rank"] = df.groupby("race_id")["odds_win"].rank(ascending=True, method="min")
     df["rank_diff"] = df["market_rank"] - df["pred_win_rank"]
     df.loc[df["odds_win"].isna(), ["market_rank", "rank_diff"]] = np.nan
     df["expected_value"] = (df["pred_win_norm"] * df["odds_win"]).round(2)
-    df["value_tag"] = df["expected_value"].apply(_value_tag)
+    ev_tag = df["expected_value"].apply(_value_tag)
+    if "value_ratio" in df.columns:   # オッズ+補正モデルのレースは「オッズの見込みの何倍か」で判定
+        df["value_tag"] = df["value_ratio"].map(market_model._value_tag).where(df["value_ratio"].notna(), ev_tag)
+    else:
+        df["value_tag"] = ev_tag
     return df
 
 

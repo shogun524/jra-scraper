@@ -76,6 +76,9 @@ def blended_win_probs(g: pd.DataFrame, cal: dict, moves: dict) -> np.ndarray | N
     if g["odds_win"].isna().any() or (g["odds_win"] <= 0).any():
         return None
     p_ai = (g["pred_win_norm"] / g["pred_win_norm"].sum()).to_numpy(dtype=float)
+    if "model" in g.columns and (g["model"] == "odds").all():
+        # オッズ+補正モデル(market_model.py)の1着率はオッズを織り込み済みなので、そのまま使う
+        cal = {**cal, "a": 1.0, "b": 0.0}
     inv = 1 / g["odds_win"].to_numpy(dtype=float)
     p_mkt = inv / inv.sum()
     mv = np.array([moves.get(int(u), (0, 0, 0.0))[2] for u in g["umaban"]])
