@@ -13,6 +13,10 @@ AI買い目のルール(ダッシュボード・成績ページ・検証で共�
   本命より不安定で、上位5回の当たりを除くと79%。実績を成績ページで別に採点して見極める。
 
 注意: 実際に買う時点のオッズ・人気は確定時と違うことがある。条件の境目にいる馬は直前に確認すること。
+
+11/14〜: この2つのルールは旧AI(data/model_win_v1.txt、オッズを使わない旧特徴量のモデル)の順位でしか回収率が出ていない
+(2023〜2026年: 新AIだと本命166%・準39%)。そこで予想に旧AIの順位 rule_rank を残し、ルールはそちらで判定する。
+画面の◎(新AI)と違う馬が軸になることがあるので、そのときは「旧AI◎」と書く。新AI用のルールは探し直し中。
 """
 from dataclasses import dataclass
 from itertools import combinations
@@ -41,9 +45,20 @@ ODDS_MIN = 6.0
 
 
 def _base(g, rank_col):
+    # 旧AIの順位(rule_rank)があればそれで判定する(ルールは旧AIで検証したため)
+    if rank_col == "pred_win_rank" and "rule_rank" in g.columns and g["rule_rank"].notna().all():
+        rank_col = "rule_rank"
     g = g.sort_values(rank_col)
     A = [int(x) for x in g["umaban"]]
     return g, A
+
+
+def _mk(g):
+    """軸の馬の呼び方。画面の◎(新AI)と同じ馬なら「◎」、違えば「旧AI◎」"""
+    if "pred_win_rank" in g.columns and "rule_rank" in g.columns and g["rule_rank"].notna().all():
+        top = g.loc[g["pred_win_rank"].astype(float).idxmin(), "umaban"]
+        return "◎" if int(top) == int(g["umaban"].iloc[0]) else "旧AI◎"
+    return "◎"
 
 
 def _popularity(g):
@@ -60,7 +75,7 @@ def evaluate_main(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> dict:
     honmei, partners = A[0], A[1:5]
     tickets = ["-".join(map(str, sorted((honmei, a, b)))) for a, b in combinations(partners, 2)]
     base = {"rule": MAIN, "honmei": honmei, "partners": partners, "tickets": tickets,
-            "desc": f"3連複 ◎{honmei}軸 → {'・'.join(map(str, partners))}(6点)"}
+            "desc": f"3連複 {_mk(g)}{honmei}軸 → {'・'.join(map(str, partners))}(6点)"}
     if len(g) < 6:
         return {"status": "対象外", "reason": "頭数が少ない", **base}
     cls = g["race_class"].iloc[0] if "race_class" in g.columns else None
@@ -81,7 +96,7 @@ def evaluate_sub(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> dict:
     a1 = A[0]
     tickets = [f"{a1}-{b}-{c}" for b in A[1:3] for c in A[1:5] if c != b]
     base = {"rule": SUB, "honmei": a1, "partners": A[1:5], "tickets": tickets,
-            "desc": f"3連単 ◎{a1} → {'・'.join(map(str, A[1:3]))} → {'・'.join(map(str, A[1:5]))}(6点)"}
+            "desc": f"3連単 {_mk(g)}{a1} → {'・'.join(map(str, A[1:3]))} → {'・'.join(map(str, A[1:5]))}(6点)"}
     if len(g) < 6:
         return {"status": "対象外", "reason": "頭数が少ない", **base}
     pop = _popularity(g)

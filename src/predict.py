@@ -327,6 +327,19 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
     # ただし単純に合計を揃えるだけだと1頭だけ突出した予測値がある場合に100%を超えてしまうため、
     # 100%を上限にキャップし、超えた分は他の馬に配り直す。
     feat_df["pred_top3_norm"] = feat_df.groupby("race_id")["pred_top3"].transform(lambda s: _normalize_logit(s, target_sum=3.0))
+    # AI買い目・準AI買い目は旧AIの順位で検証したルールなので、旧AI(model_win_v1.txt)の順位も残す(ai_bets.py が使う)
+    v1 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "model_win_v1.txt")
+    if os.path.exists(v1):
+        m1 = lgb.Booster(model_file=v1)
+        X1 = feat_df.reindex(columns=m1.feature_name()).copy()
+        for c in X1.columns:
+            if c in CATEGORICAL_FEATURES:
+                X1[c] = X1[c].astype("category")
+        try:
+            feat_df["rule_score"] = m1.predict(X1)
+            feat_df["rule_rank"] = feat_df.groupby("race_id")["rule_score"].rank(ascending=False, method="first").astype(int)
+        except Exception as e:  # noqa: BLE001
+            print(f"[WARN] 旧AIの順位を出せませんでした: {e}")
 
     # ------------------------------------------------------------------
     # 追加ファクター(1着率・3連対率だけでは見えない情報を補う)
@@ -443,7 +456,7 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
                          "distance_change_from_last", "weight_carry_change_from_last",
                          # オッズ+補正モデル(market_model.py)の要素。オッズ更新のたびに印を作り直すので残す
                          "prev_popularity", "prev2_finish", "prev_c4_minus_fin", "field_size_change",
-                         "jockey_trainer_combo_winrate"]:
+                         "jockey_trainer_combo_winrate", "rule_rank"]:
         if optional_col in feat_df.columns:
             out_cols.append(optional_col)
     if "odds_win" in feat_df.columns:
