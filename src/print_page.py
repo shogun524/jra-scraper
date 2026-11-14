@@ -337,7 +337,7 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   .bl {{ font-size:9.5px; color:#5a4a2a; white-space:nowrap; overflow:hidden; }} .plc {{ font-size:9.5px; color:#555; }}
   .pp-pop {{ font-size:11px; margin:2px 0 4px; padding:2px 8px; background:#F3F7F4; border:1px solid #C9D9CF; border-radius:6px; }} .pp-pop i {{ font-style:normal; color:#6B5F4D; margin-right:6px; }} .pp-pop span {{ color:#C0392B; font-weight:700; }}
   .stat {{ font-size:10px; white-space:nowrap; overflow:hidden; }} .stat b {{ font-weight:700; }} .hl {{ color:#C0392B; }}
-  .run {{ font-size:9.5px; padding:2px 3px; }} .run.none {{ background:repeating-linear-gradient(135deg,transparent 0 6px,#eee 6px 7px) !important; }}
+  .run {{ font-size:9.5px; padding:2px 3px; }} .run.none {{ background:#f2f2f2 !important; }}  /* 斜線(repeating-linear-gradient)はPDFが巨大になる(1枠ごとにページ大の模様)ので無地 */
   .rw {{ display:flex; gap:4px; align-items:center; }}
   .fin {{ flex:0 0 auto; min-width:22px; text-align:center; font-size:15px; font-weight:900; border-radius:4px; padding:1px 2px; color:#555; }}
   .fin.f1 {{ background:#C0392B; color:#fff; }} .fin.f23 {{ background:#F6D6D2; color:#B03024; }} .fin.f45 {{ color:#222; }}

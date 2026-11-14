@@ -104,7 +104,7 @@ jobs:
         continue-on-error: true
         run: |
           python -c "import sys,json,time; d=json.load(open('site/pdf/index.json')); sys.exit(0 if time.time()-d.get('ts',0)<1200 else 1)" 2>/dev/null && { echo "前回から20分たっていないので作らない"; exit 0; }
-          sudo apt-get install -y -qq fonts-noto-cjk >/dev/null 2>&1 || true
+          sudo apt-get install -y -qq fonts-noto-cjk fonts-ipaexfont >/dev/null 2>&1 || true
           pip install -q playwright pypdf
           python -m playwright install chromium >/dev/null
           python src/print_pdf.py site/print.html site/pdf

@@ -16,6 +16,14 @@ from datetime import datetime, timedelta, timezone
 
 JST = timezone(timedelta(hours=9))
 
+# Chromium は OpenType(CFF)の日本語フォント(Noto Sans CJK など)を埋め込めず、1文字ずつ図形(Type3)にするので
+# PDFが巨大になる(11/14: 全レース80MB → スマホで開けない)。PDFを作るときだけ TrueType の IPAex ゴシックに置き換える。
+# 必要: apt-get install fonts-ipaexfont
+PDF_FONT_CSS = """
+* { font-family: "IPAexGothic", "IPAPGothic", sans-serif !important; }
+.serif, h1, h2, h3, .pp-title { font-family: "IPAexMincho", "IPAexGothic", serif !important; }
+"""
+
 
 def count_pages(path):
     try:
@@ -56,6 +64,7 @@ def main():
             targets.append((v, f"{v}.pdf", f"sel=v:{v}&lay=1"))
         for label, fn, q in targets:
             page.goto(f"{url}?{q}")
+            page.add_style_tag(content=PDF_FONT_CSS)
             page.wait_for_timeout(400)
             n = page.eval_on_selector_all(".pp-card", "els => els.filter(e => e.style.display !== 'none').length")
             if not n:
