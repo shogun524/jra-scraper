@@ -456,7 +456,9 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
                          "distance_change_from_last", "weight_carry_change_from_last",
                          # オッズ+補正モデル(market_model.py)の要素。オッズ更新のたびに印を作り直すので残す
                          "prev_popularity", "prev2_finish", "prev_c4_minus_fin", "field_size_change",
-                         "jockey_trainer_combo_winrate", "rule_rank"]:
+                         "jockey_trainer_combo_winrate", "rule_rank",
+                         # 新聞(印刷)用: スピード指数(過去3走の最高・前走・同じ芝ダの最高)と上がりの速さ
+                         "s_best3", "s1", "s_best_sf", "l3z_best3", "h3_best_margin"]:
         if optional_col in feat_df.columns:
             out_cols.append(optional_col)
     if "odds_win" in feat_df.columns:

@@ -12,6 +12,7 @@ import html as _html
 import json
 import math
 
+import numpy as np
 import pandas as pd
 
 from ai_bets import evaluate_all
@@ -113,6 +114,11 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
             return ""
         return f'<div class="plc">複{float(lo):.1f}{"-" + format(float(hi), ".1f") if hi is not None and pd.notna(hi) and float(hi) != float(lo) else ""}</div>'
     b = (bias or {}).get(str(rid)) or {}
+    # スピード指数(過去3走の最高)のレース内順位。上位3頭を赤に
+    sb_rank = {}
+    if "s_best3" in g.columns:
+        _sb = pd.to_numeric(g["s_best3"], errors="coerce")
+        sb_rank = {int(u): int(k) for u, k in zip(g["umaban"], _sb.rank(ascending=False, method="min").fillna(99))}
     rows = ""
     for i, (_, r) in enumerate(g.iterrows()):
         w = int(r["waku"]) if pd.notna(r.get("waku")) else 0
@@ -148,6 +154,11 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
         jw, tw = gv(r, "jockey_winrate"), gv(r, "trainer_winrate")
         if jw is not None or tw is not None:
             st.append(f'騎{pct(jw)} 厩{pct(tw)}')
+        sb, s1v = gv(r, "s_best3"), gv(r, "s1")
+        if sb is not None:
+            iv = int(np.clip(round(50 + 10 * float(sb)), 0, 99))
+            hot = sb_rank.get(int(r["umaban"]), 99) <= 3
+            st.insert(0, f'指数 <b class="{"hl" if hot else ""}">{iv}</b>' + (f'<small>(前走{int(np.clip(round(50 + 10 * float(s1v)), 0, 99))})</small>' if s1v is not None else ""))
         ev = gv(r, "expected_value")
         pw = float(r.get("pred_win_norm", 0) or 0)
         mm = gv(r, "mm_win")
@@ -155,6 +166,11 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
         p3 = float(r.get("pred_top3_norm", 0) or 0)
         bar = f'<span class="bar"><span style="width:{min(pw * 250, 100):.0f}%"></span></span>'
         ks = style(gv(r, "recent5_style_ratio"))
+        # 成績の欄: 1行目=指数・同距離 / 2行目=通算(2レースで1枚では省く) / 3行目=間隔・騎手厩舎
+        def _pick(keys):
+            return " ".join(x for x in st if any(x.startswith(k) for k in keys))
+        stat_lines = [(_pick(("指数", "同距離")), ""), (_pick(("通算", "<b>初出走")), "stc"), (_pick(("間隔", "騎")), "")]
+        stat_html = "".join(f'<div class="{c}">{t}</div>' for t, c in stat_lines if t)
         cls = ("top " if top else "") + ("odd" if i % 2 else "even")
         pop = _f(r.get("market_rank"), "{:.0f}")
         run_cells = "".join(run_cell(runs[k] if k < len(runs) else None) for k in range(4))
@@ -168,7 +184,7 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
                  f'<td class="c sep od"><div class="popn {"pp1" if pop == "1" else ""}">{pop}<small>人気</small></div><div class="b">{_f(r.get("odds_win"))}</div>{place_html(r)}</td>'
                  f'<td class="sep ai"><div><b>{_f(pw * 100)}</b><small>%</small> {bar} <span class="vt {vcls}">{_html.escape(vt)}</span></div>'
                  f'<div class="sm">複{_f(p3 * 100, "{:.0f}")}%{mm_txt} 期待<span class="{"evh" if ev is not None and float(ev) >= 1 else ""}">{_f(ev, "{:.2f}")}</span></div></td>'
-                 f'<td class="sep stat">{"<br>".join([" ".join(st[i:i + 2]) for i in range(0, len(st), 2)])}</td>'
+                 f'<td class="sep stat">{stat_html}</td>'
                  f'{run_cells}<td class="memo"></td></tr>')
     # レースの条件
     surf, dist, baba = gv(f0, "surface"), gv(f0, "distance"), gv(f0, "baba")
@@ -358,18 +374,19 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   .pp-dl {{ margin:8px 0; font-size:13px; }} .pp-dl b {{ margin-right:6px; }}
   .pp-dl a {{ display:inline-block; margin:3px 4px 3px 0; padding:5px 10px; border-radius:999px; background:#1F4D3A; color:#fff; text-decoration:none; font-weight:700; font-size:12px; }}
   .pp-dl a.sub {{ background:#fff; color:#1F4D3A; box-shadow:inset 0 0 0 1.5px #1F4D3A; }}
-  /* 2レースで1枚: 3走前・4走前・メモ欄・血統・人気の組を省いてA4縦に */
-  body.compact .pp-t td:nth-child(10), body.compact .pp-t td:nth-child(11), body.compact .pp-t td:nth-child(12),
-  body.compact .pp-t th:nth-child(10), body.compact .pp-t th:nth-child(11), body.compact .pp-t th:nth-child(12),
-  body.compact .pp-t col:nth-child(n+10), body.compact .bl, body.compact .pp-pop:not(.pp-hit), body.compact .pp-bet {{ display:none; }}
-  body.compact .pp-t {{ min-width:0; }} body.compact col.c-h {{ width:190px; }} body.compact col.c-ai {{ width:84px; }} body.compact col.c-od {{ width:66px; }}
+  /* 2レースで1枚: 近3走(2行ずつ)・成績・血統・複%/込% まで出す。4走前・メモ・人気の組・買い目は省く */
+  body.compact .pp-t td:nth-child(11), body.compact .pp-t td:nth-child(12),
+  body.compact .pp-t th:nth-child(11), body.compact .pp-t th:nth-child(12),
+  body.compact .pp-t col:nth-child(n+11), body.compact .pp-pop:not(.pp-hit), body.compact .pp-bet {{ display:none; }}
+  body.compact .pp-t {{ min-width:0; }} body.compact col.c-h {{ width:150px; }} body.compact col.c-ai {{ width:70px; }} body.compact col.c-od {{ width:44px; }}
   body.compact .od {{ white-space:nowrap; }}
-  /* 1頭1行: 騎手は馬名の横、近走は1行目(日付 場 距離馬場 クラス)と着順だけ、成績欄は省く */
-  body.compact .pp-t td:nth-child(7), body.compact .pp-t th:nth-child(7), body.compact .pp-t col:nth-child(7) {{ display:none; }}
-  body.compact .hs:nth-of-type(n+2), body.compact .plc, body.compact .ai .sm, body.compact .rl > span:not(:first-child) {{ display:none; }}
-  body.compact .nm {{ display:inline; }} body.compact .horse .hs {{ display:inline; margin-left:4px; }}
-  body.compact .od .popn, body.compact .od .b {{ display:inline; }} body.compact .od .popn small {{ display:none; }} body.compact .od .b {{ margin-left:3px; }}
+  body.compact .hs:nth-of-type(n+2), body.compact .plc, body.compact .rl > span:nth-child(3), body.compact .stat .stc {{ display:none; }}
+  body.compact .nm {{ display:inline; }} body.compact .horse .hs {{ display:inline; margin-left:3px; }}
+  body.compact td.horse {{ white-space:nowrap; overflow:hidden; max-width:150px; }} body.compact td.horse .bl {{ overflow:hidden; text-overflow:clip; }}
+  body.compact .od .popn {{ font-size:9px; line-height:1; }} body.compact .od .b {{ font-size:7.5px; line-height:1; }}
+  body.compact .od .popn small {{ display:none; }}
   body.compact .ai .vt {{ display:none; }} body.compact .fin {{ font-size:11px !important; min-width:15px; padding:0 1px; }}
+  body.compact .stat {{ line-height:1.15; }}
   @media (max-width:640px) {{ .pp-sum {{ grid-template-columns:1fr 1fr; }} .ai3 {{ grid-column:1/-1; }} }}
   @media print {{
     @page {{ size:A4 landscape; margin:6mm; }}
@@ -391,8 +408,9 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
     .pp-card.huge .pp-t td {{ line-height:1.0; }} .pp-card.huge .run {{ font-size:7.6px; }} .pp-card.huge .hs, .pp-card.huge .bl, .pp-card.huge .stat, .pp-card.huge .plc {{ font-size:7.4px; }}
     body.compact .pp-grid .pp-card {{ break-after:auto !important; break-inside:avoid; margin:0 0 3mm; padding:0; border:0; border-bottom:1px dashed #999 !important; }}
     body.compact .pp-venue {{ break-before:auto; }} body.compact .pp-venue > h2 {{ display:none; }}
-    body.compact .pp-t td {{ padding:0 2px; line-height:1.05; }} body.compact .run {{ font-size:7.4px; }} body.compact .nm {{ font-size:10px; }}
-    body.compact .hs, body.compact .stat, body.compact .plc {{ font-size:7.2px; }} body.compact .pp-sum {{ margin:1px 0; }}
+    body.compact .pp-t td {{ padding:0 2px; line-height:1.0; }} body.compact .run {{ font-size:6.6px; }} body.compact .nm {{ font-size:9px; }}
+    body.compact .hs, body.compact .stat, body.compact .plc, body.compact .bl, body.compact .ai .sm {{ font-size:6.4px; }}
+    body.compact .fin {{ font-size:9px !important; }} body.compact .pp-sum {{ margin:1px 0; }}
     body.compact .pp-cond, body.compact .pp-sum {{ font-size:8.5px; }} body.compact .rname {{ font-size:1rem; }}
     .pp-card.huge .nm {{ font-size:10.5px; }} .pp-card.huge .pp-sum {{ margin:1px 0; }} .pp-card.huge .box b {{ font-size:.95rem; }} .pp-card.big .pp-sum {{ margin:2px 0; }} .pp-card.big .pp-cond {{ margin:1px 0; }} .nm {{ font-size:11.5px; }} .hs, .stat {{ font-size:8.5px; }} .run {{ font-size:8.3px; }}
   }}
@@ -421,6 +439,7 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
     「ブラウザで印刷」はパソコン向け(印刷画面で「PDFとして保存」も可)。<br>
     紙はA4横。表の見方: 印=AIの評価順、AI 1着%(赤い棒)・複勝%=AIの3着内予測、込%=オッズ込みの1着率(実際に勝ちそうな確率の目安)、期待値=AI1着率×単勝(1以上は赤)、妙味=AIと人気のズレ、
     成績=通算・同距離帯の3着内率(50%以上は赤)・間隔・騎手/厩舎の勝率。<br>
+    指数=スピード指数(過去3走の最高。走破タイムを同じ競馬場・芝ダ・距離・馬場の勝ちタイムの基準と比べたもの。50≒勝ち馬並み、赤=このレースの上位3頭。かっこ内は前走)、
     近4走: 左の大きい数字=着順(1着は赤地・2〜3着はピンク)、1行目=日付 場 クラス 距離馬場、2行目=頭数・馬番・人気(1人気は赤)・騎手斤量、
     3行目=タイム(勝ち馬との差、勝った時は2着との差を赤で)・上り3F(①〜③=メンバー中の順位)・通過順・馬体重。メモ欄は手書き用です。</p>
   </div>
