@@ -12,11 +12,11 @@ jobs:
           UA={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"}
           for rid in ["202605050211","202603030411"]:
               r=requests.get(f"https://race.netkeiba.com/race/oikiri.html?race_id={rid}&type=2",headers=UA,timeout=20)
-              h=r.content.decode("euc-jp","replace"); print(rid, r.status_code, len(h))
+              h=r.content.decode("utf-8","replace") if b"charset=UTF-8" in r.content[:3000] or b"charset=utf-8" in r.content[:3000] else r.content.decode("euc-jp","replace"); print(rid, r.status_code, len(h))
               s=BeautifulSoup(h,"lxml"); t=s.select_one("table.OikiriTable") or s.select_one("table")
               print("table classes:", [x.get("class") for x in s.select("table")][:5])
               if t:
-                  for tr in t.select("tr")[:6]:
-                      print(" | ".join(td.get_text(" ",strip=True)[:40] for td in tr.find_all(["td","th"])))
-              i=h.find("Oikiri"); print(h[i:i+1500] if i>=0 else h[:500])
+                  for tr in t.select("tr")[:8]:
+                      print(" | ".join(td.get_text(" ",strip=True)[:60] for td in tr.find_all(["td","th"])))
+              print("premium?", "プレミアム" in h, h.count("Rank_"))
           PY
