@@ -6,7 +6,10 @@ netkeiba: https://race.netkeiba.com/top/race_list.html?kaisai_date=YYYYMMDD
 検証できていません。まずは診断用に diagnose_scraper.py を1レースだけ実行し、
 取得できたHTML/件数を見ながら調整してください(南関東スクレイパーの時と同じ進め方を想定)。
 """
-from playwright.sync_api import sync_playwright
+try:  # 馬体重の取り直し(odds_update)ではブラウザを入れないので、無くても読み込めるようにする
+    from playwright.sync_api import sync_playwright
+except ImportError:  # pragma: no cover
+    sync_playwright = None
 import re
 import time
 
