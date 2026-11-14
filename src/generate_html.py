@@ -403,6 +403,30 @@ if "race_class" in df.columns:
       </section>"""
 
 # EV上位(全レース)
+def build_hit_summary():
+    rows = []
+    for rid, g in df.groupby("race_id"):
+        h = _hit_plan(g)
+        if not h:
+            continue
+        f0 = g.iloc[0]
+        rows.append((h["items"][0][2], h["items"][1][2], f0.get("track_name", ""), int(f0.get("race_number", 0)),
+                     str(f0.get("post_time", "") or ""), h))
+    if not rows:
+        return ""
+    from datetime import datetime as _d2, timedelta as _t2, timezone as _z2
+    _now = _d2.now(_z2(_t2(hours=9))).strftime("%H:%M")
+    if not _is_zenjitsu:  # 終わったレースは外す
+        rows = [r for r in rows if not r[4] or r[4] >= _now] or rows
+    rows.sort(key=lambda x: (-x[0], x[4]))
+    lis = "".join(f'<li><b>{tn}{rn}R</b> {pt} 複勝 <b>{h["fav"]}番</b>({h["fav_odds"]:.1f}倍) <span class="hp">{p1:.0%}</span>'
+                  f' ・ ワイド4点 <span class="hp">{p2:.0%}</span></li>' for p1, p2, tn, rn, pt, h in rows[:6])
+    return (f'<section class="aibet-summary hit-summary"><h2>的中率が高いレース</h2><ul>{lis}</ul>'
+            f'<details class="why"><summary>見方</summary><p class="aibet-note">回収率は見ず、当たりやすさだけで選んだ買い目。'
+            f'1番人気の単勝オッズと頭数ごとの過去の的中率(2023年〜、12,710レース)。各レースの「的中率重視」に買い目があります。'
+            f'AIを混ぜるより人気順の方が当たる(1番人気の3着内率65.5%、AIの1位は58.5%)。</p></details></section>')
+
+
 hit_summary = build_hit_summary()
 ev_summary = ""
 if not EV.empty:
