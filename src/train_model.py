@@ -42,7 +42,10 @@ NUMERIC_FEATURES = [
     "jockey_trainer_combo_winrate", "jockey_trainer_combo_n",
 ]
 CATEGORICAL_FEATURES = ["surface", "baba", "weather", "sex", "dist_bucket", "track_code", "interval_category"]
-FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
+import past_features  # noqa: E402  過去走の中身(前走の人気・タイム差・上がり・スピード指数・レース内の比較)
+FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES + past_features.FEATURES
+BASE_FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
+RACE_RESULT = os.environ.get("RACE_RESULT", "data/race_result_merged.csv")
 
 TRAIN_START = os.environ.get("TRAIN_START", "2010-01-01")
 TRAIN_END = os.environ.get("TRAIN_END", "2024-01-01")
@@ -52,10 +55,12 @@ NUM_THREADS = int(os.environ.get("NUM_THREADS", "0"))  # 0 = 使えるCPUをす�
 
 print("[1] 特徴量読み込み...")
 con = duckdb.connect()
-cols = ["race_id", "race_date", "horse", "finish", "y_win", "y_top3", "odds_win", "popularity"] + FEATURES
+cols = list(dict.fromkeys(["race_id", "race_date", "horse", "umaban", "jockey", "finish", "y_win", "y_top3", "odds_win", "popularity"] + BASE_FEATURES))
 col_sql = ", ".join(f'"{c}"' for c in cols)
 df = con.execute(f"SELECT {col_sql} FROM '{PARQUET}' WHERE race_date >= DATE '{TRAIN_START}'").df()
 print(f"  -> {len(df):,} 行 ({TRAIN_START}〜)")
+print("[1b] 過去走の中身の特徴量...")
+df = past_features.add(df, past_features.run_table(RACE_RESULT))
 
 for c in CATEGORICAL_FEATURES:
     df[c] = df[c].astype("category")

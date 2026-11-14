@@ -19,7 +19,7 @@ NUM = ["age", "weight_carry", "waku", "umaban", "field_size", "distance", "recen
        "weight_carry_change_from_last", "last_race_finish", "jockey_trainer_combo_winrate", "jockey_trainer_combo_n"]
 CAT = ["surface", "baba", "weather", "sex", "dist_bucket", "track_code", "interval_category"]
 F = NUM + CAT
-EXTRA = ["race_id", "race_date", "finish", "y_win", "y_top3", "odds_win", "popularity"]
+EXTRA = ["race_id", "race_date", "horse", "jockey", "finish", "y_win", "y_top3", "odds_win", "popularity"]
 KEEP = ["race_id", "race_date", "umaban", "finish", "odds_win", "popularity", "ai_win", "ai_top3", "ai_rank",
         "ai3_rank", "race_class", "field_size", "surface", "track_code", "distance", "baba", "recent5_style_ratio",
         "career_starts", "age"]
@@ -34,11 +34,15 @@ def main():
     ap.add_argument("--start-year", type=int, default=2019)
     ap.add_argument("--end-year", type=int, default=2026)
     ap.add_argument("--train-years", type=int, default=12)
+    ap.add_argument("--race-result", default="data/race_result_merged.csv")
     a = ap.parse_args()
     first = a.start_year - a.train_years
     cols = ", ".join(f'"{c}"' for c in EXTRA + F)
     df = duckdb.connect().execute(
         f"SELECT {cols} FROM '{a.features}' WHERE race_date >= DATE '{first}-01-01'").df()
+    import past_features   # 学習用(train_model.py)と同じ特徴量を足す
+    df = past_features.add(df, past_features.run_table(a.race_result))
+    FF = F + past_features.FEATURES
     for c in CAT:
         df[c] = df[c].astype("category")
     df["race_date"] = pd.to_datetime(df.race_date)
@@ -49,8 +53,8 @@ def main():
         if te.empty:
             continue
         for tgt, n in [("y_win", 250), ("y_top3", 450)]:
-            m = lgb.train(PARAMS, lgb.Dataset(tr[F], tr[tgt], categorical_feature=CAT), n)
-            te["p_" + tgt] = m.predict(te[F])
+            m = lgb.train(PARAMS, lgb.Dataset(tr[FF], tr[tgt], categorical_feature=CAT), n)
+            te["p_" + tgt] = m.predict(te[FF])
         out.append(te)
         print(Y, f"学習{len(tr):,}行", f"予測{te.race_id.nunique():,}レース", flush=True)
     d = pd.concat(out)

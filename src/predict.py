@@ -279,6 +279,9 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
     if "field_size" not in entries.columns or entries["field_size"].isna().all():
         entries["field_size"] = entries.groupby("race_id")["horse"].transform("count")
     feat_df = build_asof_features(entries)
+    # 過去走の中身(前走の人気・タイム差・上がり・スピード指数・レース内の比較)。学習と同じ past_features.py で作る
+    import past_features
+    feat_df = past_features.add(feat_df, past_features.run_table(RACE_RESULT, horses=feat_df["horse"].dropna().unique()))
 
     for c in CATEGORICAL_FEATURES:
         feat_df[c] = feat_df[c].astype("category")
