@@ -132,7 +132,19 @@ _site_dir = os.path.dirname(os.path.abspath(IN_CSV))
 _race_date = str(df["race_date"].iloc[0]) if "race_date" in df.columns and len(df) else ""
 _latest, _hist = load_odds_files(_site_dir, _race_date) if _race_date else (None, None)
 _cal = load_calibration()
-# ---- 出走馬の血統(父・母父) ----
+# ---- 的中率重視の買い目(人気順・回収率は見ない) ----
+from hitrate import plan as _hit_plan  # noqa: E402
+
+
+def hit_html(g):
+    h = _hit_plan(g)
+    if not h:
+        return ""
+    parts = " ／ ".join(f'{b} <b>{c}</b> <span class="hp">{p:.0%}</span>' for b, c, p in h["items"])
+    return f'<p class="hitline" title="過去12,710レースの的中率(1番人気のオッズ×頭数ごと)">的中率重視: {parts}</p>'
+
+
+
 try:
     with open(os.path.join(_site_dir, "runner_ped.json"), encoding="utf-8") as _rpf:
         RUNNER_PED = json.load(_rpf)
@@ -151,6 +163,7 @@ try:
     _is_zenjitsu = bool(_race_date) and _race_date[:10] > _dt.now(_tz(_td(hours=9))).strftime("%Y-%m-%d")
 except Exception:  # noqa: BLE001
     _is_zenjitsu = False
+hit_summary = ""
 zenjitsu_note = ('<p class="zenjitsu">⚠ 前日発売のオッズです。まだ売れ始めで、999.9倍など極端な値が混じり、期待値・妙味・万馬券率は大きくぶれます。'
                  'EVボードは単勝だけ出しています(馬連・ワイドは票が薄く、EVが意味をなさないため当日から)。'
                  '買う判断は当日朝からのオッズ(5分おきに更新)で。</p>') if _is_zenjitsu else ""
@@ -325,6 +338,7 @@ def race_card(race_id, g):
           <h2>{race_name}</h2>
           <p class="race-sub">{first.get('track_name','')} {post_time_html}</p>
           <div class="chips">{manbaken_html(g)}{bias_html(race_id)}</div>
+          {hit_html(g)}
         </div>
       </header>
       {aibet_html}
@@ -389,6 +403,7 @@ if "race_class" in df.columns:
       </section>"""
 
 # EV上位(全レース)
+hit_summary = build_hit_summary()
 ev_summary = ""
 if not EV.empty:
     _meta = df.assign(race_id=df["race_id"].astype(str)).groupby("race_id").agg(
@@ -609,6 +624,8 @@ html = f"""<!DOCTYPE html>
   table.ht .sub {{ color: var(--ink-soft); font-weight: 400; font-size: .72rem; }}
   table.ht .rk {{ color: var(--ink-soft); font-size: .8rem; }}
   table.ht .pct b {{ font-size: .95rem; }}
+  .hit-summary .hp, .hitline .hp {{ color:#1F4D3A; font-weight:800; }}
+  .hitline {{ margin: 3px 0 0; font-size: .76rem; }} .hitline .hp {{ color: #1F4D3A; font-weight: 800; }}
   .chips {{ display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; }}
   .chips p {{ margin: 0; }}
   .top .meta {{ margin: 4px 0 8px; font-size: .78rem; opacity: .9; }}
@@ -640,7 +657,7 @@ html = f"""<!DOCTYPE html>
   </div>
   <nav class="tabs">{tab_buttons}</nav>
 </header>
-<main>{zenjitsu_note}{aibet_summary}{ev_summary}{tab_panels}</main>
+<main>{zenjitsu_note}{aibet_summary}{hit_summary}{ev_summary}{tab_panels}</main>
 <footer><details><summary><strong>各項目の見方</strong></summary>
   <p>
     <b>1着率 / 3連対率</b>: モデルの推定確率。レース内で合計が100% / 300%になるよう調整。<br>

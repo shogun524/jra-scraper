@@ -194,6 +194,10 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
         man_box = '<div class="box"><i>3連複の万馬券率</i><b>-</b><small>オッズ待ち</small></div>'
     venue = str(f0.get("track_name", ""))
     rno = int(f0['race_number'])
+    from hitrate import plan as _hp
+    _h = _hp(g)
+    hit_line = ("" if not _h else '<div class="pp-pop pp-hit"><i>的中率重視</i>' +
+                "　／　".join(f'<b>{b}</b> {_html.escape(c)} <span>{p:.0%}</span>' for b, c, p in _h["items"]) + "</div>")
     pop_html = ""
     if pairs is not None and not pairs.empty:
         pr = pairs[pairs["race_id"].astype(str) == str(rid)]
@@ -210,7 +214,7 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
         <span class="rname">{_html.escape(str(f0.get('race_name', '') or ''))}</span><span class="pp-post">発走 <b>{_html.escape(post)}</b></span></div>
       <div class="pp-cond">{cond_html}</div>
       <div class="pp-sum">{man_box}<div class="box ai3"><i>AIの上位(1着率)</i>{top3}</div></div>
-      {pop_html}
+      {pop_html}{hit_line}
       {bet_html}
       <table class="pp-t"><colgroup><col class="c-mk"><col class="c-wk"><col class="c-ub"><col class="c-h"><col class="c-od"><col class="c-ai"><col class="c-st">
       <col><col><col><col><col class="c-memo"></colgroup><thead><tr><th>印</th><th>枠</th><th>馬番</th><th>馬名 / 性齢 斤量 騎手・厩舎 馬体重 脚質 / 父・母父</th>
@@ -345,7 +349,7 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   /* 2レースで1枚: 3走前・4走前・メモ欄・血統・人気の組を省いてA4縦に */
   body.compact .pp-t td:nth-child(10), body.compact .pp-t td:nth-child(11), body.compact .pp-t td:nth-child(12),
   body.compact .pp-t th:nth-child(10), body.compact .pp-t th:nth-child(11), body.compact .pp-t th:nth-child(12),
-  body.compact .pp-t col:nth-child(n+10), body.compact .bl, body.compact .pp-pop, body.compact .pp-bet {{ display:none; }}
+  body.compact .pp-t col:nth-child(n+10), body.compact .bl, body.compact .pp-pop:not(.pp-hit), body.compact .pp-bet {{ display:none; }}
   body.compact .pp-t {{ min-width:0; }} body.compact col.c-h {{ width:190px; }} body.compact col.c-ai {{ width:84px; }} body.compact col.c-od {{ width:66px; }}
   body.compact .od {{ white-space:nowrap; }}
   /* 1頭1行: 騎手は馬名の横、近走は1行目(日付 場 距離馬場 クラス)と着順だけ、成績欄は省く */
