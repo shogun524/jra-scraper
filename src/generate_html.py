@@ -755,6 +755,13 @@ print(f"{_picks} を生成しました")
 from print_page import build_print  # noqa: E402
 
 _print = os.path.join(os.path.dirname(os.path.abspath(OUT_HTML)), "print.html")
+# 印刷ページで選んだレースのPDFをつなげるライブラリ(CDNに頼らずサイトに置く)
+try:
+    import shutil
+    shutil.copyfile(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "pdf-lib.min.js"),
+                    os.path.join(os.path.dirname(os.path.abspath(OUT_HTML)), "pdf-lib.min.js"))
+except OSError as _e:
+    print(f"[WARN] pdf-lib.min.js をコピーできません: {_e}")
 with open(_print, "w", encoding="utf-8") as f:
     _past = {}
     try:  # 近4走(weekly_predict.yml が past_runs.py で予想と同じ場所に作る)

@@ -73,9 +73,26 @@ def main():
             page.pdf(path=path, prefer_css_page_size=True, print_background=True)
             files.append(dict(label=label, file=fn, pages=count_pages(path), races=n))
             print(f"  {label}: {n}レース → {fn}")
+        # レースごとのPDF(印刷ページの「選んだレースをPDFに」でスマホ側でつなげる)
+        #   1: 1枚1レース(A4横)  2: 2レースで1枚用(A4縦の半分 = A5横。スマホ側で2つずつA4縦に並べる)
+        rids = page.eval_on_selector_all(".pp-r", "els => els.map(e => e.value)")
+        os.makedirs(os.path.join(out, "r"), exist_ok=True)
+        for rid in rids:
+            for lay in ("1", "2"):
+                page.goto(f"{url}?sel=id:{rid}&lay={lay}")
+                page.add_style_tag(content=PDF_FONT_CSS)
+                page.wait_for_timeout(150)
+                path = os.path.join(out, "r", f"{rid}_{lay}.pdf")
+                if lay == "1":
+                    page.pdf(path=path, prefer_css_page_size=True, print_background=True)
+                else:
+                    page.add_style_tag(content="@page { size: 210mm 148.5mm; margin: 4mm; } .pp-card { break-after: auto !important; page-break-after: auto !important; }")
+                    page.pdf(path=path, width="210mm", height="148.5mm", prefer_css_page_size=True, print_background=True)
+        print(f"  レースごと: {len(rids)}レース × 2レイアウト → r/")
         b.close()
     with open(os.path.join(out, "index.json"), "w", encoding="utf-8") as f:
-        json.dump(dict(made=datetime.now(JST).strftime("%H:%M"), ts=int(datetime.now(JST).timestamp()), files=files), f, ensure_ascii=False)
+        json.dump(dict(made=datetime.now(JST).strftime("%H:%M"), ts=int(datetime.now(JST).timestamp()), files=files,
+                       per_race=True), f, ensure_ascii=False)
     print(f"[INFO] {len(files)}個のPDFを {out} に作りました")
 
 

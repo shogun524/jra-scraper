@@ -3,7 +3,8 @@ JRA「印刷用」(print.html): その日の全レースの予想を、A4の紙�
 generate_html.py が予想ページを作るたびに一緒に作る(オッズ更新のたびに最新になる)。
 
 画面でレース番号をタップして印刷するレースを選ぶ(まとめて: 全部/AI買い目/荒れそう/発走前、競馬場ごとに全部/外す)。
-選択はブラウザに覚えておく。「選んだレースを印刷」でブラウザの印刷画面を開く。操作パネルは印刷に出ない。
+選択はブラウザに覚えておく。「選んだレースをPDFにする」で、GitHubで作ったレースごとのPDF(pdf/r/)を
+スマホ側でつなげて1つのPDFにする(スマホ・アプリ内ブラウザは印刷画面が開かないことが多いため)。「ブラウザで印刷」は従来どおり印刷画面を開く。
 各レース: 発走・レース名・3連複の万馬券率と配当の目安・AI買い目(対象のとき)・出走表(印・枠・馬番・馬名・騎手・
 人気・単勝・馬体重・AI1着率・AI3着内率・妙味)と、手書き用の「メモ」欄。
 """
@@ -289,6 +290,10 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   .rc-chip.hi em {{ color:#C0392B; }} .rc-chip.lo em {{ color:#2E7D4F; }}
   .pp-row {{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:10px 0 0; }}
   .pp-print {{ background:#1F4D3A; color:#fff; border:0; border-radius:8px; padding:10px 18px; font-size:15px; font-weight:700; }}
+  .pp-print2 {{ background:#fff; color:#1F4D3A; border:1.5px solid #1F4D3A; border-radius:8px; padding:9px 14px; font-size:13px; font-weight:700; }}
+  .pp-print:disabled, .pp-print2:disabled {{ opacity:.45; }}
+  .pp-made {{ margin:8px 0 2px; font-size:14px; }}
+  .pp-made a.pp-open {{ display:inline-block; background:#C8102E; color:#fff; border-radius:8px; padding:10px 18px; font-weight:700; text-decoration:none; }}
   .pp-count {{ font-weight:700; }}
   .pp-hint {{ font-size:11px; color:#6B5F4D; margin:8px 0 0; line-height:1.6; }}
   /* レースカード */
@@ -402,11 +407,13 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
     <div class="pp-row">
       <label>レイアウト <select id="ppLay"><option value="1">1枚1レース(全部入り・A4横)</option><option value="2">2レースで1枚(近2走まで・A4縦)</option></select></label>
       <span class="pp-count" id="ppCount"></span>
-      <button type="button" class="pp-print" id="ppPrint">選んだレースを印刷 / PDFに保存</button>
+      <button type="button" class="pp-print" id="ppPrint">選んだレースをPDFにする</button>
+      <button type="button" class="pp-print2" id="ppPrintBr">ブラウザで印刷</button>
     </div>
+    <div class="pp-made" id="ppMade"></div>
     <p class="pp-hint">レース番号をタップで 選ぶ/外す(下の数字は3連複の万馬券率。赤=荒れそう・緑=堅そう)。選んだレースだけ下に表示・印刷されます。
-    印刷画面で「PDFとして保存」を選ぶとPDFになります(iPhoneは 共有 → プリント → プレビューをピンチアウト → 共有でPDF保存)。
-    LINE・X・Gmail などのアプリ内で開くと印刷ボタンが動かないので、上の「できあがりPDF」を使うか、Safari/Chromeで開いてください。<br>
+    「選んだレースをPDFにする」→「できたPDFを開く」で、選んだレースだけのPDFが開きます(スマホ・LINEなどのアプリ内でも使えます。そこから印刷・保存)。
+    「ブラウザで印刷」はパソコン向け(印刷画面で「PDFとして保存」も可)。<br>
     紙はA4横。表の見方: 印=AIの評価順、AI 1着%(赤い棒)・複勝%=AIの3着内予測、込%=オッズ込みの1着率(実際に勝ちそうな確率の目安)、期待値=AI1着率×単勝(1以上は赤)、妙味=AIと人気のズレ、
     成績=通算・同距離帯の3着内率(50%以上は赤)・間隔・騎手/厩舎の勝率。<br>
     近4走: 左の大きい数字=着順(1着は赤地・2〜3着はピンク)、1行目=日付 場 クラス 距離馬場、2行目=頭数・馬番・人気(1人気は赤)・騎手斤量、
@@ -432,7 +439,7 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
       v.style.display=any?'':'none';
     }});
     document.getElementById('ppCount').textContent=n+'レース選択中';
-    document.getElementById('ppPrint').disabled=(n===0);
+    document.getElementById('ppPrint').disabled=(n===0); document.getElementById('ppPrintBr').disabled=(n===0);
     save();
   }}
   try{{ var off=JSON.parse(localStorage.getItem(KEY)||'[]'); boxes.forEach(function(b){{ if(off.indexOf(b.value)>=0) b.checked=false; }}); }}catch(e){{}}
@@ -440,9 +447,11 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   var qs=new URLSearchParams(location.search), sel=qs.get('sel');
   if(qs.get('lay')) document.getElementById('ppLay').value=qs.get('lay');
   if(sel){{ boxes.forEach(function(b){{ var c=card(b.value); if(!c) return; var f=' '+(c.dataset.flags||'')+' ';
-    b.checked = sel==='all' ? true : sel.indexOf('v:')===0 ? c.dataset.venue===sel.slice(2) : f.indexOf(' '+sel+' ')>=0; }}); KEY=KEY+'-url'; }}
+    b.checked = sel==='all' ? true : sel.indexOf('v:')===0 ? c.dataset.venue===sel.slice(2) : sel.indexOf('id:')===0 ? b.value===sel.slice(3) : f.indexOf(' '+sel+' ')>=0; }}); KEY=KEY+'-url'; }}
   // できあがりPDF(GitHubで作った物)のリンク
+  var PDFIDX=null;
   fetch('pdf/index.json?t='+Date.now()).then(function(r){{ return r.ok?r.json():null; }}).then(function(j){{
+    PDFIDX=j;
     if(!j||!j.files||!j.files.length) return;
     document.getElementById('ppPdf').innerHTML='<b>できあがりPDF</b><small>('+j.made+' 作成)</small><br>'+j.files.map(function(f,i){{
       return '<a class="'+(i>1?'sub':'')+'" href="pdf/'+encodeURIComponent(f.file)+'?t='+Date.now()+'" download>'+f.label+'('+f.pages+'枚)</a>'; }}).join('');
@@ -459,7 +468,47 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   }}); }});
   boxes.forEach(function(b){{ b.addEventListener('change',apply); }});
   document.getElementById('ppLay').addEventListener('change',apply);
-  document.getElementById('ppPrint').addEventListener('click',function(){{ apply(); window.print(); }});
+  // 「選んだレースをPDFにする」: GitHubで作ったレースごとのPDF(pdf/r/)をスマホ側でつなげて1つのPDFにする。
+  // スマホやアプリ内ブラウザでは window.print() が動かないことが多いため(11/14)。
+  var made=document.getElementById('ppMade');
+  function loadLib(){{ return window.PDFLib ? Promise.resolve() : new Promise(function(ok,ng){{ var s=document.createElement('script');
+    s.src='pdf-lib.min.js'; s.onload=ok; s.onerror=ng; document.head.appendChild(s); }}); }}
+  document.getElementById('ppPrint').addEventListener('click',function(){{
+    apply();
+    var ids=boxes.filter(function(b){{return b.checked;}}).map(function(b){{return b.value;}});
+    var lay=document.getElementById('ppLay').value, btn=this;
+    if(!PDFIDX||!PDFIDX.per_race){{ made.innerHTML='レースごとのPDFがまだできていません。上の「できあがりPDF」か「ブラウザで印刷」を使ってください。'; return; }}
+    btn.disabled=true; made.textContent='PDFを作っています…('+ids.length+'レース)';
+    loadLib().then(function(){{
+      return Promise.all(ids.map(function(id){{ return fetch('pdf/r/'+id+'_'+lay+'.pdf?t='+PDFIDX.ts).then(function(r){{ return r.ok?r.arrayBuffer():null; }}); }}));
+    }}).then(function(bufs){{
+      var L=window.PDFLib; return L.PDFDocument.create().then(function(out){{
+        var srcs=bufs.filter(Boolean), miss=bufs.length-srcs.length;
+        return Promise.all(srcs.map(function(b){{ return L.PDFDocument.load(b); }})).then(function(docs){{
+          if(lay==='1'){{
+            return docs.reduce(function(p,d){{ return p.then(function(){{ return out.copyPages(d,d.getPageIndices()).then(function(ps){{ ps.forEach(function(pg){{ out.addPage(pg); }}); }}); }}); }},Promise.resolve()).then(function(){{ return [out,miss]; }});
+          }}
+          // 2レースで1枚: A5横のページを2つずつA4縦に上下に並べる
+          var pages=[]; docs.forEach(function(d){{ d.getPages().forEach(function(pg){{ pages.push(pg); }}); }});
+          return pages.reduce(function(p,pg){{ return p.then(function(a){{ return out.embedPage(pg).then(function(e){{ a.push(e); return a; }}); }}); }},Promise.resolve([])).then(function(emb){{
+            var W=595.28,H=841.89;
+            for(var i=0;i<emb.length;i+=2){{ var pg=out.addPage([W,H]);
+              [emb[i],emb[i+1]].forEach(function(e,k){{ if(!e) return; var sc=Math.min(W/e.width,(H/2)/e.height);
+                pg.drawPage(e,{{x:(W-e.width*sc)/2,y:H-(k+1)*(H/2)+((H/2)-e.height*sc)/2,width:e.width*sc,height:e.height*sc}}); }}); }}
+            return [out,miss];
+          }});
+        }});
+      }});
+    }}).then(function(r){{
+      return r[0].save().then(function(bytes){{
+        var url=URL.createObjectURL(new Blob([bytes],{{type:'application/pdf'}})), n=r[0].getPageCount();
+        made.innerHTML='<a class="pp-open" href="'+url+'" target="_blank" download="keiba_{date_label}.pdf">できたPDFを開く('+n+'枚)</a>'+
+          '<small> '+PDFIDX.made+'時点のオッズ'+(r[1]?'・'+r[1]+'レースはまだPDFがありません':'')+'</small>';
+      }});
+    }}).catch(function(e){{ made.textContent='PDFを作れませんでした('+e+')。上の「できあがりPDF」を使ってください。'; }})
+      .then(function(){{ btn.disabled=false; }});
+  }});
+  document.getElementById('ppPrintBr').addEventListener('click',function(){{ apply(); window.print(); }});
   apply();
 }})();
 </script>
