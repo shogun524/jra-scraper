@@ -8,6 +8,8 @@
   ◎・旧◎ が1〜3番人気                    0.91〜1.08倍(オッズどおり)        → 普通(普通に買ってよい)
   新◎ が4〜5番人気で、旧◎と違う馬      0.89倍                            → 注意
   ◎と旧◎が同じ馬で、4番人気以下         0.61倍(単回 約50%)                → 危険!
+危険!のレースでは、込%(オッズ込みの1着率)が一番高い馬に「推し」を付ける
+  (過去352レースで 勝率28%・複勝圏61%・単回89%・複回90%(毎年87〜92%)。危険の◎は勝率6%・単回53%)
 """
 import pandas as pd
 
@@ -16,11 +18,12 @@ TAGS = {
     "普通": ("普通", "tg-ok"),
     "注意": ("注意", "tg-warn"),
     "危険": ("危険！", "tg-ng"),
+    "推し": ("推し", "tg-push"),
 }
 EXPLAIN = ("◎・旧◎の一言(2023〜26年の検証で、実際の勝率がオッズの見込みの何倍か): "
            "狙い目！=旧◎が4番人気以下で◎と違う(1.2〜1.3倍)・◎が6番人気以下で旧◎と違う(1.9倍) / "
            "普通=1〜3番人気(ほぼオッズどおり。普通に買ってよい) / 注意=◎が4〜5番人気で旧◎と違う(0.9倍) / "
-           "危険！=◎と旧◎が同じ人気薄(4番人気以下、0.6倍)")
+           "危険！=◎と旧◎が同じ人気薄(4番人気以下、0.6倍) / 推し=危険！のレースで代わりに推す馬(込%1位。過去 複勝圏61%・複回90%)")
 
 
 def race_tags(g: pd.DataFrame) -> dict:
@@ -39,6 +42,15 @@ def race_tags(g: pd.DataFrame) -> dict:
     if o == n:
         p = pop.get(n, 99)
         out[n] = (*TAGS["危険" if p >= 4 else "普通"], "◎旧◎")
+        if p >= 4:   # 危険のときの代わり: 込%が一番高い馬(無ければ1番人気)
+            alt = g[g["umaban"].astype(int) != n]
+            col = "mm_win" if "mm_win" in alt.columns and pd.to_numeric(alt["mm_win"], errors="coerce").notna().any() else None
+            if col:
+                a = int(alt.loc[pd.to_numeric(alt[col], errors="coerce").idxmax(), "umaban"])
+            else:
+                a = min((u for u in pop if u != n), key=lambda u: pop[u], default=None)
+            if a is not None:
+                out[a] = (*TAGS["推し"], "推し")
         return out
     pn = pop.get(n, 99)
     out[n] = (*TAGS["普通" if pn <= 3 else ("注意" if pn <= 5 else "狙い目")], "◎")
