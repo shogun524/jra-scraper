@@ -246,6 +246,12 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
     _h = _hp(g)
     hit_line = ("" if not _h else '<div class="pp-pop pp-hit"><i>的中率重視</i>' +
                 "　／　".join(f'<b>{b}</b> {_html.escape(c)} <span>{p:.0%}</span>' for b, c, p in _h["items"]) + "</div>")
+    from trio import plan as _tp, fmt as _tf
+    _t = _tp(g)
+    if _t:
+        hit_line += ('<div class="pp-pop pp-hit"><i>3連複</i>' +
+                     f'的中重視 <b>{_t["axis"]}軸→{"・".join(map(str, _t["second"]))}→{"・".join(map(str, [u for u in _t["third"] if u != _t["axis"]]))}</b> {len(_t["tickets"])}点'
+                     + (f'　／　回収重視 <b>{" ".join(_tf(x) for x in _t["edge"])}</b> {len(_t["edge"])}点' if _t["edge"] else "") + "</div>")
     pop_html = ""
     if pairs is not None and not pairs.empty:
         pr = pairs[pairs["race_id"].astype(str) == str(rid)]

@@ -153,6 +153,20 @@ def hit_html(g):
     return f'<p class="hitline" title="過去12,710レースの的中率(1番人気のオッズ×頭数ごと)">的中率重視: {parts}</p>'
 
 
+def trio_html(g):
+    """3連複(込%軸)。E=的中重視(約50%・回収79%)、E'=込%が市場の1.1倍以上の組だけ(的中15%・回収92%)"""
+    from trio import plan, fmt
+    t = plan(g)
+    if not t:
+        return ""
+    sec = "・".join(map(str, t["second"]))
+    thr = "・".join(map(str, [u for u in t["third"] if u != t["axis"]]))
+    e2 = (f'<br><span class="tr-e2">回収重視(込%が市場の1.1倍以上の組だけ・{len(t["edge"])}点・的中約15%・回収約92%): '
+          f'<b>{" / ".join(fmt(x) for x in t["edge"])}</b></span>') if t["edge"] else '<br><span class="tr-e2">回収重視: 該当なし</span>'
+    return (f'<p class="trioline">3連複 的中重視(込%軸・{len(t["tickets"])}点・的中約50%・回収約79%): '
+            f'<b>{t["axis"]}軸 → {sec} → {thr}</b>{e2}</p>')
+
+
 
 try:
     with open(os.path.join(_site_dir, "runner_ped.json"), encoding="utf-8") as _rpf:
@@ -378,7 +392,7 @@ def race_card(race_id, g):
           <h2>{race_name}</h2>
           <p class="race-sub">{first.get('track_name','')} {post_time_html}</p>
           <div class="chips">{manbaken_html(g)}{bias_html(race_id)}</div>
-          {hit_html(g)}
+          {hit_html(g)}{trio_html(g)}
         </div>
       </header>
       {aibet_html}
@@ -458,6 +472,7 @@ guide = """<details class="guide" open><summary>このサイトの見方</summar
   <li><b>込%</b> … 実際に勝ちそうな確率(オッズ込み)。<b>一番当たる数字</b>。妙味・期待値・EVボードもこれで計算。</li>
   <li><b>妙味</b> … 込%がオッズの見込みより高い馬=妙味あり(1.15倍以上)、低い馬=過剰人気。</li>
   <li><b>狙い目！・普通・注意・危険！</b> … ◎と旧◎に付く一言。<span class="htag tg-go">狙い目！</span>=旧◎が◎と違う人気薄(過去はオッズの見込みより2〜3割多く勝つ)、<span class="htag tg-ok">普通</span>=1〜3番人気(オッズどおり。普通に買ってよい)、<span class="htag tg-warn">注意</span>=◎が4〜5番人気、<span class="htag tg-ng">危険！</span>=◎と旧◎が同じ人気薄(見込みの6割しか勝たない)。そのレースでは<span class="htag tg-push">推し</span>(込%1位。過去は複勝圏61%・複勝回収率90%)を代わりに。</li>
+  <li><b>3連複</b> … 的中重視=込%1位を軸に込%2〜4位→AIの3連対率10%以上へ(過去 的中約50%・回収79%)。回収重視=その中で込%が市場より1.1倍以上高く見ている組だけ(的中約15%・回収92%)。</li>
   <li><b>AI買い目</b> … 過去の検証で回収率が出たルール。<span class="ai-b ai-old">旧AIで選ぶ</span>ものは画面の◎と違う馬が軸になる(表の「旧◎」の馬)。</li>
   <li>オッズは5分おきに更新。AI評価は朝〜午後に数回(馬体重などで)作り直し。</li>
 </ul></details>"""
@@ -708,6 +723,8 @@ html = f"""<!DOCTYPE html>
   table.ht .rk {{ color: var(--ink-soft); font-size: .8rem; }}
   table.ht .pct b {{ font-size: .95rem; }}
   .guide {{ background:#fff; border:1px solid var(--paper-line); border-radius:12px; padding:10px 14px; margin:12px 0; font-size:.82rem; }}
+  .trioline {{ font-size:.8rem; margin:4px 0 0; line-height:1.5; }} .trioline b {{ font-variant-numeric:tabular-nums; }}
+  .tr-e2 {{ color:#C8102E; }}
   .guide summary {{ font-weight:700; color:var(--turf); cursor:pointer; }}
   .guide ul {{ margin:8px 0 2px; padding-left:1.1em; line-height:1.6; }} .guide li {{ margin:2px 0; }}
   .rule {{ border-top:1px dashed var(--paper-line); padding-top:6px; margin-top:6px; }} .rule:first-of-type {{ border-top:0; }}
