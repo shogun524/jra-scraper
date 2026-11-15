@@ -470,7 +470,8 @@ def predict(entries_csv: str, out_csv: str = "data/predictions.csv"):
         result = market_model.apply(result)
         result["market_rank"] = result.groupby("race_id")["odds_win"].rank(ascending=True, method="min")
         result["rank_diff"] = result["market_rank"] - result["pred_win_rank"]
-        result["expected_value"] = (result["pred_win_norm"] * result["odds_win"]).round(2)
+        _p = result["mm_win"].where(result["mm_win"].notna(), result["pred_win_norm"]) if "mm_win" in result.columns else result["pred_win_norm"]
+        result["expected_value"] = (_p * result["odds_win"]).round(2)
     result = result.sort_values(["race_id", "pred_win_rank"])
     result.to_csv(out_csv, index=False)
     print(f"予測結果を {out_csv} に出力しました({len(result)}頭)")

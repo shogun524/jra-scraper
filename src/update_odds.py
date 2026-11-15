@@ -50,6 +50,9 @@ def recompute_odds_columns(df: pd.DataFrame) -> pd.DataFrame:
     df["rank_diff"] = df["market_rank"] - df["pred_win_rank"]
     df.loc[df["odds_win"].isna(), ["market_rank", "rank_diff"]] = np.nan
     df["expected_value"] = (df["pred_win_norm"] * df["odds_win"]).round(2)
+    if "mm_win" in df.columns:   # 期待値はオッズ込みの1着率(込%)×オッズ(AIの1着率は強気すぎて期待値が高く出すぎるため)
+        mmv = pd.to_numeric(df["mm_win"], errors="coerce")
+        df["expected_value"] = (mmv * df["odds_win"]).round(2).where(mmv.notna(), df["expected_value"])
     ev_tag = df["expected_value"].apply(_value_tag)
     if "value_ratio" in df.columns:   # オッズ+補正モデルのレースは「オッズの見込みの何倍か」で判定
         df["value_tag"] = df["value_ratio"].map(market_model._value_tag).where(df["value_ratio"].notna(), ev_tag)

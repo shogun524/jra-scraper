@@ -122,9 +122,17 @@ def ai_bet_box(results):
       <div class="aibet{sub}">
         <span class="aibet-tag{wait}">{e["rule"].label} {e["status"]}</span> <span class="aibet-reason">{e["reason"]}</span>
         <div class="aibet-body">{e["desc"]}</div>
-        <div class="aibet-combos">{" / ".join(e["tickets"])}</div>
+        <div class="aibet-combos">{" / ".join(e["tickets"])}</div>{_old_note(e)}
       </div>"""
     return html
+
+
+def _old_note(e):
+    """旧AIで検証したルールは、軸が画面の◎(新AI)と違うことがあるので一言添える"""
+    if e["rule"].key in ("main", "sub", "op") and ("旧AI" in e["desc"] or e["rule"].key == "op"):
+        return ('<div class="aibet-note">このルールは旧AI(前の版のAI)の評価で検証したので、軸・妙味馬は旧AIで選んでいます。'
+                '画面の◎・1着率・込%(新AI)とは違う馬になることがあります。表の「旧◎」が旧AIの1位。</div>')
+    return ""
 
 
 # ---- EVボード(単勝・馬連・ワイド) ----
@@ -327,6 +335,8 @@ def race_card(race_id, g):
             return f'<br><small class="mm{" mm-hi" if hi else ""}">込{v*100:.0f}%</small>'
 
         mk_cell = mk_html or f'<span class="rk">{int(r["pred_win_rank"])}</span>'
+        if pd.notnull(r.get("rule_rank")) and int(r["rule_rank"]) == 1:
+            mk_cell += '<br><small class="oldmk">旧◎</small>'
         sub = " ".join(x for x in [str(r.get("jockey") or ""), weight_html if weight_html != "-" else ""] if x)
         rows += f"""
         <tr class="{rank_cls}">
@@ -656,6 +666,8 @@ html = f"""<!DOCTYPE html>
   table.ht .sub {{ color: var(--ink-soft); font-weight: 400; font-size: .72rem; }}
   table.ht .rk {{ color: var(--ink-soft); font-size: .8rem; }}
   table.ht .pct b {{ font-size: .95rem; }}
+  table.ht .oldmk {{ display:inline-block; font-size:.62rem; color:#7A5A1E; border:1px solid #B88A2E; border-radius:4px; padding:0 3px; margin-top:2px; }}
+  .aibet-note {{ font-size:.72rem; color:#8A7E6A; margin-top:4px; line-height:1.4; }}
   table.ht .mm {{ color: #2E5BA8; font-size: .72rem; font-weight: 600; }}
   table.ht .mm-hi {{ color: #C8102E; }}
   .hit-summary .hp, .hitline .hp {{ color:#1F4D3A; font-weight:800; }}
@@ -707,7 +719,8 @@ html = f"""<!DOCTYPE html>
     マイナスなら過剰人気の疑い。<br>
     <b>妙味</b>: オッズ+補正モデル(単勝オッズに、市場が織り込み切れていない要素を足したもの)の1着率が、オッズの見込みの何倍か。1.15倍以上=妙味あり・1.3倍以上=妙味大・0.8倍以下=過剰人気
     (2023年〜の検証で、1.15倍以上の馬の単勝回収率84%・全馬72%。100%は超えないが、穴を選ぶ目安に)。<br>
-    <b>期待値</b>: 予測1着確率 × 単勝オッズ。オッズ未取得時は「オッズ待ち」と表示。
+    <b>期待値</b>: 込%(オッズ込みの1着率)×単勝オッズ。1.0を超えると単勝の回収率が100%を超える見込み(11/15〜。以前はAIの1着率×オッズ)。<br>
+    <b>旧◎</b>: 旧AI(前の版のAI)の1位。AI買い目(本命・準)とOP単勝は旧AIで検証したルールなので、この馬が軸になる。 オッズ未取得時は「オッズ待ち」。
   </p>
   <p>期待値が1.0を上回るほど市場価格に対して割安と推定されますが、的中や回収率のプラスを保証するものでは
   ありません(バックテストでは市場を上回るエッジは確認できていません)。馬券の最終判断はご自身でお願いします。
