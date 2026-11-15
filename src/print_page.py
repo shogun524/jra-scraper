@@ -124,6 +124,8 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
     if "l3z_best3" in g.columns:
         _lz = pd.to_numeric(g["l3z_best3"], errors="coerce")
         l3z_rank = {int(u): int(k) for u, k in zip(g["umaban"], _lz.rank(ascending=False, method="min").fillna(99))}
+    from honmei_tags import race_tags
+    _tags = race_tags(g)
     rows = ""
     for i, (_, r) in enumerate(g.iterrows()):
         w = int(r["waku"]) if pd.notna(r.get("waku")) else 0
@@ -191,7 +193,9 @@ def _card(rid, g, trio, prm, past=None, bias=None, ped=None, pairs=None):
         cls = ("top " if top else "") + ("odd" if i % 2 else "even")
         pop = _f(r.get("market_rank"), "{:.0f}")
         run_cells = "".join(run_cell(runs[k] if k < len(runs) else None) for k in range(4))
-        rows += (f'<tr class="{cls}"><td class="mk mk-{_html.escape(str(mk))}">{_html.escape(str(mk))}</td>'
+        _t = _tags.get(int(r["umaban"]))
+        _tg = f'<span class="ptag {_t[1]}">{_t[0]}</span>' if _t else ""
+        rows += (f'<tr class="{cls}"><td class="mk mk-{_html.escape(str(mk))}">{_html.escape(str(mk))}{_tg}</td>'
                  f'<td class="c"><span class="wk" style="background:{bg};color:{fg};">{w or ""}</span></td>'
                  f'<td class="c ub {({True: "bfav", False: "bunf"}).get(_fav(r["umaban"], len(g), b.get("side")), "")}">{int(r["umaban"])}</td>'
                  f'<td class="horse"><div class="nm">{_html.escape(str(r["horse"]))}</div>'
@@ -415,6 +419,9 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
   .pp-dl a {{ display:inline-block; margin:3px 4px 3px 0; padding:5px 10px; border-radius:999px; background:#1F4D3A; color:#fff; text-decoration:none; font-weight:700; font-size:12px; }}
   .pp-dl a.sub {{ background:#fff; color:#1F4D3A; box-shadow:inset 0 0 0 1.5px #1F4D3A; }}
   /* 2レースで1枚: 近3走(2行ずつ)・成績・血統・複%/込% まで出す。4走前・メモ・人気の組・買い目は省く */
+  .ptag {{ display:block; font-size:7px; font-weight:800; line-height:1.1; margin-top:1px; border:1px solid #333; border-radius:2px; padding:0 1px; white-space:nowrap; }}
+  .ptag.tg-go {{ background:#C8102E; color:#fff; border-color:#C8102E; }} .ptag.tg-ng {{ background:#222; color:#fff; }}
+  .ptag.tg-ok {{ color:#1F4D3A; border-color:#9bb8a6; }} .ptag.tg-warn {{ background:#FFF0C2; }}
   body.compact .pp-t td:nth-child(11), body.compact .pp-t td:nth-child(12),
   body.compact .pp-t th:nth-child(11), body.compact .pp-t th:nth-child(12),
   body.compact .pp-t col:nth-child(n+11), body.compact .pp-pop:not(.pp-hit), body.compact .pp-bet {{ display:none; }}
@@ -481,6 +488,7 @@ def build_print(df: pd.DataFrame, date_label: str, generated_at: str, trio: dict
     成績=通算・同距離帯の3着内率(50%以上は赤)・間隔・騎手/厩舎の勝率。<br>
     上り=過去3走で一番速かった上がり3Fが、そのコースの標準より何秒速いか(赤=このレースの上位3頭)、着差=前走と近3走で一番良かった勝ち馬との差(秒。勝=1着、0.2以内は赤)、
     コース傾向=このコースの枠(内1-2枠・中・外7-8枠)と脚質ごとの3着内率(赤=一番高い)、当日バイアス=その日の同じ芝ダの終わったレースで来た馬番の内外(緑の馬番=有利な側・灰=不利な側)、
+    狙い目！/普通/注意/危険！=◎・旧◎の一言(旧◎が◎と違う人気薄=狙い目、1〜3番人気=普通、◎が4〜5番人気=注意、◎と旧◎が同じ人気薄=危険)、
     指数=スピード指数(過去3走の最高。走破タイムを同じ競馬場・芝ダ・距離・馬場の勝ちタイムの基準と比べたもの。50≒勝ち馬並み、赤=このレースの上位3頭。かっこ内は前走)、
     近4走: 左の大きい数字=着順(1着は赤地・2〜3着はピンク)、1行目=日付 場 クラス 距離馬場、2行目=頭数・馬番・人気(1人気は赤)・騎手斤量、
     3行目=タイム(勝ち馬との差、勝った時は2着との差を赤で)・上り3F(①〜③=メンバー中の順位)・通過順・馬体重。メモ欄は手書き用です。</p>

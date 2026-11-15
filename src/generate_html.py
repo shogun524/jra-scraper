@@ -261,6 +261,8 @@ def race_card(race_id, g):
     post_time = first.get("post_time")
     post_time_html = f'<span class="post-time">発走 {post_time}</span>' if isinstance(post_time, str) and post_time else ""
 
+    from honmei_tags import race_tags
+    _tags = race_tags(g)
     rows = ""
     for _, r in g.iterrows():
         ev = r.get("expected_value", None)
@@ -354,6 +356,9 @@ def race_card(race_id, g):
         mk_cell = mk_html or f'<span class="rk">{int(r["pred_win_rank"])}</span>'
         if pd.notnull(r.get("rule_rank")) and int(r["rule_rank"]) == 1:
             mk_cell += '<br><small class="oldmk">旧◎</small>'
+        _t = _tags.get(int(r["umaban"]))
+        if _t:
+            mk_cell += f'<br><span class="htag {_t[1]}">{_t[0]}</span>'
         sub = " ".join(x for x in [str(r.get("jockey") or ""), weight_html if weight_html != "-" else ""] if x)
         rows += f"""
         <tr class="{rank_cls}">
@@ -452,6 +457,7 @@ guide = """<details class="guide" open><summary>このサイトの見方</summar
   <li><b>◎・AI評価%</b> … 新AIが馬の力だけで見た1着率(今のオッズは使わない)。◎が人気薄のときは強気すぎる傾向。</li>
   <li><b>込%</b> … 実際に勝ちそうな確率(オッズ込み)。<b>一番当たる数字</b>。妙味・期待値・EVボードもこれで計算。</li>
   <li><b>妙味</b> … 込%がオッズの見込みより高い馬=妙味あり(1.15倍以上)、低い馬=過剰人気。</li>
+  <li><b>狙い目！・普通・注意・危険！</b> … ◎と旧◎に付く一言。<span class="htag tg-go">狙い目！</span>=旧◎が◎と違う人気薄(過去はオッズの見込みより2〜3割多く勝つ)、<span class="htag tg-ok">普通</span>=1〜3番人気(オッズどおり。普通に買ってよい)、<span class="htag tg-warn">注意</span>=◎が4〜5番人気、<span class="htag tg-ng">危険！</span>=◎と旧◎が同じ人気薄(見込みの6割しか勝たない)。</li>
   <li><b>AI買い目</b> … 過去の検証で回収率が出たルール。<span class="ai-b ai-old">旧AIで選ぶ</span>ものは画面の◎と違う馬が軸になる(表の「旧◎」の馬)。</li>
   <li>オッズは5分おきに更新。AI評価は朝〜午後に数回(馬体重などで)作り直し。</li>
 </ul></details>"""
@@ -712,6 +718,9 @@ html = f"""<!DOCTYPE html>
   .rnm {{ color:#6B6152; font-size:.8rem; }}
   table.ht .vt {{ white-space:nowrap; font-size:.68rem; padding:1px 4px; }}
   .evs {{ display:block; margin-top:2px; }} .evs .badge {{ font-size:.66rem; padding:1px 5px; }}
+  .htag {{ display:inline-block; font-size:.62rem; font-weight:800; border-radius:4px; padding:1px 4px; margin-top:2px; white-space:nowrap; }}
+  .tg-go {{ background:#C8102E; color:#fff; }} .tg-ok {{ background:#E6EFE9; color:#1F4D3A; }}
+  .tg-warn {{ background:#FFF0C2; color:#7A5A1E; }} .tg-ng {{ background:#3A3A3A; color:#fff; }}
   table.ht .oldmk {{ display:inline-block; font-size:.62rem; color:#7A5A1E; border:1px solid #B88A2E; border-radius:4px; padding:0 3px; margin-top:2px; }}
   .aibet-note {{ font-size:.72rem; color:#8A7E6A; margin-top:4px; line-height:1.4; }}
   table.ht .mm {{ color: #2E5BA8; font-size: .72rem; font-weight: 600; }}
