@@ -46,7 +46,13 @@ GR = Rule("gr", "重賞 ワイド", "重賞(G1〜G3)・◎の1着率30%以上 �
           "2019〜2026年の検証で回収率139%・的中率60%(年約16レース・上位5本を除いても101%・8年中7年で100%超)")
 OP = Rule("op", "OP 単勝", "OP・L(重賞以外)・新AIと旧AIの◎が違う → 旧AIの妙味馬の単勝(1点)", "単勝",
           "2019〜2026年の検証で回収率141%(年約69レース・的中率8%・上位5本を除いても102%・8年中7年で100%超)")
-RULES = [MAIN, SUB, C1, GR, OP]
+# T3(11/20・試験): ボートと同じ考え方(合成オッズ3倍未満は見送り)で3連単フォーメーションを総当たり(2023〜2026年・ウォークフォワード予測)。
+#   選定2023-24 → 確認2025-26 の両方で100%超が38通り(偶然版は6〜11通り)。その中で繰り返し出た形。
+#   3連単の過去オッズが無いので、合成オッズは単勝オッズから掛け算で推定(控除後72.5%)して判定している。
+T3 = Rule("t3", "3連単フォーメーション(試験)", "1勝クラス・1番人気の単勝支持30〜40% → 3連単 人気上位4頭 → AI上位3頭 → AI3着内率上位4頭(推定合成3倍以上)", "3連単",
+          "2023〜24年 回収率132%(311レース)・2025〜26年 113%(284レース)、的中率16〜17%。試験中")
+RULES = [MAIN, SUB, C1, GR, OP, T3]
+T3_COMP = 3.0
 RULE_NAME = MAIN.name  # 互換用
 
 CLASS_MIN = 20       # race_class: 新馬0 / 未勝利1 / 1勝5 / 2勝9 / 3勝14 / オープン20
@@ -199,6 +205,48 @@ def evaluate_op(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> dict:
     return {"status": "対象", "reason": f"OP・新AI◎{int(g['umaban'].iloc[0])}・旧AI◎{int(o['umaban'].iloc[0])}", **base}
 
 
+def _harville_sum(q, tickets):
+    """単勝の支持率 q(馬番→確率) から、買い目の3連単が来る確率の合計(掛け算で推定)"""
+    t = 0.0
+    for tk in tickets:
+        a, b, c = (int(x) for x in tk.split("-"))
+        pa, pb, pc = q.get(a, 0), q.get(b, 0), q.get(c, 0)
+        if 1 - pa <= 0 or 1 - pa - pb <= 0:
+            continue
+        t += pa * pb / (1 - pa) * pc / (1 - pa - pb)
+    return t
+
+
+def evaluate_t3(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> dict:
+    g = g.copy()
+    base = {"rule": T3, "honmei": int(g.sort_values("pred_win_rank")["umaban"].iloc[0]), "partners": [], "tickets": [],
+            "desc": "3連単 人気上位4頭 → AI上位3頭 → AI3着内率上位4頭"}
+    cls = g["race_class"].iloc[0] if "race_class" in g.columns else None
+    if cls is None or pd.isna(cls) or not (3 <= float(cls) < 6):
+        return {"status": "対象外", "reason": "1勝クラスではない", **base}
+    if len(g) < 6:
+        return {"status": "対象外", "reason": "頭数が少ない", **base}
+    if "odds_win" not in g.columns or g["odds_win"].isna().any() or (g["odds_win"] <= 0).any():
+        return {"status": "オッズ待ち", "reason": "単勝オッズが出たら判定", **base}
+    inv = 1 / g["odds_win"].astype(float)
+    q = dict(zip(g["umaban"].astype(int), inv / inv.sum()))
+    q1 = max(q.values())
+    pop = [u for u, _ in sorted(q.items(), key=lambda x: -x[1])][:4]
+    ai = [int(x) for x in g.sort_values("pred_win_rank")["umaban"]][:3]
+    t3col = "pred_top3_rank" if "pred_top3_rank" in g.columns else "pred_win_rank"
+    a3 = [int(x) for x in g.sort_values(t3col)["umaban"]][:4]
+    tickets = [f"{a}-{b}-{c}" for a in pop for b in ai for c in a3 if len({a, b, c}) == 3]
+    ph = _harville_sum(q, tickets)
+    comp = 0.725 / ph if ph > 0 else 0
+    base.update(tickets=tickets, partners=ai,
+                desc=f"3連単 {'・'.join(map(str, pop))} → {'・'.join(map(str, ai))} → {'・'.join(map(str, a3))}({len(tickets)}点・推定合成{comp:.1f}倍)")
+    if not (0.30 <= q1 < 0.40):
+        return {"status": "対象外", "reason": f"1番人気の単勝支持{q1:.0%}(30〜40%で対象)", **base}
+    if comp < T3_COMP:
+        return {"status": "対象外", "reason": f"推定合成{comp:.1f}倍(3倍未満は見送り)", **base}
+    return {"status": "対象", "reason": f"1勝クラス・1番人気{q1:.0%}・推定合成{comp:.1f}倍", **base}
+
+
 def evaluate_race(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> dict:
     """互換用: 本命ルールの判定"""
     return evaluate_main(g, rank_col)
@@ -207,7 +255,7 @@ def evaluate_race(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> dict:
 def evaluate_all(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> list[dict]:
     out = [evaluate_main(g, rank_col), evaluate_sub(g, rank_col)]
     if "pred_win_norm" in g.columns:
-        out += [evaluate_c1(g, rank_col), evaluate_gr(g, rank_col), evaluate_op(g, rank_col)]
+        out += [evaluate_c1(g, rank_col), evaluate_gr(g, rank_col), evaluate_op(g, rank_col), evaluate_t3(g, rank_col)]
     return out
 
 
