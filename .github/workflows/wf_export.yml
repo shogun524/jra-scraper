@@ -1,0 +1,31 @@
+name: JRA ウォークフォワード予測の書き出し(買い方の検証用)
+
+# 各年の予測を「その年より前だけで学習したモデル」で作り、リリース data-v1 に wf_preds.parquet として置く。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install duckdb lightgbm pandas numpy beautifulsoup4 lxml scipy pyarrow
+      - name: データ取得
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download data-v1 --pattern "race_result_merged.csv" --dir data --clobber
+      - name: 特徴量作成
+        run: python src/feature_engineering.py
+      - name: ウォークフォワード予測
+        run: python src/walkforward_preds.py data/features.parquet data/wf_preds.parquet --start-year 2023
+      - name: リリースに置く
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload data-v1 data/wf_preds.parquet --clobber
