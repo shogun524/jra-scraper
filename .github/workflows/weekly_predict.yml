@@ -123,6 +123,17 @@ jobs:
           mkdir -p docs/history
           cp data/predictions.csv "docs/history/predictions_${{ steps.today.outputs.date }}.csv"
 
+      # できあがりPDF(印刷用ページの「選んだレースをPDFにする」が使うレースごとのPDF)。
+      # 予測を出した直後にも作る(前日・金曜はオッズ更新ジョブが動かずPDFが古いままになるため。11/20)
+      - name: 印刷用のPDFを作る
+        if: steps.scrape.outputs.has_races == 'true'
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y -qq fonts-noto-cjk fonts-ipaexfont >/dev/null 2>&1 || true
+          pip install -q playwright pypdf
+          python -m playwright install chromium >/dev/null
+          python src/print_pdf.py docs/print.html docs/pdf
+
       - name: 中間ファイルをダウンロードできるように保存(デバッグ用)
         if: always()
         uses: actions/upload-artifact@v4
