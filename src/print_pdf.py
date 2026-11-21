@@ -25,6 +25,23 @@ PDF_FONT_CSS = """
 """
 
 
+# 1レースが1ページに収まるように縮める(11/21: 18頭立てだと2枚に分かれることがあった)。
+# 印刷と同じ幅で並べてから、カードの高さが印刷できる高さを超えていたら CSS zoom で縮める。
+MM = 96 / 25.4
+FIT_JS = """(h) => { let n = 0; document.querySelectorAll('.pp-card').forEach(c => {
+  if (c.style.display === 'none' || c.classList.contains('off')) return;
+  c.style.zoom = ''; const H = c.getBoundingClientRect().height;
+  if (H > h) { c.style.zoom = (h / H).toFixed(3); n++; } }); return n; }"""
+
+
+def fit(page, w_mm, h_mm):
+    """印刷できる範囲(w_mm×h_mm)の幅で並べ、はみ出すカードを縮める。縮めた枚数を返す"""
+    page.set_viewport_size({"width": int(w_mm * MM), "height": int(h_mm * MM)})
+    page.emulate_media(media="print")
+    page.wait_for_timeout(50)
+    return page.evaluate(FIT_JS, h_mm * MM * 0.97)
+
+
 def count_pages(path):
     try:
         from pypdf import PdfReader
@@ -70,7 +87,10 @@ def main():
             if not n:
                 continue
             path = os.path.join(out, fn)
+            if "lay=1" in q:
+                fit(page, 297 - 12, 210 - 12)
             page.pdf(path=path, prefer_css_page_size=True, print_background=True)
+            page.emulate_media(media=None); page.set_viewport_size({"width": 1300, "height": 900})
             files.append(dict(label=label, file=fn, pages=count_pages(path), races=n))
             print(f"  {label}: {n}レース → {fn}")
         # レースごとのPDF(印刷ページの「選んだレースをPDFに」でスマホ側でつなげる)
@@ -84,10 +104,15 @@ def main():
                 page.wait_for_timeout(150)
                 path = os.path.join(out, "r", f"{rid}_{lay}.pdf")
                 if lay == "1":
+                    fit(page, 297 - 12, 210 - 12)
                     page.pdf(path=path, prefer_css_page_size=True, print_background=True)
                 else:
                     page.add_style_tag(content="@page { size: 210mm 148.5mm; margin: 4mm; } .pp-card { break-after: auto !important; page-break-after: auto !important; }")
+                    fit(page, 210 - 8, 148.5 - 8)
                     page.pdf(path=path, width="210mm", height="148.5mm", prefer_css_page_size=True, print_background=True)
+                page.emulate_media(media=None); page.set_viewport_size({"width": 1300, "height": 900})
+                if count_pages(path) > 1:
+                    print(f"  [WARN] {rid} lay={lay} が{count_pages(path)}枚になった")
         print(f"  レースごと: {len(rids)}レース × 2レイアウト → r/")
         b.close()
     with open(os.path.join(out, "index.json"), "w", encoding="utf-8") as f:
