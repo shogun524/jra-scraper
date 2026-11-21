@@ -100,7 +100,44 @@ def build(pred_csv, merged_csv, n=4):
                 hw=num(x["馬体重"], int), hwd=num(x["場体重増減"], int), jky=str(x["騎手"] or "")[:4],
                 kin=num(x["斤量"]), odds=num(x["単勝"])))
         out[horse] = dict(trainer=str(g.iloc[0]["調教師"] or ""), runs=runs)
+    add_ext(out, P, n)
     return out
+
+
+EXT = "data/ext_history.csv"
+
+
+def add_ext(out, P, n, path=EXT):
+    """海外・地方の走り(horse_history.py が netkeiba から取ったもの)を近走に混ぜる(11/21)"""
+    import os
+    if not os.path.exists(path):
+        return
+    try:
+        X = pd.read_csv(path, dtype={"horse_id": str})
+    except Exception:  # noqa: BLE001
+        return
+    first = P.groupby("horse")["race_date"].min().astype(str).str[:10].to_dict()
+    for horse, g in X.groupby("horse"):
+        if horse not in first:
+            continue
+        runs = list(out.get(horse, {}).get("runs", []))
+        for _, x in g.iterrows():
+            if str(x["race_date"]) >= first[horse]:
+                continue
+            fin = num(x["finish"], int)
+            surf = str(x["surface"] or "") if pd.notna(x["surface"]) else ""
+            name = re.sub(r"\(.*?\)|\s+", "", str(x["race_name"] or ""))
+            runs.append(dict(
+                d=str(x["race_date"])[2:].replace("-", "."), v=re.sub(r"^\d+|\d+$", "", str(x["venue"] or ""))[:6],
+                cls=name[:7], sd=("障" if "障" in surf else surf[:1]) + (str(num(x["distance"], int) or "")),
+                baba=str(x["baba"] or "")[:1] if pd.notna(x["baba"]) else "", n=num(x["field_size"], int), ub=num(x["umaban"], int),
+                pop=num(x["popularity"], int), fin=fin if fin is not None else str(x["finish"] or ""),
+                t=str(x["time"]) if pd.notna(x["time"]) else "", diff=num(x["margin"]),
+                pas=str(x["passing"]) if pd.notna(x["passing"]) else "", l3f=num(x["last3f"]), l3r=None,
+                hw=num(x["horse_weight"], int), hwd=num(x["weight_diff"], int), jky=str(x["jockey"] or "")[:4],
+                kin=num(x["weight_carry"]), odds=num(x["odds"]), ext=1))
+        runs.sort(key=lambda r: r["d"], reverse=True)
+        out[horse] = dict(trainer=out.get(horse, {}).get("trainer", ""), runs=runs[:n])
 
 
 def main():

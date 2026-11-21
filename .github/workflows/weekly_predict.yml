@@ -98,6 +98,12 @@ jobs:
           fi
           echo "has_races=true" >> "$GITHUB_OUTPUT"
 
+      # 海外・地方の走り(JRAの成績DBに無い)を netkeiba の馬ページから取る(海外馬・海外帰り・休み明けの馬)。11/21
+      - name: 海外・地方の戦績を取る
+        if: steps.scrape.outputs.has_races == 'true'
+        continue-on-error: true
+        run: python src/horse_history.py data/entries_this_week.csv data/race_result_merged.csv data/ext_history.csv
+
       - name: AI予測を実行
         if: steps.scrape.outputs.has_races == 'true'
         run: python src/predict.py data/entries_this_week.csv

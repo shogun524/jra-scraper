@@ -100,6 +100,26 @@ def _parse_odds(v):
     return val if 1.0 <= val <= 10000 else None
 
 
+def parse_horse_ids(html: str) -> dict:
+    """出馬表HTMLから {馬番: netkeibaの馬ID}。海外馬・地方からの転入馬の戦績をあとで取りに行くのに使う(11/21)"""
+    out = {}
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, "lxml")
+        for tr in soup.select("tr.HorseList"):
+            um = tr.select_one("td[class*=Umaban]")
+            a = tr.select_one('a[href*="/horse/"]')
+            if not um or not a:
+                continue
+            m = re.search(r"/horse/(\w{10})", a.get("href", ""))
+            t = um.get_text(strip=True)
+            if m and t.isdigit():
+                out[int(t)] = m.group(1)
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
 def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
     """出馬表テーブルをパースし、predict.pyへの入力(entries CSV)と同じスキーマの行に変換する"""
     import io
@@ -165,6 +185,12 @@ def parse_shutuba(html: str, race_id: str, race_date: str) -> list[dict]:
         m = re.search(r"\(([+\-]?\d+)\)", bw)  # "480(+2)" の増減。発表前や前計不なら空欄
         row["weight_diff"] = int(m.group(1)) if m else None
         rows.append(row)
+    ids = parse_horse_ids(html)
+    for row in rows:
+        try:
+            row["horse_id"] = ids.get(int(row["umaban"]))
+        except (TypeError, ValueError):
+            row["horse_id"] = None
     return rows
 
 

@@ -69,6 +69,7 @@ def _normalize_capped(s: pd.Series, target_sum: float, cap: float = 1.0) -> pd.S
     return s
 
 RACE_RESULT = "data/race_result_merged.csv"
+EXT_HISTORY = "data/ext_history.csv"   # 海外・地方の走り(horse_history.py)
 COURSE_STATS_PATH = "data/course_stats.json"
 # pace_ratio は2026-10の再学習で特徴量から外した(レース後にしか分からない値のため)。
 # 実際にモデルへ渡す列は、読み込んだモデルファイルに記録された特徴量名の順に合わせる
@@ -111,7 +112,9 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
     そのため、最終戦からの間隔が STALE_THRESHOLD_DAYS を超える場合は、
     「直近成績は不明」としてNaNのまま扱う(古いデータをそれらしく使わない)。
     """
-    STALE_THRESHOLD_DAYS = 180  # これより空いていたら「直近データなし」として扱う
+    # 11/21: 180日 → 400日。DBは毎週更新されていて、半年休み明けの馬(エンブロイダリーなど)の通算成績まで消していたため。
+    #        海外・地方の走りは data/ext_history.csv(horse_history.py が netkeiba の馬ページから取る)で補う
+    STALE_THRESHOLD_DAYS = 400
 
     con = duckdb.connect()
     con.execute("PRAGMA threads=1")
@@ -133,6 +136,28 @@ def build_asof_features(entries: pd.DataFrame) -> pd.DataFrame:
     FROM read_csv_auto('{RACE_RESULT}', encoding='utf-8', union_by_name=true, types={{'着順': 'VARCHAR'}})
     WHERE "レース日付" IS NOT NULL AND "馬名" IS NOT NULL
     """)
+    # 海外・地方の走り(DBに無いもの)を足す。頭数は netkeiba の表の値を使う
+    if os.path.exists(EXT_HISTORY):
+        try:
+            X = pd.read_csv(EXT_HISTORY, dtype={"horse_id": str})
+            if len(X):
+                X = X.assign(fin_n=pd.to_numeric(X["finish"], errors="coerce"))
+                c4 = X["passing"].fillna("").astype(str).str.extract(r"(\d+)$")[0]
+                ext = pd.DataFrame({
+                    "horse": X["horse"], "jockey": X["jockey"].map(jockey_key) if "jockey" in X else None, "trainer": None,
+                    "race_date": pd.to_datetime(X["race_date"]).dt.date, "track_code": None,
+                    "surface": X["surface"], "distance": pd.to_numeric(X["distance"], errors="coerce"),
+                    "waku": pd.to_numeric(X["waku"], errors="coerce"), "weight_carry": pd.to_numeric(X["weight_carry"], errors="coerce"),
+                    "finish": X["fin_n"], "y_win": (X["fin_n"] == 1).astype(int), "y_top3": (X["fin_n"] <= 3).astype(int),
+                    "corner4": pd.to_numeric(c4, errors="coerce"), "popularity": pd.to_numeric(X["popularity"], errors="coerce"),
+                    "field_size": pd.to_numeric(X["field_size"], errors="coerce")})
+                ext = ext[ext["finish"].notna()]
+                con.register("ext_df", ext)
+                cols = ", ".join(con.execute("SELECT * FROM hist LIMIT 0").df().columns)
+                con.execute(f"INSERT INTO hist SELECT {cols} FROM ext_df")
+                print(f"[INFO] 海外・地方の走り {len(ext)}件({ext['horse'].nunique()}頭)をDBに足しました")
+        except Exception as ex:  # noqa: BLE001
+            print(f"[WARN] {EXT_HISTORY} を読めませんでした: {ex}")
     con.execute("""
     CREATE TABLE hist2 AS
     SELECT *, CASE
