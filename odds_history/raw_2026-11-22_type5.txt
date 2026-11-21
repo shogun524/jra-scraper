@@ -1,0 +1,168 @@
+--- 2026-11-21 19:00 202605050501 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202605050502 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202605050503 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202605050504 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202605050505 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202605050506 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202605050507 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202605050508 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202605050509 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202605050510 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202605050511 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202605050512 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202608050601 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202608050602 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202608050603 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202608050604 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202608050605 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202608050606 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202608050607 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202608050608 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202608050609 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202608050610 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:00 202608050612 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202605050501 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202605050502 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202605050503 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202605050504 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202605050505 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202605050506 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202605050507 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202605050508 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202605050509 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202605050510 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202605050511 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202605050512 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202608050601 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202608050602 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202608050603 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202608050604 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202608050605 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202608050606 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202608050607 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202608050608 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202608050609 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202608050610 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:10 202608050612 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202605050501 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202605050502 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202605050503 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202605050504 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202605050505 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202605050506 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202605050507 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202605050508 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202605050509 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202605050510 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202605050511 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202605050512 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202608050601 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202608050602 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202608050603 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202608050604 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202608050605 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202608050606 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202608050607 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202608050608 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202608050609 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202608050610 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:20 202608050612 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202605050506 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202605050507 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202605050508 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202605050509 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202605050510 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202605050511 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202605050512 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202608050604 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202608050605 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202608050606 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202608050607 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202608050608 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202608050609 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202608050610 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
+--- 2026-11-21 19:30 202608050612 解析0組
+{"status":"NG","data":"","update_count":"0","reason":"empty free odds schedule"}
