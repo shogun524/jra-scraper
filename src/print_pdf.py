@@ -34,12 +34,12 @@ FIT_JS = """(h) => { let n = 0; document.querySelectorAll('.pp-card').forEach(c 
   if (H > h) { c.style.zoom = (h / H).toFixed(3); n++; } }); return n; }"""
 
 
-def fit(page, w_mm, h_mm):
+def fit(page, w_mm, h_mm, k=0.97):
     """印刷できる範囲(w_mm×h_mm)の幅で並べ、はみ出すカードを縮める。縮めた枚数を返す"""
     page.set_viewport_size({"width": int(w_mm * MM), "height": int(h_mm * MM)})
     page.emulate_media(media="print")
     page.wait_for_timeout(50)
-    return page.evaluate(FIT_JS, h_mm * MM * 0.97)
+    return page.evaluate(FIT_JS, h_mm * MM * k)
 
 
 def count_pages(path):
@@ -99,19 +99,22 @@ def main():
         os.makedirs(os.path.join(out, "r"), exist_ok=True)
         for rid in rids:
             for lay in ("1", "2"):
-                page.goto(f"{url}?sel=id:{rid}&lay={lay}")
-                page.add_style_tag(content=PDF_FONT_CSS)
-                page.wait_for_timeout(150)
                 path = os.path.join(out, "r", f"{rid}_{lay}.pdf")
-                if lay == "1":
-                    fit(page, 297 - 12, 210 - 12)
-                    page.pdf(path=path, prefer_css_page_size=True, print_background=True)
+                for k in (0.97, 0.88, 0.78, 0.68):   # まだ2枚になるなら、もう少し縮めて作り直す
+                    page.goto(f"{url}?sel=id:{rid}&lay={lay}")
+                    page.add_style_tag(content=PDF_FONT_CSS)
+                    page.wait_for_timeout(150)
+                    if lay == "1":
+                        fit(page, 297 - 12, 210 - 12, k)
+                        page.pdf(path=path, prefer_css_page_size=True, print_background=True)
+                    else:
+                        page.add_style_tag(content="@page { size: 210mm 148.5mm; margin: 4mm; } .pp-card { break-after: auto !important; page-break-after: auto !important; }")
+                        fit(page, 210 - 8, 148.5 - 8, k)
+                        page.pdf(path=path, width="210mm", height="148.5mm", prefer_css_page_size=True, print_background=True)
+                    page.emulate_media(media=None); page.set_viewport_size({"width": 1300, "height": 900})
+                    if count_pages(path) <= 1:
+                        break
                 else:
-                    page.add_style_tag(content="@page { size: 210mm 148.5mm; margin: 4mm; } .pp-card { break-after: auto !important; page-break-after: auto !important; }")
-                    fit(page, 210 - 8, 148.5 - 8)
-                    page.pdf(path=path, width="210mm", height="148.5mm", prefer_css_page_size=True, print_background=True)
-                page.emulate_media(media=None); page.set_viewport_size({"width": 1300, "height": 900})
-                if count_pages(path) > 1:
                     print(f"  [WARN] {rid} lay={lay} が{count_pages(path)}枚になった")
         print(f"  レースごと: {len(rids)}レース × 2レイアウト → r/")
         b.close()
