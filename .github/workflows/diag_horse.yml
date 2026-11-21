@@ -1,0 +1,51 @@
+name: 診断 海外馬の戦績ページ取得
+
+on:
+  workflow_dispatch:
+    inputs:
+      race_id:
+        default: "202608050611"
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install playwright pandas lxml beautifulsoup4 && python -m playwright install --with-deps chromium
+      - name: 取得
+        run: |
+          mkdir -p diag
+          python - <<'PY'
+          import re, sys
+          sys.path.insert(0, "src")
+          from playwright.sync_api import sync_playwright
+          from scrape_race_ids import UA
+          from scrape_entries import fetch_shutuba_page
+          rid = "${{ github.event.inputs.race_id }}"
+          with sync_playwright() as p:
+              b = p.chromium.launch(); pg = b.new_page(user_agent=UA)
+              html = fetch_shutuba_page(pg, rid)
+              open("diag/shutuba.html", "w").write(html)
+              ids = re.findall(r'/horse/(\w{10})', html)
+              print("horse ids", ids[:40])
+              seen = []
+              for i in ids:
+                  if i not in seen: seen.append(i)
+              for hid in seen[:3]:
+                  for u in (f"https://db.netkeiba.com/horse/{hid}/", f"https://db.netkeiba.com/horse/result/{hid}/"):
+                      try:
+                          pg.goto(u, timeout=30000, wait_until="domcontentloaded"); pg.wait_for_timeout(1500)
+                          h = pg.content(); fn = "diag/" + u.rstrip("/").split("/")[-2] + "_" + hid + ".html"
+                          open(fn, "w").write(h); print(u, len(h))
+                      except Exception as e:
+                          print("ERR", u, e)
+              b.close()
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: diag-horse
+          path: diag/
