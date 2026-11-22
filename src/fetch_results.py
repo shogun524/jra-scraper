@@ -83,7 +83,10 @@ def missing_race_ids(history_dir: str, date: str) -> tuple[list[str], pd.DataFra
     else:
         have = pd.DataFrame(columns=RESULT_COLUMNS)
     done = {rid for rid, g in have.groupby("race_id") if is_complete(g)}
-    return [rid for rid in race_ids if rid not in done], have
+    # 着順は当日のオッズ更新が先に入れることがあるので、払戻が無いレースも取りに行く(11/22: 払戻が最終レースだけになっていた)
+    pay_path = os.path.join(history_dir, f"payouts_{date}.csv")
+    paid = set(pd.read_csv(pay_path, dtype={"race_id": str})["race_id"]) if os.path.exists(pay_path) else set()
+    return [rid for rid in race_ids if rid not in done or rid not in paid], have
 
 
 def main():
