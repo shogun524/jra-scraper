@@ -533,6 +533,28 @@ if not EV.empty:
         ev_summary = f"""<details class="aibet-summary ev-summary"><summary><b>EVボード</b> <small>今日は単勝で期待値1.0以上の馬なし(上位を見る)</small></summary>
       <ul>{lis}</ul>{_how}</details>"""
 
+
+FOLD_CSS = """
+  details.fold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary::before { content: "▶"; font-size: .7em; color: #8A7F6E; transition: transform .15s; }
+  details.fold[open] > summary::before { transform: rotate(90deg); }
+  details.fold > summary h2 { display: inline; margin: 0; }
+  details.fold:not([open]) { padding-bottom: 10px; }
+"""
+
+
+def fold(html):
+    """<section class="..."><h2>見出し</h2>…</section> を、見出しを押すと開く <details>(最初は閉じた状態)にする。
+    「このサイトの見方」も閉じた状態にする(11/22)"""
+    import re
+    html = re.sub(r'<section class="([^"]*)">\s*<h2>(.*?)</h2>',
+                  lambda m: f'<details class="{m.group(1)} fold"><summary><h2>{m.group(2)}</h2></summary>', html, flags=re.S)
+    html = re.sub(r'</section>', '</details>', html)
+    html = html.replace('<details class="guide" open>', '<details class="guide">')
+    return html
+
+
 html = f"""<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -761,6 +783,7 @@ html = f"""<!DOCTYPE html>
   details.evbox summary {{ cursor: pointer; }}
   .ev-more summary {{ cursor: pointer; font-size: .78rem; color: var(--ink-soft); margin: 4px 0; }}
   footer details summary {{ cursor: pointer; }}
+{FOLD_CSS}
 </style>
 </head>
 <body>
@@ -776,7 +799,7 @@ html = f"""<!DOCTYPE html>
   </div>
   <nav class="tabs">{tab_buttons}</nav>
 </header>
-<main>{zenjitsu_note}{guide}{aibet_summary}{hit_summary}{ev_summary}{tab_panels}</main>
+<main>{zenjitsu_note}{fold(guide + aibet_summary + hit_summary + ev_summary)}{tab_panels}</main>
 <footer><details><summary><strong>各項目の見方</strong></summary>
   <p>
     <b>1着率 / 3連対率</b>: AI(オッズを使わない予想)の推定確率。レース内で合計が100% / 300%になるよう調整。<br>
