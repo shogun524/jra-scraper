@@ -819,6 +819,38 @@ document.querySelectorAll('.race-tab-btn').forEach(btn => {{
     document.getElementById(btn.dataset.race).classList.add('active');
   }});
 }});
+// 見ていた会場・レースを覚えておき、「最新を表示」や再読み込みのあとも同じレースを開く(11/22)
+(function(){{
+  var K = 'sel:' + location.pathname;
+  function vname(b){{ return b ? (b.childNodes[0] ? b.childNodes[0].textContent : b.textContent).trim() : null; }}
+  function rname(b){{ var m = b ? b.textContent.match(/(\\d+)R/) : null; return m ? m[1] : null; }}
+  function save(){{
+    try {{
+      var t = document.querySelector('.tab-btn.active');
+      var p = t ? document.getElementById(t.dataset.tab) : document;
+      var r = p ? p.querySelector('.race-tab-btn.active') : null;
+      sessionStorage.setItem(K, JSON.stringify({{ v: vname(t), r: rname(r) }}));
+    }} catch (e) {{}}
+  }}
+  document.querySelectorAll('.tab-btn, .race-tab-btn').forEach(function(b){{
+    b.addEventListener('click', function(e){{ if (e.isTrusted) save(); }});
+  }});
+  window.restoreSel = function(){{
+    try {{
+      var s = JSON.parse(sessionStorage.getItem(K) || 'null');
+      if (!s) return false;
+      var t = null;
+      document.querySelectorAll('.tab-btn').forEach(function(b){{ if (vname(b) === s.v) t = b; }});
+      if (t) t.click();
+      var p = t ? document.getElementById(t.dataset.tab) : document;
+      var r = null;
+      if (p && s.r) p.querySelectorAll('.race-tab-btn').forEach(function(b){{ if (rname(b) === s.r) r = b; }});
+      if (r) r.click();
+      return !!(t || r);
+    }} catch (e) {{ return false; }}
+  }};
+}})();
+restoreSel();
 </script>
 </body>
 </html>"""
