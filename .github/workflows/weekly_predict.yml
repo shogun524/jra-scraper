@@ -24,6 +24,10 @@ on:
 # 実行が重なった場合は後から起動したほう(=より新しいオッズ)を優先する
 # オッズ定期更新(odds_update.yml)と同じグループにして、
 # 2つのジョブが同時にGitHub Pagesへ書き込んで結果を上書きし合わないよう順番待ちさせる。
+permissions:
+  contents: write
+  actions: write
+
 concurrency:
   group: jra-pages
   cancel-in-progress: false
@@ -160,3 +164,17 @@ jobs:
           publish_dir: ./docs
           # 過去の予測・結果の記録(history/)や成績ページを消さないよう、既存ファイルを残す
           keep_files: true
+
+      # 常駐更新(keeper)の定期実行が間引かれて動かない日があった(11/23 祝日: 朝から一度もオッズを取らず)。
+      # この予測ジョブは動いているので、開催日で常駐更新が動いていなければここから起こす
+      - name: 開催日なのにオッズの常駐更新が止まっていれば起こす
+        if: always() && steps.scrape.outputs.has_races == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          hm=$(TZ=Asia/Tokyo date +%H%M)
+          if [ "$hm" -ge 0800 ] && [ "$hm" -lt 1630 ]; then
+            n=$(gh run list --workflow keeper.yml --json status -q '[.[] | select(.status=="in_progress" or .status=="queued")] | length')
+            if [ "${n:-0}" = "0" ]; then gh workflow run keeper.yml --ref "${GITHUB_REF_NAME}" && echo "::notice::常駐更新を起こしました"; fi
+          fi
