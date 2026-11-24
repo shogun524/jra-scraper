@@ -1,10 +1,10 @@
 {
-  "a": -0.0467,
-  "b": 1.0613,
+  "a": -0.0432,
+  "b": 1.0585,
   "c_move": 0.0,
-  "updated": "2026-11-17",
-  "source_ab": "ウォークフォワード予測+確定オッズ 26835レース",
-  "logloss_market": 1.92666,
-  "logloss_blend": 1.92615,
-  "odds_history_races": 72
+  "updated": "2026-11-24",
+  "source_ab": "ウォークフォワード予測+確定オッズ 26907レース",
+  "logloss_market": 1.92684,
+  "logloss_blend": 1.92637,
+  "odds_history_races": 144
 }
