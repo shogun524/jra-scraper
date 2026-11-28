@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
-from ai_bets import RULES, evaluate_all
+from ai_bets import SHOWN_RULES as RULES, evaluate_all
 from manbaken import load_params as load_manbaken, market_view, market_view_trifecta
 
 JST = timezone(timedelta(hours=9))

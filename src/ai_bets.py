@@ -52,6 +52,7 @@ OP = Rule("op", "OP 単勝", "OP・L(重賞以外)・新AIと旧AIの◎が違�
 T3 = Rule("t3", "3連単フォーメーション(試験)", "1勝クラス・1番人気の単勝支持30〜40% → 3連単 人気上位4頭 → AI上位3頭 → AI3着内率上位4頭(推定合成3倍以上)", "3連単",
           "2023〜24年 回収率132%(311レース)・2025〜26年 113%(284レース)、的中率16〜17%。試験中")
 RULES = [MAIN, SUB, C1, GR, OP, T3]
+SHOWN_RULES = [r for r in RULES if r.key not in ("sub",)]
 T3_COMP = 3.0
 RULE_NAME = MAIN.name  # 互換用
 
@@ -252,8 +253,13 @@ def evaluate_race(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> dict:
     return evaluate_main(g, rank_col)
 
 
-def evaluate_all(g: pd.DataFrame, rank_col: str = "pred_win_rank") -> list[dict]:
-    out = [evaluate_main(g, rank_col), evaluate_sub(g, rank_col)]
+# 11/28: 準AI買い目はサイトの買い目に出さない(検証の作り方が甘かった: 2019〜2026年の全期間で総当たりして選んだので
+# 選んだ期間と確かめた期間が同じ。2026年は58%・上位5本を除くと79%・掲載後20レース0的中)。成績ページの採点だけ続ける。
+HIDDEN = {"sub"}
+
+
+def evaluate_all(g: pd.DataFrame, rank_col: str = "pred_win_rank", include_hidden: bool = False) -> list[dict]:
+    out = [evaluate_main(g, rank_col)] + ([evaluate_sub(g, rank_col)] if include_hidden else [])
     if "pred_win_norm" in g.columns:
         out += [evaluate_c1(g, rank_col), evaluate_gr(g, rank_col), evaluate_op(g, rank_col), evaluate_t3(g, rank_col)]
     return out

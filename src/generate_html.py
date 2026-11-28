@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ai_bets import RULES, evaluate_all  # noqa: E402
+from ai_bets import SHOWN_RULES as RULES, evaluate_all  # noqa: E402
 from ev_board import board, load_calibration, load_odds_files  # noqa: E402
 from manbaken import load_params as load_manbaken, market_view, market_view_trifecta  # noqa: E402
 

@@ -196,7 +196,7 @@ def ai_bet_section(history_dir: str) -> str:
             pr = pay[pay.race_id == rid]
             if pr.empty:
                 continue  # 結果待ち
-            for e in evaluate_all(g):
+            for e in evaluate_all(g, include_hidden=True):
                 if e["status"] != "対象":
                     continue
                 a = acc[e["rule"].key]
