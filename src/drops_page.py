@@ -117,7 +117,7 @@ def render(races, now, date_label):
   details {{ margin-top:12px; }} summary {{ cursor:pointer; font-weight:700; color:var(--soft); }}
 </style></head><body>
 <header><h1>オッズ急落</h1>
-<p>{html.escape(date_label)} ・ {now:%H:%M} 時点(5分おきに記録・1分おきに再読み込み) ・ <a href="index.html">全レースの予想</a> ・ <a href="picks.html">買うべきレース</a></p></header>
+<p>{html.escape(date_label)} ・ {now:%H:%M} 時点(5分おきに記録・1分おきに再読み込み) ・ <a href="index.html">全レースの予想</a></p></header>
 <main>
 <p class="dim">発走10分前に一番近い記録から、直前に大きく下がった馬・組(単勝: 5倍以上で−20%以上、馬連: 10〜300倍・ワイド: 5〜100倍で−25%以上)。赤い行は大きな下落(単勝−30%・馬連ワイド−40%以上)。
 直前に大きく買われたものです。来やすくなる一方、下がった分だけ割安さは減ります(回収率は記録がたまり次第検証)。</p>

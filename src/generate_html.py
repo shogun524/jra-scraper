@@ -392,7 +392,7 @@ def race_card(race_id, g):
           <h2>{race_name}</h2>
           <p class="race-sub">{first.get('track_name','')} {post_time_html}</p>
           <div class="chips">{manbaken_html(g)}{bias_html(race_id)}</div>
-          {hit_html(g)}{trio_html(g)}
+          <!-- 11/29: 的中率重視・3連複の買い目行はやめた -->
         </div>
       </header>
       {aibet_html}
@@ -463,8 +463,9 @@ if "race_class" in df.columns:
                    f'<details class="why"><summary>条件</summary><p class="aibet-note">{rule.name}。{rule.backtest}。</p></details><ul>{lis}</ul></div>')
     if empty:
         blocks += f'<p class="aibet-none">今日は対象なし: {"・".join(empty)}</p>'
-    aibet_summary = f"""<section class="aibet-summary"><h2>今日のAI買い目</h2>{blocks}
-      </section>"""
+    aibet_summary = ('<section class="aibet-summary"><h2>買い目について</h2><p class="aibet-none">'
+                     '11/29から買い目は出していません。2023〜24年で選んだ買い方を2025〜26年で確かめ直したら、どれも回収率100%を超えませんでした'
+                     '(選んだ上位10通りの中央65%)。◎と%(勝ちそうな確率)は予想として出しています。過去の買い目の採点は成績ページに残しています。</p></section>')
 
 # サイトの見方(よく迷うところだけ)
 guide = """<details class="guide" open><summary>このサイトの見方</summary><ul>
@@ -472,8 +473,6 @@ guide = """<details class="guide" open><summary>このサイトの見方</summar
   <li><b>込%</b> … 実際に勝ちそうな確率(オッズ込み)。<b>一番当たる数字</b>。妙味・期待値・EVボードもこれで計算。</li>
   <li><b>妙味</b> … 込%がオッズの見込みより高い馬=妙味あり(1.15倍以上)、低い馬=過剰人気。</li>
   <li><b>狙い目！・普通・注意・危険！</b> … ◎と旧◎に付く一言。<span class="htag tg-go">狙い目！</span>=旧◎が◎と違う人気薄(過去はオッズの見込みより2〜3割多く勝つ)、<span class="htag tg-ok">普通</span>=1〜3番人気(オッズどおり。普通に買ってよい)、<span class="htag tg-warn">注意</span>=◎が4〜5番人気、<span class="htag tg-ng">危険！</span>=◎と旧◎が同じ人気薄(見込みの6割しか勝たない)。そのレースでは<span class="htag tg-push">推し</span>(込%1位。過去は複勝圏61%・複勝回収率90%)を代わりに。</li>
-  <li><b>3連複</b> … 的中重視=込%1位を軸に込%2〜4位→AIの3連対率10%以上へ(過去 的中約50%・回収79%)。回収重視=その中で込%が市場より1.1倍以上高く見ている組だけ(的中約15%・回収92%)。</li>
-  <li><b>AI買い目</b> … 過去の検証で回収率が出たルール。<span class="ai-b ai-old">旧AIで選ぶ</span>ものは画面の◎と違う馬が軸になる(表の「旧◎」の馬)。</li>
   <li>オッズは5分おきに更新。AI評価は朝〜午後に数回(馬体重などで)作り直し。</li>
 </ul></details>"""
 
@@ -795,7 +794,7 @@ html = f"""<!DOCTYPE html>
       <button type="button" class="btn" onclick="location.href=location.pathname+'?t='+Date.now()">↻ 最新を表示</button>
       <a class="btn btn-sub" href="https://github.com/shogun524/jra-scraper/actions/workflows/odds_update.yml" target="_blank" rel="noopener">オッズを今すぐ取り直す</a>
     </div>
-    <nav class="links"><a href="picks.html">買うべきレース</a><a href="drops.html">オッズ急落</a><a href="print.html">印刷用</a><a href="performance.html">成績</a><a href="courses.html">競馬場</a></nav>
+    <nav class="links"><a href="drops.html">オッズ急落</a><a href="print.html">印刷用</a><a href="performance.html">成績</a><a href="courses.html">競馬場</a></nav>
   </div>
   <nav class="tabs">{tab_buttons}</nav>
 </header>
