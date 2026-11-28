@@ -463,9 +463,7 @@ if "race_class" in df.columns:
                    f'<details class="why"><summary>条件</summary><p class="aibet-note">{rule.name}。{rule.backtest}。</p></details><ul>{lis}</ul></div>')
     if empty:
         blocks += f'<p class="aibet-none">今日は対象なし: {"・".join(empty)}</p>'
-    aibet_summary = ('<section class="aibet-summary"><h2>買い目について</h2><p class="aibet-none">'
-                     '11/29から買い目は出していません。2023〜24年で選んだ買い方を2025〜26年で確かめ直したら、どれも回収率100%を超えませんでした'
-                     '(選んだ上位10通りの中央65%)。◎と%(勝ちそうな確率)は予想として出しています。過去の買い目の採点は成績ページに残しています。</p></section>')
+    aibet_summary = ""
 
 # サイトの見方(よく迷うところだけ)
 guide = """<details class="guide" open><summary>このサイトの見方</summary><ul>
